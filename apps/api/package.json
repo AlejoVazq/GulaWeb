@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "@gula/shared": "workspace:*",
+    "@node-rs/argon2": "^2.2.2",
     "drizzle-orm": "~0.44.7",
     "fastify": "^5.12.8",
     "pino": "^9.14.0",
