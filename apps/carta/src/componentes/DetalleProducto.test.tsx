@@ -37,3 +37,18 @@ it('los checkboxes se bloquean al llegar al máximo', async () => {
   await userEvent.click(screen.getByLabelText(/Bacon/));
   expect(screen.getByLabelText(/Huevo/)).toBeDisabled();
 });
+
+it('al abrir enfoca el panel, Escape cierra y Tab no se escapa', async () => {
+  const onCerrar = vi.fn();
+  render(
+    <>
+      <button type="button">fondo</button>
+      <DetalleProducto producto={producto} onAgregar={() => {}} onCerrar={onCerrar} />
+    </>,
+  );
+  expect(screen.getByRole('button', { name: 'Cerrar' })).toHaveFocus();
+  await userEvent.tab({ shift: true });
+  expect(screen.getByRole('button', { name: 'fondo' })).not.toHaveFocus();
+  await userEvent.keyboard('{Escape}');
+  expect(onCerrar).toHaveBeenCalled();
+});

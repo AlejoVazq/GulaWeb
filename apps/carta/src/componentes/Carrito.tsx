@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { formatearPrecio } from '@gula/shared';
+import { useDialogo } from './useDialogo';
 import { totalCarrito, unidadesCarrito, type AccionCarrito, type ItemCarrito } from '../carrito';
 
 type Props = { items: ItemCarrito[]; despachar: (a: AccionCarrito) => void };
@@ -17,9 +18,26 @@ export function Carrito({ items, despachar }: Props) {
     );
   }
   return (
-    <div className="hoja" role="dialog" aria-modal="true" aria-label="Tu pedido">
+    <HojaPedido
+      items={items}
+      despachar={despachar}
+      total={total}
+      onCerrar={() => setAbierto(false)}
+    />
+  );
+}
+
+function HojaPedido({
+  items,
+  despachar,
+  total,
+  onCerrar,
+}: Props & { total: string; onCerrar: () => void }) {
+  const dialogo = useDialogo<HTMLDivElement>(onCerrar);
+  return (
+    <div className="hoja" role="dialog" aria-modal="true" aria-label="Tu pedido" ref={dialogo}>
       <div className="hoja__contenido">
-        <button type="button" className="hoja__cerrar" onClick={() => setAbierto(false)} aria-label="Cerrar">
+        <button type="button" className="hoja__cerrar" onClick={onCerrar} aria-label="Cerrar">
           ×
         </button>
         <h2>Tu pedido</h2>
@@ -28,7 +46,9 @@ export function Carrito({ items, despachar }: Props) {
             <li key={i.clave} className="lista-pedido__item">
               <div>
                 <strong>{i.nombre}</strong>
-                {i.resumenOpciones && <div className="lista-pedido__detalle">{i.resumenOpciones}</div>}
+                {i.resumenOpciones && (
+                  <div className="lista-pedido__detalle">{i.resumenOpciones}</div>
+                )}
                 {i.nota && <div className="lista-pedido__detalle">“{i.nota}”</div>}
                 <div>{formatearPrecio(i.precioUnitario * i.cantidad)}</div>
               </div>
@@ -36,7 +56,9 @@ export function Carrito({ items, despachar }: Props) {
                 <button
                   type="button"
                   aria-label={`Restar ${i.nombre}`}
-                  onClick={() => despachar({ tipo: 'cantidad', clave: i.clave, cantidad: i.cantidad - 1 })}
+                  onClick={() =>
+                    despachar({ tipo: 'cantidad', clave: i.clave, cantidad: i.cantidad - 1 })
+                  }
                 >
                   −
                 </button>
@@ -44,7 +66,9 @@ export function Carrito({ items, despachar }: Props) {
                 <button
                   type="button"
                   aria-label={`Sumar ${i.nombre}`}
-                  onClick={() => despachar({ tipo: 'cantidad', clave: i.clave, cantidad: i.cantidad + 1 })}
+                  onClick={() =>
+                    despachar({ tipo: 'cantidad', clave: i.clave, cantidad: i.cantidad + 1 })
+                  }
                 >
                   +
                 </button>

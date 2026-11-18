@@ -10,7 +10,10 @@ createRoot(document.getElementById('raiz')!).render(
       <Routes>
         <Route path="/:slug" element={<Carta />} />
         <Route path="/:slug/m/:token" element={<Carta />} />
-        <Route path="*" element={<p className="aviso">Escaneá el QR de tu mesa para ver la carta.</p>} />
+        <Route
+          path="*"
+          element={<p className="aviso">Escaneá el QR de tu mesa para ver la carta.</p>}
+        />
       </Routes>
     </BrowserRouter>
   </StrictMode>,

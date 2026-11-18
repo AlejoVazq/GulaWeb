@@ -80,3 +80,16 @@ it('reemplazar borra los archivos viejos y DELETE limpia todo', async () => {
   expect(d.statusCode).toBe(204);
   expect(readdirSync(dir)).toEqual([]);
 });
+
+it('rechaza SVG y formatos no permitidos', async () => {
+  const svg = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect width="100" height="100"/></svg>');
+  const r = await subir(svg, 'x.svg', 'image/svg+xml');
+  expect(r.statusCode).toBe(400);
+  expect(r.json().error.codigo).toBe('IMAGEN_INVALIDA');
+});
+it('rechaza imágenes con demasiados píxeles (bomba de descompresión)', async () => {
+  const r = await subir(await png(8000, 8000));
+  expect(r.statusCode).toBe(400);
+  expect(r.json().error.codigo).toBe('IMAGEN_INVALIDA');
+  expect(readdirSync(dir)).toEqual([]);
+}, 30_000);

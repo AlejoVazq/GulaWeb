@@ -63,3 +63,9 @@ it('borrado lógico y reorden', async () => {
   expect((await enc('DELETE', `/carta/productos/${a.id}`)).statusCode).toBe(204);
   expect((await enc('GET', `/carta/productos?categoriaId=${categoriaId}`)).json()).toHaveLength(1);
 });
+
+it('precio fuera de rango de la base responde 400, no 500', async () => {
+  const p = (await enc('POST', '/carta/productos', muzza())).json();
+  const r = await enc('PATCH', `/carta/productos/${p.id}`, { precio: 3_000_000_000 });
+  expect(r.statusCode).toBe(400);
+});

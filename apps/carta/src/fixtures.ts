@@ -59,7 +59,16 @@ export const cartaDePrueba: CartaPublica = {
       enHorario: false,
       horario: { desde: '08:00', hasta: '12:00' },
       productos: [
-        { id: 'p3', nombre: 'Café con leche', descripcion: null, precio: 300000, foto: null, disponible: true, etiquetas: [], grupos: [] },
+        {
+          id: 'p3',
+          nombre: 'Café con leche',
+          descripcion: null,
+          precio: 300000,
+          foto: null,
+          disponible: true,
+          etiquetas: [],
+          grupos: [],
+        },
       ],
     },
   ],

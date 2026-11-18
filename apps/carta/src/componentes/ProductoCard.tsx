@@ -1,6 +1,10 @@
 import { formatearPrecio, type ProductoPublico } from '@gula/shared';
 
-type Props = { producto: ProductoPublico; habilitado: boolean; onElegir: (p: ProductoPublico) => void };
+type Props = {
+  producto: ProductoPublico;
+  habilitado: boolean;
+  onElegir: (p: ProductoPublico) => void;
+};
 
 export function ProductoCard({ producto: p, habilitado, onElegir }: Props) {
   const puede = habilitado && p.disponible;
@@ -21,7 +25,16 @@ export function ProductoCard({ producto: p, habilitado, onElegir }: Props) {
         <span className="producto__precio">{formatearPrecio(p.precio)}</span>
         {!p.disponible && <span className="producto__sin-stock">Sin stock</span>}
       </span>
-      {p.foto && <img className="producto__foto" src={p.foto.chica} alt="" loading="lazy" width={96} height={96} />}
+      {p.foto && (
+        <img
+          className="producto__foto"
+          src={p.foto.chica}
+          alt=""
+          loading="lazy"
+          width={96}
+          height={96}
+        />
+      )}
     </button>
   );
 }

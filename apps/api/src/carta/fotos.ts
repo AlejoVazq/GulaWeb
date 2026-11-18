@@ -13,6 +13,9 @@ import { buscarVigente, paramId, urlsFoto } from './comun.js';
 
 export const MAX_FOTO_BYTES = 8 * 1024 * 1024;
 const ANCHOS = [400, 800] as const;
+/** ~40 MP: más que cualquier foto de celular, mucho menos que una bomba de descompresión. */
+export const MAX_PIXELES = 40_000_000;
+const FORMATOS = new Set(['jpeg', 'png', 'webp', 'heif', 'avif']);
 
 const archivos = (dir: string, base: string) => ANCHOS.map((a) => join(dir, `${base}-${a}.webp`));
 
@@ -25,8 +28,10 @@ async function borrarArchivos(dir: string, base: string | null) {
 async function procesar(dir: string, base: string, original: Buffer): Promise<void> {
   let imagen: sharp.Sharp;
   try {
-    imagen = sharp(original, { failOn: 'error' }).rotate();
-    await imagen.metadata();
+    imagen = sharp(original, { failOn: 'error', limitInputPixels: MAX_PIXELES }).rotate();
+    const meta = await imagen.metadata();
+    if (!meta.format || !FORMATOS.has(meta.format)) throw new Error('formato no permitido');
+    if ((meta.width ?? 0) * (meta.height ?? 0) > MAX_PIXELES) throw new Error('demasiados píxeles');
   } catch {
     throw new ErrorApi(400, 'IMAGEN_INVALIDA', 'El archivo no es una imagen válida.');
   }

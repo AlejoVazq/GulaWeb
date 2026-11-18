@@ -33,7 +33,9 @@ export function reducirCarrito(estado: ItemCarrito[], accion: AccionCarrito): It
       const clave = claveItem(accion.item);
       const existe = estado.find((i) => i.clave === clave);
       if (existe) {
-        return estado.map((i) => (i.clave === clave ? { ...i, cantidad: i.cantidad + accion.item.cantidad } : i));
+        return estado.map((i) =>
+          i.clave === clave ? { ...i, cantidad: i.cantidad + accion.item.cantidad } : i,
+        );
       }
       return [...estado, { ...accion.item, clave }];
     }
@@ -48,7 +50,8 @@ export function reducirCarrito(estado: ItemCarrito[], accion: AccionCarrito): It
   }
 }
 
-export const totalCarrito = (items: ItemCarrito[]) => items.reduce((t, i) => t + i.precioUnitario * i.cantidad, 0);
+export const totalCarrito = (items: ItemCarrito[]) =>
+  items.reduce((t, i) => t + i.precioUnitario * i.cantidad, 0);
 export const unidadesCarrito = (items: ItemCarrito[]) => items.reduce((t, i) => t + i.cantidad, 0);
 
 const claveStorage = (slug: string) => `gula:carrito:${slug}`;

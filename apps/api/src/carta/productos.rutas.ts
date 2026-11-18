@@ -24,7 +24,9 @@ export const vistaProducto = (p: Fila) => ({
   etiquetas: p.etiquetas,
 });
 
-export const precio = z.number().int('El precio va en centavos enteros').min(0).max(100_000_000_00);
+/** Centavos; tope $ 9.999.999 para que precio + recargos × cantidad entren en int4 (fase 4). */
+export const PRECIO_MAXIMO = 999_999_900;
+export const precio = z.number().int('El precio va en centavos enteros').min(0).max(PRECIO_MAXIMO);
 
 const cuerpo = z.object({
   categoriaId: z.uuid(),

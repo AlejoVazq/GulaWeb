@@ -8,6 +8,7 @@ import {
   type Seleccion,
 } from '@gula/shared';
 import type { ItemCarrito } from '../carrito';
+import { useDialogo } from './useDialogo';
 
 type Props = {
   producto: ProductoPublico;
@@ -19,15 +20,30 @@ const MAX_NOTA = 140;
 
 function resumen(p: ProductoPublico, sel: Seleccion): string {
   return p.grupos
-    .flatMap((g) => (sel[g.id] ?? []).map((id) => g.opciones.find((o) => o.id === id)?.nombre ?? ''))
+    .flatMap((g) =>
+      (sel[g.id] ?? []).map((id) => g.opciones.find((o) => o.id === id)?.nombre ?? ''),
+    )
     .filter(Boolean)
     .join(', ');
 }
 
-function Grupo({ grupo, elegidas, onCambiar }: { grupo: GrupoPublico; elegidas: string[]; onCambiar: (ids: string[]) => void }) {
+function Grupo({
+  grupo,
+  elegidas,
+  onCambiar,
+}: {
+  grupo: GrupoPublico;
+  elegidas: string[];
+  onCambiar: (ids: string[]) => void;
+}) {
   const unica = grupo.max === 1;
   const lleno = elegidas.length >= grupo.max;
-  const indicacion = grupo.min > 0 ? (unica ? 'Obligatorio' : `Elegí al menos ${grupo.min}`) : `Opcional · hasta ${grupo.max}`;
+  const indicacion =
+    grupo.min > 0
+      ? unica
+        ? 'Obligatorio'
+        : `Elegí al menos ${grupo.min}`
+      : `Opcional · hasta ${grupo.max}`;
   return (
     <fieldset className="grupo">
       <legend>
@@ -50,7 +66,9 @@ function Grupo({ grupo, elegidas, onCambiar }: { grupo: GrupoPublico; elegidas: 
             />
             <span>{o.nombre}</span>
             {!o.disponible && <span className="opcion__extra">Sin stock</span>}
-            {o.disponible && o.recargo > 0 && <span className="opcion__extra">+{formatearPrecio(o.recargo)}</span>}
+            {o.disponible && o.recargo > 0 && (
+              <span className="opcion__extra">+{formatearPrecio(o.recargo)}</span>
+            )}
           </label>
         );
       })}
@@ -62,12 +80,13 @@ export function DetalleProducto({ producto: p, onAgregar, onCerrar }: Props) {
   const [seleccion, setSeleccion] = useState<Seleccion>({});
   const [cantidad, setCantidad] = useState(1);
   const [nota, setNota] = useState('');
+  const dialogo = useDialogo<HTMLDivElement>(onCerrar);
 
   const validacion = useMemo(() => validarSeleccion(p, seleccion), [p, seleccion]);
   const unitario = precioUnitario(p, seleccion);
 
   return (
-    <div className="hoja" role="dialog" aria-modal="true" aria-label={p.nombre}>
+    <div className="hoja" role="dialog" aria-modal="true" aria-label={p.nombre} ref={dialogo}>
       <div className="hoja__contenido">
         <button type="button" className="hoja__cerrar" onClick={onCerrar} aria-label="Cerrar">
           ×
@@ -98,7 +117,11 @@ export function DetalleProducto({ producto: p, onAgregar, onCerrar }: Props) {
         </label>
 
         <div className="cantidad" aria-label="Cantidad">
-          <button type="button" onClick={() => setCantidad((c) => Math.max(1, c - 1))} disabled={cantidad <= 1}>
+          <button
+            type="button"
+            onClick={() => setCantidad((c) => Math.max(1, c - 1))}
+            disabled={cantidad <= 1}
+          >
             −
           </button>
           <span aria-live="polite">{cantidad}</span>
@@ -117,7 +140,9 @@ export function DetalleProducto({ producto: p, onAgregar, onCerrar }: Props) {
               clave: '',
               productoId: p.id,
               nombre: p.nombre,
-              seleccion: Object.fromEntries(Object.entries(seleccion).filter(([, ids]) => ids.length > 0)),
+              seleccion: Object.fromEntries(
+                Object.entries(seleccion).filter(([, ids]) => ids.length > 0),
+              ),
               resumenOpciones: resumen(p, seleccion),
               nota: nota.trim(),
               cantidad,

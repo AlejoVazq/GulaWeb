@@ -16,7 +16,8 @@ export function Carta() {
 
   if (estado.tipo === 'cargando') return <p className="aviso">Cargando la carta…</p>;
   if (estado.tipo === 'no-encontrado') return <p className="aviso">No encontramos este local</p>;
-  if (estado.tipo === 'error') return <p className="aviso">No pudimos cargar la carta. Probá de nuevo en un momento.</p>;
+  if (estado.tipo === 'error')
+    return <p className="aviso">No pudimos cargar la carta. Probá de nuevo en un momento.</p>;
 
   const { carta } = estado;
   return (
@@ -24,24 +25,36 @@ export function Carta() {
       <header className="carta__encabezado">
         <h1>{carta.local.nombre}</h1>
       </header>
-      <Categorias categorias={carta.categorias} />
-      <main>
-        {carta.categorias.map((c) => (
-          <section key={c.id} id={anclaCategoria(c.id)} className="seccion" aria-labelledby={`t-${c.id}`}>
-            <h2 id={`t-${c.id}`}>{c.nombre}</h2>
-            {!c.enHorario && c.horario && (
-              <p className="seccion__horario">
-                Disponible de {c.horario.desde} a {c.horario.hasta}
-              </p>
-            )}
-            <div className="seccion__productos">
-              {c.productos.map((p) => (
-                <ProductoCard key={p.id} producto={p} habilitado={c.enHorario} onElegir={setElegido} />
-              ))}
-            </div>
-          </section>
-        ))}
-      </main>
+      <div inert={Boolean(elegido)}>
+        <Categorias categorias={carta.categorias} />
+        <main>
+          {carta.categorias.map((c) => (
+            <section
+              key={c.id}
+              id={anclaCategoria(c.id)}
+              className="seccion"
+              aria-labelledby={`t-${c.id}`}
+            >
+              <h2 id={`t-${c.id}`}>{c.nombre}</h2>
+              {!c.enHorario && c.horario && (
+                <p className="seccion__horario">
+                  Disponible de {c.horario.desde} a {c.horario.hasta}
+                </p>
+              )}
+              <div className="seccion__productos">
+                {c.productos.map((p) => (
+                  <ProductoCard
+                    key={p.id}
+                    producto={p}
+                    habilitado={c.enHorario}
+                    onElegir={setElegido}
+                  />
+                ))}
+              </div>
+            </section>
+          ))}
+        </main>
+      </div>
       {elegido && (
         <DetalleProducto
           producto={elegido}
