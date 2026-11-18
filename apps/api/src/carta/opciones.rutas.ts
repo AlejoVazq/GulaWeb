@@ -1,4 +1,5 @@
 import type { FastifyInstance } from 'fastify';
+import { avisarCambiosDeCarta } from '../tiempoReal/avisar.js';
 import { and, eq, isNull } from 'drizzle-orm';
 import { z } from 'zod';
 import { nuevoId } from '@gula/shared';
@@ -27,6 +28,7 @@ const validarMinMax = (min: number, max: number) => {
 };
 
 export async function rutasOpciones(app: FastifyInstance, { dbs }: { dbs: Dbs }) {
+  avisarCambiosDeCarta(app);
   const editar = { preHandler: [app.autenticar, app.requierePermiso('carta.editar')] };
   const disponibilidad = {
     preHandler: [app.autenticar, app.requierePermiso('carta.disponibilidad')],

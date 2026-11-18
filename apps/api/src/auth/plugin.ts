@@ -23,39 +23,43 @@ declare module 'fastify' {
 export const sesionInvalida = () =>
   new ErrorApi(401, 'SESION_INVALIDA', 'Tu sesión no es válida. Volvé a ingresar.');
 
+/** Valida un access token contra la base (dispositivo y usuario activos). Lo usan HTTP y WebSocket. */
+export async function validarAcceso(dbs: Dbs, jwtSecret: string, token: string): Promise<Sesion> {
+  const c = await verificarAcceso(token, jwtSecret);
+  // Se valida en cada request: dar de baja un usuario o dispositivo corta el acceso al instante.
+  const vigente = await conLocal(dbs.dbApp, c.loc, async (tx) => {
+    const [d] = await tx
+      .select({ id: dispositivos.id })
+      .from(dispositivos)
+      .where(and(eq(dispositivos.id, c.dev), eq(dispositivos.activo, true)));
+    const [u] = await tx
+      .select({ rol: usuarios.rol })
+      .from(usuarios)
+      .where(and(eq(usuarios.id, c.sub), eq(usuarios.activo, true)));
+    if (!d || !u) return null;
+    const haceUnMinuto = new Date(Date.now() - 60_000);
+    await tx
+      .update(dispositivos)
+      .set({ ultimoUso: new Date() })
+      .where(
+        and(
+          eq(dispositivos.id, c.dev),
+          or(isNull(dispositivos.ultimoUso), lt(dispositivos.ultimoUso, haceUnMinuto)),
+        ),
+      );
+    return u;
+  });
+  if (!vigente) throw sesionInvalida();
+  // El rol se toma de la base, no del token, por si cambió.
+  return { usuarioId: c.sub, localId: c.loc, dispositivoId: c.dev, rol: vigente.rol };
+}
+
 export const pluginAuth = fp<{ dbs: Dbs; jwtSecret: string }>(async (app, { dbs, jwtSecret }) => {
   app.decorateRequest('sesion', null as unknown as Sesion);
 
   app.decorate('autenticar', async (req: FastifyRequest) => {
     const h = req.headers.authorization;
     if (!h?.startsWith('Bearer ')) throw sesionInvalida();
-    const c = await verificarAcceso(h.slice(7), jwtSecret);
-
-    // Se valida en cada request: dar de baja un usuario o dispositivo corta el acceso al instante.
-    const vigente = await conLocal(dbs.dbApp, c.loc, async (tx) => {
-      const [d] = await tx
-        .select({ id: dispositivos.id })
-        .from(dispositivos)
-        .where(and(eq(dispositivos.id, c.dev), eq(dispositivos.activo, true)));
-      const [u] = await tx
-        .select({ rol: usuarios.rol })
-        .from(usuarios)
-        .where(and(eq(usuarios.id, c.sub), eq(usuarios.activo, true)));
-      if (!d || !u) return null;
-      const haceUnMinuto = new Date(Date.now() - 60_000);
-      await tx
-        .update(dispositivos)
-        .set({ ultimoUso: new Date() })
-        .where(
-          and(
-            eq(dispositivos.id, c.dev),
-            or(isNull(dispositivos.ultimoUso), lt(dispositivos.ultimoUso, haceUnMinuto)),
-          ),
-        );
-      return u;
-    });
-    if (!vigente) throw sesionInvalida();
-    // El rol se toma de la base, no del token, por si cambió.
-    req.sesion = { usuarioId: c.sub, localId: c.loc, dispositivoId: c.dev, rol: vigente.rol };
+    req.sesion = await validarAcceso(dbs, jwtSecret, h.slice(7));
   });
 });

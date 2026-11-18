@@ -1,4 +1,5 @@
 import type { FastifyInstance } from 'fastify';
+import { avisarCambiosDeCarta } from '../tiempoReal/avisar.js';
 import { and, asc, eq, isNull } from 'drizzle-orm';
 import { z } from 'zod';
 import { nuevoId } from '@gula/shared';
@@ -57,6 +58,7 @@ async function validarReferencias(tx: Tx, b: { categoriaId?: string; sectorId?: 
 }
 
 export async function rutasProductos(app: FastifyInstance, { dbs }: { dbs: Dbs }) {
+  avisarCambiosDeCarta(app);
   const editar = { preHandler: [app.autenticar, app.requierePermiso('carta.editar')] };
   const disponibilidad = {
     preHandler: [app.autenticar, app.requierePermiso('carta.disponibilidad')],

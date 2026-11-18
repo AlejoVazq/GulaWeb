@@ -75,17 +75,15 @@ export async function cargarCartaDemo(
         });
         for (const [ordenGrupo, g] of (p.grupos ?? []).entries()) {
           const grupoId = nuevoId();
-          await tx
-            .insert(gruposOpciones)
-            .values({
-              id: grupoId,
-              localId,
-              productoId,
-              nombre: g.nombre,
-              min: g.min,
-              max: g.max,
-              orden: ordenGrupo,
-            });
+          await tx.insert(gruposOpciones).values({
+            id: grupoId,
+            localId,
+            productoId,
+            nombre: g.nombre,
+            min: g.min,
+            max: g.max,
+            orden: ordenGrupo,
+          });
           for (const [ordenOp, o] of g.opciones.entries()) {
             await tx.insert(opciones).values({
               id: nuevoId(),

@@ -45,7 +45,10 @@ async function crearLocalCli(dbs: Dbs): Promise<void> {
 
 async function cargarDemoCli(dbs: Dbs): Promise<void> {
   const { values } = parseArgs({ args: resto, options: { slug: { type: 'string' } } });
-  const [local] = await dbs.dbAdmin.select().from(locales).where(eq(locales.slug, values.slug ?? ''));
+  const [local] = await dbs.dbAdmin
+    .select()
+    .from(locales)
+    .where(eq(locales.slug, values.slug ?? ''));
   if (!local) throw new ErrorApi(404, 'LOCAL_NO_ENCONTRADO', 'No existe un local con ese slug.');
   const r = await cargarCartaDemo(dbs, local.id);
   console.log(`Carta demo cargada: ${r.categorias} categorías, ${r.productos} productos`);

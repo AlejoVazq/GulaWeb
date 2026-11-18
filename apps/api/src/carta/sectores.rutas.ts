@@ -1,4 +1,5 @@
 import type { FastifyInstance } from 'fastify';
+import { avisarCambiosDeCarta } from '../tiempoReal/avisar.js';
 import { asc, eq, isNull } from 'drizzle-orm';
 import { z } from 'zod';
 import { nuevoId } from '@gula/shared';
@@ -13,6 +14,7 @@ const vista = (s: Fila) => ({ id: s.id, nombre: s.nombre, orden: s.orden });
 const cuerpo = z.object({ nombre: v.nombre, orden: orden.optional() });
 
 export async function rutasSectores(app: FastifyInstance, { dbs }: { dbs: Dbs }) {
+  avisarCambiosDeCarta(app);
   const pre = { preHandler: [app.autenticar, app.requierePermiso('carta.editar')] };
 
   app.get('/carta/sectores', pre, async (req) =>

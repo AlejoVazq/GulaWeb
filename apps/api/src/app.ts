@@ -5,6 +5,7 @@ import { crearDb, type Dbs } from './db/cliente.js';
 import { registrarErrores } from './errores.js';
 import { rutasAuth } from './auth/rutas.js';
 import { pluginAuth } from './auth/plugin.js';
+import { pluginTiempoReal } from './tiempoReal/socket.js';
 import { pluginPermisos } from './permisos/requierePermiso.js';
 import { rutasUsuarios } from './usuarios/rutas.js';
 import { rutasSectores } from './carta/sectores.rutas.js';
@@ -32,6 +33,7 @@ export async function buildApp(config: Config, deps: { dbs?: Dbs } = {}): Promis
   app.get('/salud', async () => ({ ok: true }));
   await app.register(pluginAuth, { dbs, jwtSecret: config.jwtSecret });
   await app.register(pluginPermisos, { dbs });
+  await app.register(pluginTiempoReal, { dbs, jwtSecret: config.jwtSecret });
   await app.register(rutasAuth, { config, dbs });
   await app.register(rutasUsuarios, { dbs });
   await app.register(rutasSectores, { dbs });

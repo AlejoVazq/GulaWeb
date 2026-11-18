@@ -1,4 +1,5 @@
 import type { FastifyInstance } from 'fastify';
+import { avisarCambiosDeCarta } from '../tiempoReal/avisar.js';
 import multipart from '@fastify/multipart';
 import { eq } from 'drizzle-orm';
 import { randomBytes } from 'node:crypto';
@@ -56,6 +57,7 @@ export async function rutasFotos(
   app: FastifyInstance,
   { dbs, dirFotos }: { dbs: Dbs; dirFotos: string },
 ) {
+  avisarCambiosDeCarta(app);
   await app.register(multipart, { limits: { fileSize: MAX_FOTO_BYTES, files: 1, fields: 0 } });
   const editar = { preHandler: [app.autenticar, app.requierePermiso('carta.editar')] };
 
