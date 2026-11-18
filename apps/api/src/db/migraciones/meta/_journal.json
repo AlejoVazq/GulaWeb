@@ -50,6 +50,20 @@
       "when": 1795037731244,
       "tag": "0006_sync_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1795045665517,
+      "tag": "0007_salon",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1795045668328,
+      "tag": "0008_salon_rls",
+      "breakpoints": true
     }
   ]
 }

@@ -3,7 +3,7 @@ import { Server } from 'socket.io';
 import type { Dbs } from '../db/cliente.js';
 import { validarAcceso } from '../auth/plugin.js';
 
-export type Tema = 'carta';
+export type Tema = 'carta' | 'salon';
 
 declare module 'fastify' {
   interface FastifyInstance {

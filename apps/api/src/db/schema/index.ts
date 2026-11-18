@@ -5,3 +5,4 @@ export * from './auth.js';
 export * from './auditoria.js';
 export * from './carta.js';
 export * from './sync.js';
+export * from './salon.js';
