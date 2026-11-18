@@ -15,6 +15,20 @@
       "when": 1795033934758,
       "tag": "0001_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1795035249280,
+      "tag": "0002_carta",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1795035252055,
+      "tag": "0003_carta_rls",
+      "breakpoints": true
     }
   ]
 }

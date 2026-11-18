@@ -8,7 +8,7 @@ export const dbs = crearDb(configDePrueba());
 
 export async function limpiarDb(): Promise<void> {
   await dbs.dbAdmin.execute(
-    sql`TRUNCATE auditoria, refresh_tokens, dispositivos, usuarios, locales CASCADE`,
+    sql`TRUNCATE opciones, grupos_opciones, productos, categorias, sectores, auditoria, refresh_tokens, dispositivos, usuarios, locales CASCADE`,
   );
 }
 
