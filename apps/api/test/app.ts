@@ -65,3 +65,27 @@ export async function tokenDe(app: FastifyInstance, usuarioId: string, pinUsuari
   const r = await pin(app, base, { usuarioId, pin: pinUsuario });
   return r.json().accessToken as string;
 }
+
+export type Escenario = {
+  localId: string;
+  tokenDueno: string;
+  tokenEncargado: string;
+  tokenMoza: string;
+  otroLocalId: string;
+};
+
+/** Local A con dueño, encargado y moza logueados en la misma PC, y un local B vacío. */
+export async function escenario(app: FastifyInstance): Promise<Escenario> {
+  const a = await localConDueno('local-a');
+  const b = await localConDueno('local-b', 'otro@local.com');
+  const encId = await crearUsuarioDePrueba(a.localId, { nombre: 'Enc', rol: 'encargado', pin: '5555' });
+  const mozaId = await crearUsuarioDePrueba(a.localId, { nombre: 'Ana', rol: 'mesero', pin: '4321' });
+  const tokenDueno = (await login(app, credenciales)).json().accessToken as string;
+  const tokenEncargado = (await pin(app, tokenDueno, { usuarioId: encId, pin: '5555' })).json().accessToken;
+  const tokenMoza = (await pin(app, tokenDueno, { usuarioId: mozaId, pin: '4321' })).json().accessToken;
+  return { localId: a.localId, tokenDueno, tokenEncargado, tokenMoza, otroLocalId: b.localId };
+}
+
+type Metodo = 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
+export const pedir = (app: FastifyInstance, token: string) => (metodo: Metodo, url: string, payload?: object) =>
+  app.inject({ method: metodo, url, headers: bearer(token), ...(payload ? { payload } : {}) });
