@@ -8,3 +8,4 @@ coverage
 *.log
 .superpowers
 out
+test-results

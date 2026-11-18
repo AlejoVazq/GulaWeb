@@ -7,7 +7,7 @@ import { Shell } from './pantallas/Shell';
 
 export function App() {
   const [sesion, setSesion] = useState<EstadoSesion | null>(null);
-  const [sync, setSync] = useState<EstadoSync>({ conexion: 'sincronizando', pendientes: 0, ultimaSync: null });
+  const [sync, setSync] = useState<EstadoSync>({ conexion: 'sincronizando', pendientes: 0, rechazadas: 0, ultimaSync: null });
 
   useEffect(() => {
     void llamar('sesion:estado').then(setSesion);

@@ -123,3 +123,8 @@ export function fijarDisponibilidadLocal(
 }
 
 export type { FilaCategoria, FilaGrupo, FilaOpcion, FilaSector };
+
+/** Borra la carta local (al vincular la PC a otro local). */
+export function vaciarCartaLocal(base: BaseLocal): void {
+  base.transaccion(() => base.db.exec('DELETE FROM opciones; DELETE FROM grupos; DELETE FROM productos; DELETE FROM categorias; DELETE FROM sectores;'));
+}

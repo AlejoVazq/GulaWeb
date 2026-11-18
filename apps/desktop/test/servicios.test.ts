@@ -6,6 +6,9 @@ import { crearSesion } from '../src/main/api/sesion';
 import { ErrorApiCliente, SinConexion } from '../src/main/api/cliente';
 import { crearServicios } from '../src/main/servicios';
 import { carpetaTemporal } from './tmp';
+import { escribirKv, leerKv } from '../src/main/db/kv';
+
+const sesionDe = (b: BaseLocal) => crearSesion(b, { cifrar: (t: string) => t, descifrar: (t: string) => t });
 import { pullDePrueba } from './fixtures';
 
 const tmp = carpetaTemporal();
@@ -19,7 +22,7 @@ function armar(pedir: (metodo: string, ruta: string, cuerpo?: unknown) => unknow
   aplicarCambiosCarta(base, pullDePrueba());
   const sesion = crearSesion(base, identidad);
   sesion.guardar({ accessToken: 'a', refreshToken: 'r', usuario: { id: 'u1', nombre: 'Ale', rol }, local, dispositivoId: 'd1' });
-  const motor = { sincronizarAhora: vi.fn(async () => {}), reconectar: vi.fn(), iniciar: vi.fn(), detener: vi.fn(), estado: () => ({ conexion: 'en-linea' as const, pendientes: 0, ultimaSync: null }) };
+  const motor = { sincronizarAhora: vi.fn(async () => {}), reconectar: vi.fn(), iniciar: vi.fn(), detener: vi.fn(), estado: () => ({ conexion: 'en-linea' as const, pendientes: 0, rechazadas: 0, ultimaSync: null }) };
   const cliente = {
     pedir: vi.fn(async (m: string, r: string, c?: unknown) => pedir(m, r, c)),
     pin: vi.fn(async (usuarioId: string, p: string) => {
@@ -61,7 +64,7 @@ it('disponibilidad encola en la outbox y actualiza la carta local antes de respo
   await servicios['carta:disponibilidad']({ productoId: 'p1', disponible: false });
   expect(leerCarta(base).categorias[0]!.productos[0]!.disponible).toBe(false);
   expect(pendientes(base)).toEqual([
-    expect.objectContaining({ tipo: 'producto.disponibilidad', datos: { productoId: 'p1', disponible: false } }),
+    expect.objectContaining({ tipo: 'producto.disponibilidad', datos: { productoId: 'p1', disponible: false }, usuarioId: 'u2' }),
   ]);
   expect(motor.sincronizarAhora).toHaveBeenCalled();
 });
@@ -89,4 +92,27 @@ it('la moza no puede editar la carta', async () => {
   const { servicios, entrar } = armar(() => ({}), 'mesero');
   await entrar();
   await expect(servicios['carta:editar']({ tipo: 'borrarProducto', id: 'p1' })).rejects.toMatchObject({ codigo: 'SIN_PERMISO' });
+});
+
+it('vincular la PC a otro local borra la carta, el cursor y la outbox del anterior', async () => {
+  const { servicios, cliente, entrar } = armar(() => ({}), 'mesero');
+  await entrar();
+  await servicios['carta:disponibilidad']({ productoId: 'p1', disponible: false });
+  escribirKv(base, 'cursor:carta', '2026-11-18T10:00:00.000Z');
+  cliente.login.mockImplementation(async () => {
+    sesionDe(base).guardar({ accessToken: 'x', refreshToken: 'y', usuario: { id: 'z', nombre: 'Otro', rol: 'dueno' }, local: { id: 'l2', nombre: 'Otro bar', slug: 'otro' }, dispositivoId: 'd2' });
+  });
+  await servicios['sesion:login']({ email: 'o@o.com', password: 'secreto123', nombrePc: 'PC' });
+  expect(leerCarta(base).categorias).toEqual([]);
+  expect(pendientes(base)).toEqual([]);
+  expect(leerKv(base, 'cursor:carta')).toBeNull();
+});
+
+it('volver a vincular al mismo local conserva los datos', async () => {
+  const { servicios, cliente } = armar(() => ({}));
+  cliente.login.mockImplementation(async () => {
+    sesionDe(base).guardar({ accessToken: 'x', refreshToken: 'y', usuario: { id: 'u1', nombre: 'Ale', rol: 'dueno' }, local, dispositivoId: 'd3' });
+  });
+  await servicios['sesion:login']({ email: 'a@a.com', password: 'secreto123', nombrePc: 'PC' });
+  expect(leerCarta(base).categorias).toHaveLength(1);
 });

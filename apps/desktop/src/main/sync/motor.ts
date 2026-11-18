@@ -2,24 +2,38 @@ import { io } from 'socket.io-client';
 import type { RespuestaPullCarta } from '../../compartido/tipos';
 import type { BaseLocal } from '../db/base';
 import { aplicarCambiosCarta } from '../db/carta';
-import { escribirKv, leerKv } from '../db/kv';
-import { contarPendientes, marcarAplicadas, marcarRechazada, pendientes, registrarFallo } from '../db/outbox';
+import { borrarKv, escribirKv, leerKv } from '../db/kv';
+import {
+  contarPendientes,
+  contarRechazadas,
+  marcarAplicadas,
+  marcarRechazada,
+  pendientes,
+  registrarFallo,
+} from '../db/outbox';
 import { SinConexion } from '../api/cliente';
 
 export type EstadoSync = {
   conexion: 'en-linea' | 'sin-conexion' | 'sincronizando';
   pendientes: number;
+  rechazadas: number;
   ultimaSync: string | null;
 };
 
 type ClienteSync = {
   pedir<T>(metodo: 'GET' | 'POST', ruta: string, cuerpo?: object): Promise<T>;
   tokenActual(): string | null;
+  refrescar(): Promise<boolean>;
   url(ruta: string): string;
 };
 
-export type SocketMinimo = { on(evento: string, fn: (...a: unknown[]) => void): void; close(): void };
-export type CrearSocket = (url: string, path: string, token: string) => SocketMinimo;
+export type SocketMinimo = {
+  on(evento: string, fn: (...a: unknown[]) => void): void;
+  close(): void;
+  connect(): void;
+};
+/** El token se pide en cada (re)conexión: nunca se reconecta con uno vencido. */
+export type CrearSocket = (url: string, path: string, obtenerToken: () => string | null) => SocketMinimo;
 
 type Resultado = { id: string; estado: 'aplicada' | 'rechazada'; error?: { codigo: string; mensaje: string } };
 
@@ -27,9 +41,16 @@ const CLAVE_CURSOR = 'cursor:carta';
 const PERIODO_MS = 60_000;
 const BACKOFF_MAX_MS = 60_000;
 
-/** Socket.IO real: la ruta se deriva de la URL base (p. ej. https://dominio/api → /api/tiempo-real). */
-export const socketIo: CrearSocket = (url, path, token) =>
-  io(url, { path, auth: { token }, transports: ['websocket'], reconnectionDelayMax: 30_000 });
+export const socketIo: CrearSocket = (url, path, obtenerToken) =>
+  io(url, {
+    path,
+    auth: (cb) => cb({ token: obtenerToken() }),
+    transports: ['websocket'],
+    reconnectionDelayMax: 30_000,
+  });
+
+const hayFilas = (c: RespuestaPullCarta) =>
+  c.sectores.length + c.categorias.length + c.productos.length + c.grupos.length + c.opciones.length > 0;
 
 export function crearMotor(opts: {
   base: BaseLocal;
@@ -40,7 +61,8 @@ export function crearMotor(opts: {
   const { base, cliente } = opts;
   const crearSocket = opts.crearSocket ?? socketIo;
   const oyentes = new Set<(e: EstadoSync) => void>();
-  let estado: EstadoSync = { conexion: 'sincronizando', pendientes: contarPendientes(base), ultimaSync: null };
+  const contar = () => ({ pendientes: contarPendientes(base), rechazadas: contarRechazadas(base) });
+  let estado: EstadoSync = { conexion: 'sincronizando', ultimaSync: null, ...contar() };
   let enCurso: Promise<void> | null = null;
   let repetir = false;
   let backoff = 1000;
@@ -50,7 +72,7 @@ export function crearMotor(opts: {
   let activo = false;
 
   const emitir = (cambios: Partial<EstadoSync>) => {
-    estado = { ...estado, ...cambios, pendientes: contarPendientes(base) };
+    estado = { ...estado, ...cambios, ...contar() };
     oyentes.forEach((fn) => fn(estado));
   };
 
@@ -58,18 +80,27 @@ export function crearMotor(opts: {
     for (;;) {
       const lote = pendientes(base, 100);
       if (!lote.length) return;
+      let resultados: Resultado[];
       try {
-        const { resultados } = await cliente.pedir<{ resultados: Resultado[] }>('POST', '/sync/operaciones', {
-          operaciones: lote.map((o) => ({ id: o.id, tipo: o.tipo, datos: o.datos, creadaEn: o.creadaEn })),
-        });
-        marcarAplicadas(base, resultados.filter((r) => r.estado === 'aplicada').map((r) => r.id));
-        for (const r of resultados.filter((x) => x.estado === 'rechazada')) {
-          marcarRechazada(base, r.id, r.error?.codigo ?? 'RECHAZADA');
-        }
+        ({ resultados } = await cliente.pedir<{ resultados: Resultado[] }>('POST', '/sync/operaciones', {
+          operaciones: lote.map((o) => ({
+            id: o.id,
+            tipo: o.tipo,
+            datos: o.datos,
+            creadaEn: o.creadaEn,
+            usuarioId: o.usuarioId ?? undefined,
+          })),
+        }));
       } catch (e) {
         registrarFallo(base, lote.map((o) => o.id), e instanceof Error ? e.message : String(e));
         throw e;
       }
+      marcarAplicadas(base, resultados.filter((r) => r.estado === 'aplicada').map((r) => r.id));
+      const rechazadas = resultados.filter((x) => x.estado === 'rechazada');
+      for (const r of rechazadas) marcarRechazada(base, r.id, r.error?.codigo ?? 'RECHAZADA');
+      // Un rechazo deja un cambio optimista local que el servidor nunca hizo: pull completo para revertirlo.
+      if (rechazadas.length) borrarKv(base, CLAVE_CURSOR);
+      if (resultados.length < lote.length) return; // respuesta parcial: lo que falta se reintenta después
     }
   }
 
@@ -79,7 +110,7 @@ export function crearMotor(opts: {
     const cambios = await cliente.pedir<RespuestaPullCarta>('GET', ruta);
     aplicarCambiosCarta(base, cambios);
     escribirKv(base, CLAVE_CURSOR, cambios.cursor);
-    opts.alCambiarCarta?.();
+    if (hayFilas(cambios)) opts.alCambiarCarta?.();
   }
 
   function programarReintento() {
@@ -89,6 +120,26 @@ export function crearMotor(opts: {
       void sincronizarAhora();
     }, backoff);
     backoff = Math.min(backoff * 2, BACKOFF_MAX_MS);
+  }
+
+  function conectarSocket() {
+    if (!activo) return;
+    socket?.close();
+    socket = null;
+    if (!cliente.tokenActual()) return;
+    const raiz = new URL(cliente.url(''));
+    const path = `${raiz.pathname.replace(/\/$/, '')}/tiempo-real`;
+    const s = crearSocket(raiz.origin, path, () => cliente.tokenActual());
+    socket = s;
+    s.on('cambios', () => void sincronizarAhora());
+    s.on('connect', () => void sincronizarAhora());
+    s.on('disconnect', () => emitir({ conexion: 'sin-conexion' }));
+    // El servidor rechazó el handshake (token vencido): renovar y reintentar con el token nuevo.
+    s.on('connect_error', () => {
+      void cliente.refrescar().then((ok) => {
+        if (ok && activo && socket === s) s.connect();
+      });
+    });
   }
 
   /** Push y después pull (el push primero evita que un pull revierta un cambio optimista). */
@@ -106,6 +157,7 @@ export function crearMotor(opts: {
           await pull();
           backoff = 1000;
           emitir({ conexion: 'en-linea', ultimaSync: new Date().toISOString() });
+          if (activo && !socket) conectarSocket();
         } catch (e) {
           // Sin red: 'sin-conexion'. Error de la API (servidor respondió): sigue en línea y se reintenta.
           emitir({ conexion: e instanceof SinConexion ? 'sin-conexion' : 'en-linea' });
@@ -119,22 +171,12 @@ export function crearMotor(opts: {
     return enCurso;
   }
 
-  function conectarSocket() {
-    const token = cliente.tokenActual();
-    if (!token) return;
-    const raiz = new URL(cliente.url(''));
-    const path = `${raiz.pathname.replace(/\/$/, '')}/tiempo-real`;
-    socket = crearSocket(raiz.origin, path, token);
-    socket.on('cambios', () => void sincronizarAhora());
-    socket.on('connect', () => void sincronizarAhora());
-    socket.on('disconnect', () => emitir({ conexion: 'sin-conexion' }));
-  }
-
   return {
     iniciar() {
       if (activo) return;
       activo = true;
-      void sincronizarAhora().then(conectarSocket);
+      conectarSocket();
+      void sincronizarAhora();
       periodico = setInterval(() => void sincronizarAhora(), PERIODO_MS);
     },
     detener() {
@@ -147,9 +189,7 @@ export function crearMotor(opts: {
     },
     /** Reconecta el socket con el token nuevo (tras login o cambio de usuario). */
     reconectar() {
-      socket?.close();
-      socket = null;
-      if (activo) conectarSocket();
+      conectarSocket();
     },
     sincronizarAhora,
     estado: () => estado,

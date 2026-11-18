@@ -10,6 +10,7 @@ type Fila = {
   intentos: number;
   ultimo_error: string | null;
   estado: 'pendiente' | 'rechazada';
+  usuario_id: string | null;
 };
 
 const aOperacion = (f: Fila): Operacion => ({
@@ -20,9 +21,10 @@ const aOperacion = (f: Fila): Operacion => ({
   intentos: f.intentos,
   ultimoError: f.ultimo_error,
   estado: f.estado,
+  usuarioId: f.usuario_id,
 });
 
-export function encolar(base: BaseLocal, op: { tipo: string; datos: unknown }): Operacion {
+export function encolar(base: BaseLocal, op: { tipo: string; datos: unknown; usuarioId?: string }): Operacion {
   const fila: Fila = {
     id: nuevoId(),
     tipo: op.tipo,
@@ -31,10 +33,11 @@ export function encolar(base: BaseLocal, op: { tipo: string; datos: unknown }): 
     intentos: 0,
     ultimo_error: null,
     estado: 'pendiente',
+    usuario_id: op.usuarioId ?? null,
   };
   base.db
-    .prepare('INSERT INTO outbox (id, tipo, datos, creada_en) VALUES (?, ?, ?, ?)')
-    .run(fila.id, fila.tipo, fila.datos, fila.creada_en);
+    .prepare('INSERT INTO outbox (id, tipo, datos, creada_en, usuario_id) VALUES (?, ?, ?, ?, ?)')
+    .run(fila.id, fila.tipo, fila.datos, fila.creada_en, fila.usuario_id);
   return aOperacion(fila);
 }
 
@@ -61,4 +64,13 @@ export function marcarRechazada(base: BaseLocal, id: string, error: string): voi
 export function registrarFallo(base: BaseLocal, ids: string[], error: string): void {
   const st = base.db.prepare('UPDATE outbox SET intentos = intentos + 1, ultimo_error = ? WHERE id = ?');
   base.transaccion(() => ids.forEach((id) => st.run(error, id)));
+}
+
+export function contarRechazadas(base: BaseLocal): number {
+  return (base.db.prepare("SELECT count(*) AS n FROM outbox WHERE estado = 'rechazada'").get() as { n: number }).n;
+}
+
+/** Vacía la outbox (al vincular la PC a otro local). */
+export function vaciarOutbox(base: BaseLocal): void {
+  base.db.exec('DELETE FROM outbox');
 }

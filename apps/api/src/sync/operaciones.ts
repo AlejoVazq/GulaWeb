@@ -1,9 +1,9 @@
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { z, type ZodType } from 'zod';
 import { puede, type Accion } from '@gula/shared';
 import type { Dbs, Tx } from '../db/cliente.js';
 import { conLocal } from '../db/conLocal.js';
-import { operacionesAplicadas } from '../db/schema/index.js';
+import { operacionesAplicadas, usuarios } from '../db/schema/index.js';
 import { ErrorApi } from '../errores.js';
 import type { Sesion } from '../auth/plugin.js';
 import { verificarPin } from '../auth/pin.js';
@@ -35,6 +35,8 @@ export const esquemaLote = z.object({
         datos: z.unknown(),
         creadaEn: z.iso.datetime({ offset: true }),
         autorizacion: z.object({ usuarioId: z.uuid(), pin: z.string().max(10) }).optional(),
+        /** Quién hizo la operación en la PC (puede no ser quien está logueado al enviarla). */
+        usuarioId: z.uuid().optional(),
       }),
     )
     .max(100),
@@ -68,7 +70,25 @@ async function guardar(tx: Tx, sesion: Sesion, op: Operacion, r: Resultado) {
   });
 }
 
-async function verificar(dbs: Dbs, sesion: Sesion, op: Operacion) {
+/**
+ * El actor es el usuario indicado en la operación (activo y del mismo local: el dispositivo es de confianza
+ * y verificó su PIN al hacerla); sin indicación, el de la sesión que la envía.
+ */
+async function actor(dbs: Dbs, sesion: Sesion, op: Operacion): Promise<Sesion> {
+  if (!op.usuarioId || op.usuarioId === sesion.usuarioId) return sesion;
+  const [u] = await conLocal(dbs.dbApp, sesion.localId, (tx) =>
+    tx
+      .select({ id: usuarios.id, rol: usuarios.rol })
+      .from(usuarios)
+      .where(and(eq(usuarios.id, op.usuarioId!), eq(usuarios.activo, true))),
+  );
+  if (!u)
+    throw new ErrorApi(404, 'NO_ENCONTRADO', 'El usuario de la operación no existe en este local.');
+  return { ...sesion, usuarioId: u.id, rol: u.rol };
+}
+
+async function verificar(dbs: Dbs, sesionEnvio: Sesion, op: Operacion) {
+  const sesion = await actor(dbs, sesionEnvio, op);
   const def = tipos.get(op.tipo);
   if (!def) throw new ErrorApi(400, 'DATOS_INVALIDOS', `Tipo de operación desconocido: ${op.tipo}`);
   const permiso = puede(sesion.rol, def.permiso);
@@ -91,7 +111,7 @@ async function verificar(dbs: Dbs, sesion: Sesion, op: Operacion) {
   const datos = def.esquema.safeParse(op.datos);
   if (!datos.success)
     throw new ErrorApi(400, 'DATOS_INVALIDOS', 'Los datos de la operación no son válidos.');
-  return { def, datos: datos.data, autorizadoPor };
+  return { def, datos: datos.data, autorizadoPor, sesion };
 }
 
 /** Aplica una operación exactamente una vez (idempotente por id). */
@@ -106,10 +126,10 @@ async function procesar(
 
   let resultado: Resultado;
   try {
-    const { def, datos, autorizadoPor } = await verificar(dbs, sesion, op);
+    const { def, datos, autorizadoPor, sesion: actorOp } = await verificar(dbs, sesion, op);
     resultado = { id: op.id, estado: 'aplicada' };
     await conLocal(dbs.dbApp, sesion.localId, async (tx) => {
-      await def.aplicar(tx, { sesion, autorizadoPor }, datos);
+      await def.aplicar(tx, { sesion: actorOp, autorizadoPor }, datos);
       await guardar(tx, sesion, op, resultado);
     });
     if (def.tema) temas.add(def.tema);

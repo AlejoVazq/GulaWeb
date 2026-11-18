@@ -8,10 +8,13 @@ export function Conexion({ estado }: { estado: EstadoSync }) {
       : estado.conexion === 'sincronizando'
         ? 'Sincronizando…'
         : `Sin conexión — ${n} ${n === 1 ? 'cambio pendiente' : 'cambios pendientes'}`;
+  const r = estado.rechazadas;
+  const rechazos = r ? ` · ${r} ${r === 1 ? 'cambio rechazado' : 'cambios rechazados'}` : '';
   return (
     <span role="status" className={`conexion conexion--${estado.conexion}`}>
       <span className="conexion__punto" aria-hidden="true" />
       {texto}
+      {rechazos}
     </span>
   );
 }

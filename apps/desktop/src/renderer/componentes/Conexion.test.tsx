@@ -3,16 +3,20 @@ import { render, screen } from '@testing-library/react';
 import { Conexion } from './Conexion';
 
 it('muestra los cambios pendientes sin conexión', () => {
-  render(<Conexion estado={{ conexion: 'sin-conexion', pendientes: 3, ultimaSync: null }} />);
+  render(<Conexion estado={{ conexion: 'sin-conexion', pendientes: 3, rechazadas: 0, ultimaSync: null }} />);
   expect(screen.getByRole('status')).toHaveTextContent('Sin conexión — 3 cambios pendientes');
 });
 it('en línea y sincronizando', () => {
-  const { rerender } = render(<Conexion estado={{ conexion: 'en-linea', pendientes: 0, ultimaSync: null }} />);
+  const { rerender } = render(<Conexion estado={{ conexion: 'en-linea', pendientes: 0, rechazadas: 0, ultimaSync: null }} />);
   expect(screen.getByRole('status')).toHaveTextContent('En línea');
-  rerender(<Conexion estado={{ conexion: 'sincronizando', pendientes: 1, ultimaSync: null }} />);
+  rerender(<Conexion estado={{ conexion: 'sincronizando', pendientes: 1, rechazadas: 0, ultimaSync: null }} />);
   expect(screen.getByRole('status')).toHaveTextContent('Sincronizando…');
 });
 it('singular', () => {
-  render(<Conexion estado={{ conexion: 'sin-conexion', pendientes: 1, ultimaSync: null }} />);
+  render(<Conexion estado={{ conexion: 'sin-conexion', pendientes: 1, rechazadas: 0, ultimaSync: null }} />);
   expect(screen.getByRole('status')).toHaveTextContent('Sin conexión — 1 cambio pendiente');
+});
+it('avisa los cambios que el servidor rechazó', () => {
+  render(<Conexion estado={{ conexion: 'en-linea', pendientes: 0, rechazadas: 2, ultimaSync: null }} />);
+  expect(screen.getByRole('status')).toHaveTextContent('En línea · 2 cambios rechazados');
 });

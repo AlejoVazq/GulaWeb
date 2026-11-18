@@ -19,11 +19,14 @@ export async function rutasAuth(app: FastifyInstance, opts: { config: Config; db
 
   app.post('/auth/login', { config: limite }, async (req) => {
     const b = cuerpoLogin.parse(req.body);
-    return loginDispositivo(dbs, config.jwtSecret, {
+    const r = await loginDispositivo(dbs, config.jwtSecret, {
       email: b.email,
       password: b.password,
       nombreDispositivo: b.dispositivo.nombre,
     });
+    // Los demás dispositivos del local quedaron desactivados: se cortan sus sockets.
+    await app.desconectarDispositivos(r.local.id, { exceptoId: r.dispositivoId });
+    return r;
   });
 
   app.post('/auth/refresh', { config: limite }, async (req) => {
@@ -35,6 +38,7 @@ export async function rutasAuth(app: FastifyInstance, opts: { config: Config; db
 
   app.post('/auth/logout', { preHandler: app.autenticar }, async (req, reply) => {
     await logout(dbs, req.sesion);
+    await app.desconectarDispositivos(req.sesion.localId, { soloId: req.sesion.dispositivoId });
     return reply.status(204).send();
   });
 

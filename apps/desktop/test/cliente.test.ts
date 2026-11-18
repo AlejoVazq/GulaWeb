@@ -82,3 +82,41 @@ it('el refresh se guarda cifrado', () => {
   expect(JSON.stringify(leerKv(base, 'sesion'))).not.toContain('secreto-refresh');
   expect(crearSesion(base, rot13).actual()?.refreshToken).toBe('secreto-refresh');
 });
+
+it('un 401 que no es de sesión (PIN incorrecto) no dispara refresh ni reintento', async () => {
+  let llamadas = 0;
+  let refreshes = 0;
+  const f = (async (url: string | URL | Request) => {
+    if (String(url).endsWith('/auth/refresh')) {
+      refreshes++;
+      return json(200, { accessToken: 'nuevo', refreshToken: 'r1' });
+    }
+    llamadas++;
+    return json(401, { error: { codigo: 'PIN_INCORRECTO', mensaje: 'PIN incorrecto.' } });
+  }) as unknown as typeof fetch;
+  const { cliente } = preparar(f);
+  await expect(cliente.pedir('POST', '/auth/pin', { usuarioId: 'u', pin: '0000' })).rejects.toMatchObject({ codigo: 'PIN_INCORRECTO' });
+  expect(llamadas).toBe(1);
+  expect(refreshes).toBe(0);
+});
+
+it('sin sesión guardada, un refresh fallido no deja el cliente trabado', async () => {
+  const f = (async () => json(200, { ok: true })) as unknown as typeof fetch;
+  const sesion = crearSesion(base, rot13);
+  const cliente = crearCliente({ urlBase: 'http://api', sesion, fetch: f });
+  expect(await cliente.refrescar()).toBe(false);
+  sesion.guardar({ accessToken: 'a', refreshToken: 'r', usuario, local, dispositivoId: 'd1' });
+  expect(await cliente.refrescar()).toBe(true);
+});
+
+it('login contra otro servidor usa esa URL sin cambiar la configurada', async () => {
+  const urls: string[] = [];
+  const f = (async (url: string | URL | Request) => {
+    urls.push(String(url));
+    return json(200, { accessToken: 'a', refreshToken: 'r', dispositivoId: 'd', usuario, local });
+  }) as unknown as typeof fetch;
+  const sesion = crearSesion(base, rot13);
+  const cliente = crearCliente({ urlBase: 'http://viejo', sesion, fetch: f });
+  await cliente.login('a@a.com', 'secreto123', 'PC', 'http://nuevo');
+  expect(urls).toEqual(['http://nuevo/auth/login']);
+});

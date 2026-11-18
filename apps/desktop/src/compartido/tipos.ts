@@ -54,4 +54,5 @@ export type Operacion = {
   intentos: number;
   ultimoError: string | null;
   estado: 'pendiente' | 'rechazada';
+  usuarioId: string | null;
 };

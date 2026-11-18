@@ -8,6 +8,7 @@ import { crearCliente } from './api/cliente';
 import { crearMotor } from './sync/motor';
 import { crearServicios } from './servicios';
 import { registrarIpc } from './ipc';
+import { esFramePropio, esUrlExternaPermitida } from './seguridad';
 
 const SERVIDOR_POR_DEFECTO = 'http://localhost:3000';
 
@@ -44,17 +45,23 @@ function crearVentana(): BrowserWindow {
   });
   ventana.once('ready-to-show', () => ventana.show());
   ventana.webContents.setWindowOpenHandler(({ url }) => {
-    void shell.openExternal(url);
+    if (esUrlExternaPermitida(url)) void shell.openExternal(url);
     return { action: 'deny' };
+  });
+  // La ventana nunca navega fuera de la app (una página remota tendría acceso a window.gula).
+  ventana.webContents.on('will-navigate', (e, url) => {
+    if (!esFramePropio(url, process.env.ELECTRON_RENDERER_URL)) e.preventDefault();
   });
   if (process.env.ELECTRON_RENDERER_URL) void ventana.loadURL(process.env.ELECTRON_RENDERER_URL);
   else void ventana.loadFile(join(__dirname, '../renderer/index.html'));
   return ventana;
 }
 
-if (!app.requestSingleInstanceLock()) app.quit();
+const unicaInstancia = app.requestSingleInstanceLock();
+if (!unicaInstancia) app.quit();
 
 void app.whenReady().then(() => {
+  if (!unicaInstancia) return;
   const base = abrirBase(join(app.getPath('userData'), 'gula.db'));
   const servidor = () => process.env.GULA_SERVIDOR ?? leerKv(base, 'servidor') ?? SERVIDOR_POR_DEFECTO;
   const sesion = crearSesion(base, cifrador());
@@ -91,10 +98,9 @@ void app.whenReady().then(() => {
   emitir = emitirA(ventana);
   if (sesion.actual()) motor.iniciar();
 
-  app.on('before-quit', () => {
-    motor.detener();
-    base.cerrar();
-  });
+  app.on('before-quit', () => motor.detener());
+  // La base se cierra al final, cuando ya no puede haber escrituras del motor en curso.
+  app.on('will-quit', () => base.cerrar());
 });
 
 app.on('window-all-closed', () => {

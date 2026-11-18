@@ -75,3 +75,27 @@ it('más de 100 operaciones responde 400', async () => {
   const muchas = Array.from({ length: 101 }, () => op('producto.disponibilidad', { productoId, disponible: true }));
   expect((await enviar(e.tokenMoza, muchas)).statusCode).toBe(400);
 });
+
+it('la operación se atribuye al usuario que la hizo en la PC, no al de la sesión al enviar', async () => {
+  const [moza] = (await pedir(app, e.tokenDueno)('GET', '/usuarios')).json().filter((u: { rol: string }) => u.rol === 'mesero');
+  const o = { ...op('producto.disponibilidad', { productoId, disponible: false }), usuarioId: moza.id };
+  const r = (await enviar(e.tokenDueno, [o])).json();
+  expect(r.resultados[0].estado).toBe('aplicada');
+  const [a] = await dbs.dbAdmin.select().from(auditoria).where(eq(auditoria.accion, 'producto.disponibilidad'));
+  expect(a!.usuarioId).toBe(moza.id);
+});
+
+it('usuario de la operación inexistente en el local la rechaza', async () => {
+  const o = { ...op('producto.disponibilidad', { productoId, disponible: false }), usuarioId: nuevoId() };
+  const r = (await enviar(e.tokenDueno, [o])).json();
+  expect(r.resultados[0]).toMatchObject({ estado: 'rechazada', error: { codigo: 'NO_ENCONTRADO' } });
+});
+
+it('los permisos se evalúan con el usuario de la operación', async () => {
+  const { registrarTipoOperacion } = await import('../src/sync/operaciones.js');
+  const { z } = await import('zod');
+  registrarTipoOperacion('prueba.caja2', { permiso: 'caja.operar', esquema: z.object({}), aplicar: async () => {} });
+  const [moza] = (await pedir(app, e.tokenDueno)('GET', '/usuarios')).json().filter((u: { rol: string }) => u.rol === 'mesero');
+  const r = (await enviar(e.tokenDueno, [{ ...op('prueba.caja2', {}), usuarioId: moza.id }])).json();
+  expect(r.resultados[0]).toMatchObject({ estado: 'rechazada', error: { codigo: 'SIN_PERMISO' } });
+});

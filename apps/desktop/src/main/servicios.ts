@@ -3,8 +3,9 @@ import { basename } from 'node:path';
 import { puede, type Accion } from '@gula/shared';
 import type { EdicionCarta, EstadoSesion, EventoGula, ServiciosGula, UsuarioPublico } from '../compartido/ipc';
 import type { BaseLocal } from './db/base';
-import { fijarDisponibilidadLocal, leerCarta } from './db/carta';
-import { encolar } from './db/outbox';
+import { fijarDisponibilidadLocal, leerCarta, vaciarCartaLocal } from './db/carta';
+import { encolar, vaciarOutbox } from './db/outbox';
+import { borrarKv, escribirKv, leerKv } from './db/kv';
 import type { Sesion } from './api/sesion';
 import { SinConexion, type Cliente } from './api/cliente';
 import type { Motor } from './sync/motor';
@@ -13,7 +14,7 @@ import { ErrorGula, sinConexion } from './errores';
 type Deps = {
   base: BaseLocal;
   sesion: Sesion;
-  cliente: Pick<Cliente, 'pedir' | 'pin' | 'login'>;
+  cliente: { pedir: Cliente['pedir']; pin: Cliente['pin']; login: (email: string, password: string, nombrePc: string, servidor?: string) => Promise<unknown> };
   motor: Pick<Motor, 'sincronizarAhora' | 'reconectar' | 'iniciar' | 'detener' | 'estado'>;
   emitir: (evento: EventoGula, dato: unknown) => void;
   elegirArchivo: () => Promise<string | null>;
@@ -75,8 +76,17 @@ export function crearServicios(d: Deps): ServiciosGula & { bloquearPorInactivida
     'sesion:estado': async () => estadoSesion(),
 
     'sesion:login': async ({ email, password, nombrePc, servidor }) => {
+      const localAnterior = d.sesion.actual()?.local.id ?? leerKv(d.base, 'ultimo-local');
+      await online(() => d.cliente.login(email, password, nombrePc, servidor), 'No pudimos conectar con el servidor.');
+      const localNuevo = d.sesion.actual()?.local.id ?? null;
+      // Otro local: nada de lo guardado (carta, cursor, operaciones) le pertenece.
+      if (localAnterior && localNuevo && localAnterior !== localNuevo) {
+        vaciarCartaLocal(d.base);
+        vaciarOutbox(d.base);
+        borrarKv(d.base, 'cursor:carta');
+      }
+      if (localNuevo) escribirKv(d.base, 'ultimo-local', localNuevo);
       if (servidor) d.fijarServidor?.(servidor);
-      await online(() => d.cliente.login(email, password, nombrePc), 'No pudimos conectar con el servidor.');
       desbloqueada = true;
       d.motor.iniciar();
       d.motor.reconectar();
@@ -122,11 +132,12 @@ export function crearServicios(d: Deps): ServiciosGula & { bloquearPorInactivida
       if (!c.productoId === !c.opcionId) throw new ErrorGula('DATOS_INVALIDOS', 'Indicá un producto o una opción.');
       d.base.transaccion(() => {
         fijarDisponibilidadLocal(d.base, c);
+        const usuarioId = d.sesion.actual()?.usuario.id;
         encolar(
           d.base,
           c.productoId
-            ? { tipo: 'producto.disponibilidad', datos: { productoId: c.productoId, disponible: c.disponible } }
-            : { tipo: 'opcion.disponibilidad', datos: { opcionId: c.opcionId, disponible: c.disponible } },
+            ? { tipo: 'producto.disponibilidad', datos: { productoId: c.productoId, disponible: c.disponible }, usuarioId }
+            : { tipo: 'opcion.disponibilidad', datos: { opcionId: c.opcionId, disponible: c.disponible }, usuarioId },
         );
       });
       d.emitir('carta:cambio', null);

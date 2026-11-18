@@ -47,7 +47,7 @@ async function motorLogueado() {
   const cliente = crearCliente({ urlBase: url, sesion });
   // la escena ya tiene una PC logueada; esta es "la PC" de la prueba
   await cliente.login('dueno@local.com', 'secreto123', 'PC prueba');
-  return { cliente, motor: crearMotor({ base, cliente, crearSocket: () => ({ on: () => {}, close: () => {} }) }) };
+  return { cliente, motor: crearMotor({ base, cliente, crearSocket: () => ({ on: () => {}, close: () => {}, connect: () => {} }) }) };
 }
 
 it('una operación reenviada (respuesta perdida) se aplica una sola vez', async () => {

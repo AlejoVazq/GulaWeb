@@ -1,6 +1,7 @@
 import { beforeEach, expect, it } from 'vitest';
 import { abrirBase, type BaseLocal } from '../src/main/db/base';
 import { contarPendientes, encolar, pendientes } from '../src/main/db/outbox';
+import { escribirKv } from '../src/main/db/kv';
 import { crearMotor, type EstadoSync } from '../src/main/sync/motor';
 import { SinConexion } from '../src/main/api/cliente';
 import { carpetaTemporal } from './tmp';
@@ -17,11 +18,12 @@ type Respuesta = (ruta: string, cuerpo?: unknown) => unknown;
 function clienteFalso(responder: Respuesta) {
   return {
     pedir: async <T>(_m: string, ruta: string, cuerpo?: unknown) => responder(ruta, cuerpo) as T,
-    tokenActual: () => 'token',
+    tokenActual: () => 'token' as string | null,
+    refrescar: async () => true,
     url: (r: string) => `http://api${r}`,
   };
 }
-const sinSocket = () => ({ on: () => {}, close: () => {} });
+const sinSocket = () => ({ on: () => {}, close: () => {}, connect: () => {} });
 
 it('sin conexión: estado sin-conexion y la operación sigue pendiente', async () => {
   encolar(base, { tipo: 'producto.disponibilidad', datos: { productoId: 'p1', disponible: false } });
@@ -87,4 +89,110 @@ it('el pull guarda el cursor y lo usa en el siguiente', async () => {
   await motor.sincronizarAhora();
   await motor.sincronizarAhora();
   expect(rutas).toEqual(['/sync/carta', `/sync/carta?desde=${encodeURIComponent(pullDePrueba().cursor)}`]);
+});
+
+type Manejadores = Record<string, (...a: unknown[]) => void>;
+function socketsFalsos() {
+  const creados: { auth: () => string | null; manejadores: Manejadores; cerrado: boolean; conectar: number }[] = [];
+  const crear = (_url: string, _path: string, auth: () => string | null) => {
+    const s = { auth, manejadores: {} as Manejadores, cerrado: false, conectar: 0 };
+    creados.push(s);
+    return {
+      on: (ev: string, fn: (...a: unknown[]) => void) => {
+        s.manejadores[ev] = fn;
+      },
+      close: () => {
+        s.cerrado = true;
+      },
+      connect: () => {
+        s.conectar++;
+      },
+    };
+  };
+  return { creados, crear, abiertos: () => creados.filter((s) => !s.cerrado).length };
+}
+
+it('iniciar y reconectar no dejan dos sockets abiertos', async () => {
+  const sk = socketsFalsos();
+  const motor = crearMotor({ base, crearSocket: sk.crear, cliente: { ...clienteFalso(() => pullDePrueba()), refrescar: async () => true } });
+  motor.iniciar();
+  motor.reconectar();
+  await motor.sincronizarAhora();
+  await new Promise((r) => setTimeout(r, 10));
+  expect(sk.abiertos()).toBe(1);
+  motor.detener();
+  expect(sk.abiertos()).toBe(0);
+});
+
+it('el socket pide el token actual y ante connect_error refresca y reconecta', async () => {
+  const sk = socketsFalsos();
+  let token = 'viejo';
+  const refrescar = async () => {
+    token = 'nuevo';
+    return true;
+  };
+  const cliente = { ...clienteFalso(() => pullDePrueba()), tokenActual: () => token, refrescar };
+  const motor = crearMotor({ base, crearSocket: sk.crear, cliente });
+  motor.iniciar();
+  await motor.sincronizarAhora();
+  await new Promise((r) => setTimeout(r, 10));
+  const s = sk.creados.at(-1)!;
+  expect(s.auth()).toBe('viejo');
+  s.manejadores['connect_error']!(new Error('SESION_INVALIDA'));
+  await new Promise((r) => setTimeout(r, 10));
+  expect(s.auth()).toBe('nuevo');
+  expect(s.conectar).toBe(1);
+  motor.detener();
+});
+
+it('si arrancó sin token, crea el socket después de la primera sincronización exitosa', async () => {
+  const sk = socketsFalsos();
+  let token: string | null = null;
+  const motor = crearMotor({ base, crearSocket: sk.crear, cliente: { ...clienteFalso(() => pullDePrueba()), tokenActual: () => token, refrescar: async () => true } });
+  motor.iniciar();
+  await new Promise((r) => setTimeout(r, 10));
+  expect(sk.creados).toHaveLength(0);
+  token = 'ya';
+  await motor.sincronizarAhora();
+  expect(sk.creados).toHaveLength(1);
+  motor.detener();
+});
+
+it('un pull sin cambios no avisa carta:cambio', async () => {
+  const avisos: number[] = [];
+  const vacio = { ...pullDePrueba(), sectores: [], categorias: [], productos: [], grupos: [], opciones: [] };
+  let primera = true;
+  const motor = crearMotor({
+    base,
+    crearSocket: sinSocket,
+    alCambiarCarta: () => avisos.push(1),
+    cliente: clienteFalso(() => {
+      const r = primera ? pullDePrueba() : vacio;
+      primera = false;
+      return r;
+    }),
+  });
+  await motor.sincronizarAhora();
+  await motor.sincronizarAhora();
+  expect(avisos).toHaveLength(1);
+});
+
+it('una operación rechazada fuerza un pull completo (revierte lo optimista) y se cuenta', async () => {
+  escribirKv(base, 'cursor:carta', '2026-11-18T09:00:00.000Z');
+  const op = encolar(base, { tipo: 'producto.disponibilidad', datos: { productoId: 'p1', disponible: false } });
+  const rutas: string[] = [];
+  const motor = crearMotor({
+    base,
+    crearSocket: sinSocket,
+    cliente: clienteFalso((ruta) => {
+      rutas.push(ruta);
+      if (ruta === '/sync/operaciones') {
+        return { resultados: [{ id: op.id, estado: 'rechazada', error: { codigo: 'NO_ENCONTRADO', mensaje: 'x' } }] };
+      }
+      return pullDePrueba();
+    }),
+  });
+  await motor.sincronizarAhora();
+  expect(rutas.filter((r) => r.startsWith('/sync/carta'))).toEqual(['/sync/carta']);
+  expect(motor.estado().rechazadas).toBe(1);
 });

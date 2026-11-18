@@ -12,6 +12,7 @@ export type EstadoSesion =
 export type EstadoSync = {
   conexion: 'en-linea' | 'sin-conexion' | 'sincronizando';
   pendientes: number;
+  rechazadas: number;
   ultimaSync: string | null;
 };
 

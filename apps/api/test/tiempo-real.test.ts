@@ -58,3 +58,29 @@ it('avisa cambios de carta solo a los sockets del mismo local', async () => {
 it('token inválido no conecta', async () => {
   await expect(conectar('basura')).rejects.toMatchObject({ message: 'SESION_INVALIDA' });
 });
+
+it('al desactivarse el dispositivo (nuevo login) su socket se desconecta', async () => {
+  const s = await conectar(e.tokenMoza);
+  const desconectado = new Promise<boolean>((ok) => {
+    const t = setTimeout(() => ok(false), 2000);
+    s.on('disconnect', () => {
+      clearTimeout(t);
+      ok(true);
+    });
+  });
+  await login(app, credenciales, 'Otra PC');
+  expect(await desconectado).toBe(true);
+});
+
+it('logout desconecta los sockets del dispositivo', async () => {
+  const s = await conectar(e.tokenDueno);
+  const desconectado = new Promise<boolean>((ok) => {
+    const t = setTimeout(() => ok(false), 2000);
+    s.on('disconnect', () => {
+      clearTimeout(t);
+      ok(true);
+    });
+  });
+  await app.inject({ method: 'POST', url: '/auth/logout', headers: { authorization: `Bearer ${e.tokenDueno}` } });
+  expect(await desconectado).toBe(true);
+});

@@ -35,4 +35,6 @@ export const MIGRACIONES: string[] = [
     estado TEXT NOT NULL DEFAULT 'pendiente' CHECK (estado IN ('pendiente', 'rechazada'))
   );
   `,
+  // v2: quién hizo cada operación (se envía al servidor como actor).
+  `ALTER TABLE outbox ADD COLUMN usuario_id TEXT;`,
 ];
