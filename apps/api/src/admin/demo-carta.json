@@ -1,0 +1,243 @@
+{
+  "sectores": ["Cocina", "Barra"],
+  "categorias": [
+    {
+      "nombre": "Desayunos y meriendas",
+      "horario": { "desde": "08:00", "hasta": "12:00" },
+      "productos": [
+        {
+          "nombre": "Café con leche y 2 medialunas",
+          "precio": 650000,
+          "sector": "Barra",
+          "descripcion": "Medialunas de manteca o de grasa",
+          "grupos": [
+            {
+              "nombre": "Medialunas",
+              "min": 1,
+              "max": 1,
+              "opciones": [{ "nombre": "De manteca" }, { "nombre": "De grasa" }]
+            }
+          ]
+        },
+        { "nombre": "Tostado de jamón y queso", "precio": 780000, "sector": "Cocina" },
+        { "nombre": "Tostadas con queso crema y mermelada", "precio": 590000, "sector": "Cocina" },
+        {
+          "nombre": "Licuado de banana",
+          "precio": 520000,
+          "sector": "Barra",
+          "etiquetas": ["vegetariano"]
+        }
+      ]
+    },
+    {
+      "nombre": "Cafetería",
+      "productos": [
+        {
+          "nombre": "Café",
+          "precio": 300000,
+          "sector": "Barra",
+          "grupos": [
+            {
+              "nombre": "Tamaño",
+              "min": 1,
+              "max": 1,
+              "opciones": [
+                { "nombre": "Pocillo" },
+                { "nombre": "Jarrito", "recargo": 50000 },
+                { "nombre": "Doble", "recargo": 100000 }
+              ]
+            },
+            {
+              "nombre": "Leche",
+              "min": 0,
+              "max": 1,
+              "opciones": [
+                { "nombre": "Cortado" },
+                { "nombre": "Con leche", "recargo": 30000 },
+                { "nombre": "Leche de almendras", "recargo": 90000, "disponible": false }
+              ]
+            }
+          ]
+        },
+        { "nombre": "Submarino", "precio": 480000, "sector": "Barra" },
+        { "nombre": "Té en hebras", "precio": 320000, "sector": "Barra", "etiquetas": ["vegano"] },
+        { "nombre": "Medialuna", "precio": 120000, "sector": "Barra" }
+      ]
+    },
+    {
+      "nombre": "Minutas",
+      "productos": [
+        {
+          "nombre": "Milanesa napolitana con papas fritas",
+          "precio": 1650000,
+          "sector": "Cocina",
+          "grupos": [
+            {
+              "nombre": "Carne",
+              "min": 1,
+              "max": 1,
+              "opciones": [{ "nombre": "Ternera" }, { "nombre": "Pollo" }]
+            },
+            {
+              "nombre": "Guarnición",
+              "min": 1,
+              "max": 1,
+              "opciones": [
+                { "nombre": "Papas fritas" },
+                { "nombre": "Puré" },
+                { "nombre": "Ensalada mixta" }
+              ]
+            }
+          ]
+        },
+        {
+          "nombre": "Bife de chorizo con guarnición",
+          "precio": 2200000,
+          "sector": "Cocina",
+          "etiquetas": ["sin TACC"]
+        },
+        { "nombre": "Suprema a la suiza", "precio": 1580000, "sector": "Cocina" },
+        {
+          "nombre": "Ravioles de ricota con salsa a elección",
+          "precio": 1390000,
+          "sector": "Cocina",
+          "etiquetas": ["vegetariano"]
+        },
+        {
+          "nombre": "Tarta de verduras",
+          "precio": 980000,
+          "sector": "Cocina",
+          "etiquetas": ["vegetariano"],
+          "disponible": false
+        }
+      ]
+    },
+    {
+      "nombre": "Pizzas",
+      "productos": [
+        {
+          "nombre": "Muzzarella",
+          "precio": 1200000,
+          "sector": "Cocina",
+          "etiquetas": ["vegetariano"]
+        },
+        {
+          "nombre": "Fugazzeta",
+          "precio": 1350000,
+          "sector": "Cocina",
+          "etiquetas": ["vegetariano"]
+        },
+        { "nombre": "Napolitana", "precio": 1400000, "sector": "Cocina" },
+        { "nombre": "Especial de jamón y morrones", "precio": 1500000, "sector": "Cocina" },
+        {
+          "nombre": "Porción de fainá",
+          "precio": 250000,
+          "sector": "Cocina",
+          "etiquetas": ["vegano"]
+        }
+      ]
+    },
+    {
+      "nombre": "Hamburguesas",
+      "productos": [
+        {
+          "nombre": "Hamburguesa clásica",
+          "precio": 1250000,
+          "sector": "Cocina",
+          "descripcion": "Medallón de 180 g, lechuga, tomate y papas",
+          "grupos": [
+            {
+              "nombre": "Medallón",
+              "min": 1,
+              "max": 1,
+              "opciones": [{ "nombre": "Simple" }, { "nombre": "Doble", "recargo": 350000 }]
+            },
+            {
+              "nombre": "Extras",
+              "min": 0,
+              "max": 3,
+              "opciones": [
+                { "nombre": "Cheddar", "recargo": 120000 },
+                { "nombre": "Panceta", "recargo": 150000 },
+                { "nombre": "Huevo", "recargo": 90000 },
+                { "nombre": "Cebolla caramelizada", "recargo": 90000 }
+              ]
+            }
+          ]
+        },
+        {
+          "nombre": "Hamburguesa veggie",
+          "precio": 1190000,
+          "sector": "Cocina",
+          "etiquetas": ["vegano"]
+        },
+        { "nombre": "Papas fritas con cheddar y verdeo", "precio": 890000, "sector": "Cocina" }
+      ]
+    },
+    {
+      "nombre": "Postres",
+      "productos": [
+        {
+          "nombre": "Flan casero con dulce de leche",
+          "precio": 590000,
+          "sector": "Cocina",
+          "etiquetas": ["sin TACC"]
+        },
+        { "nombre": "Panqueque con dulce de leche", "precio": 620000, "sector": "Cocina" },
+        { "nombre": "Helado (2 bochas)", "precio": 550000, "sector": "Barra", "disponible": false }
+      ]
+    },
+    {
+      "nombre": "Bebidas sin alcohol",
+      "productos": [
+        {
+          "nombre": "Agua mineral 500 ml",
+          "precio": 250000,
+          "sector": "Barra",
+          "grupos": [
+            {
+              "nombre": "Tipo",
+              "min": 1,
+              "max": 1,
+              "opciones": [{ "nombre": "Sin gas" }, { "nombre": "Con gas" }]
+            }
+          ]
+        },
+        { "nombre": "Gaseosa línea Coca-Cola 500 ml", "precio": 320000, "sector": "Barra" },
+        {
+          "nombre": "Limonada con menta y jengibre",
+          "precio": 480000,
+          "sector": "Barra",
+          "etiquetas": ["vegano"]
+        },
+        { "nombre": "Exprimido de naranja", "precio": 450000, "sector": "Barra" }
+      ]
+    },
+    {
+      "nombre": "Cervezas y tragos",
+      "productos": [
+        {
+          "nombre": "Pinta de cerveza tirada",
+          "precio": 650000,
+          "sector": "Barra",
+          "grupos": [
+            {
+              "nombre": "Estilo",
+              "min": 1,
+              "max": 1,
+              "opciones": [
+                { "nombre": "Rubia" },
+                { "nombre": "Roja" },
+                { "nombre": "IPA", "recargo": 80000 }
+              ]
+            }
+          ]
+        },
+        { "nombre": "Fernet con coca", "precio": 750000, "sector": "Barra" },
+        { "nombre": "Vermú con soda y naranja", "precio": 690000, "sector": "Barra" },
+        { "nombre": "Copa de vino Malbec", "precio": 620000, "sector": "Barra" },
+        { "nombre": "Gin tonic", "precio": 850000, "sector": "Barra" }
+      ]
+    }
+  ]
+}
