@@ -8,6 +8,7 @@ export default defineConfig({
     alias: { '@gula/shared': fileURLToPath(new URL('../../packages/shared/src/index.ts', import.meta.url)) },
   },
   test: {
+    exclude: ['e2e/**', 'node_modules/**'],
     fileParallelism: false,
     environmentMatchGlobs: [['src/renderer/**', 'jsdom']],
     setupFiles: ['./test/setup.ts'],

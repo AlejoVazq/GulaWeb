@@ -61,3 +61,5 @@ input[role='switch'] { width: 20px; height: 20px; min-height: 0; }
 .grupo { display: grid; gap: var(--espacio-2); padding-bottom: var(--espacio-2); border-bottom: 1px dashed var(--color-borde); }
 .corto { width: 64px; }
 .foto { object-fit: cover; border-radius: 8px; }
+input[type='checkbox'], input[type='radio'] { width: 18px; height: 18px; min-height: 0; padding: 0; }
+.formulario label.fila { display: flex; }

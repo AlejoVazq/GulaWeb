@@ -60,3 +60,18 @@ Cron diario a las 4:00 (`crontab -e`):
 gpg --batch --passphrase "$BACKUP_PASSPHRASE" -d gula-AAAAMMDD-HHMM.dump.gpg \
   | docker compose -f compose.prod.yml exec -T postgres pg_restore -U postgres -d gula --clean --if-exists
 ```
+
+## App de escritorio (PC del local)
+
+```bash
+pnpm --filter @gula/desktop dev                      # contra http://localhost:3000
+GULA_SERVIDOR=https://$DOMINIO/api pnpm --filter @gula/desktop dev
+```
+
+La URL del servidor también se puede cambiar en la pantalla de ingreso ("Opciones avanzadas").
+
+Humo de punta a punta (API real + app compilada, requiere el Postgres de desarrollo):
+
+```bash
+pnpm --filter @gula/desktop e2e
+```
