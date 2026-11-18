@@ -75,3 +75,17 @@ it('usuario de otro local no existe', async () => {
   const r = await pin(app, token, { usuarioId: usuarioDeOtroLocal, pin: '1234' });
   expect(r.statusCode).toBe(404);
 });
+
+it('refresh después de cambiar por PIN mantiene al usuario del PIN (no escala a dueño)', async () => {
+  const l = (await login(app, credenciales)).json();
+  await pin(app, l.accessToken, { usuarioId: mozaId, pin: '4321' });
+  const r = await app.inject({
+    method: 'POST',
+    url: '/auth/refresh',
+    payload: { refreshToken: l.refreshToken },
+  });
+  expect(r.statusCode).toBe(200);
+  const yo = await app.inject({ method: 'GET', url: '/auth/yo', headers: bearer(r.json().accessToken) });
+  expect(yo.json().usuario.id).toBe(mozaId);
+  expect(yo.json().usuario.rol).toBe('mesero');
+});

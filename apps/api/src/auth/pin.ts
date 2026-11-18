@@ -1,8 +1,8 @@
-import { and, asc, eq, sql } from 'drizzle-orm';
+import { and, asc, eq, isNull, sql } from 'drizzle-orm';
 import type { Rol } from '@gula/shared';
 import type { Dbs } from '../db/cliente.js';
 import { conLocal } from '../db/conLocal.js';
-import { usuarios } from '../db/schema/index.js';
+import { refreshTokens, usuarios } from '../db/schema/index.js';
 import { ErrorApi } from '../errores.js';
 import { verificarHash } from '../seguridad/hash.js';
 
@@ -70,5 +70,29 @@ export function listarUsuariosActivos(dbs: Dbs, localId: string): Promise<Usuari
       .from(usuarios)
       .where(eq(usuarios.activo, true))
       .orderBy(asc(usuarios.nombre)),
+  );
+}
+
+/**
+ * Tras un cambio por PIN, los refresh vigentes del dispositivo pasan a ser del nuevo usuario:
+ * renovar la sesión nunca devuelve el rol de quien hizo el login con email (p. ej. el dueño).
+ */
+export async function fijarUsuarioDelDispositivo(
+  dbs: Dbs,
+  localId: string,
+  dispositivoId: string,
+  usuarioId: string,
+): Promise<void> {
+  await conLocal(dbs.dbApp, localId, (tx) =>
+    tx
+      .update(refreshTokens)
+      .set({ usuarioId })
+      .where(
+        and(
+          eq(refreshTokens.dispositivoId, dispositivoId),
+          eq(refreshTokens.revocado, false),
+          isNull(refreshTokens.usadoEn),
+        ),
+      ),
   );
 }

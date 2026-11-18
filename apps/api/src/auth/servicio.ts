@@ -8,6 +8,8 @@ import { sesionInvalida, type Sesion } from './plugin.js';
 import { hashear, sha256, verificarHash } from '../seguridad/hash.js';
 import { emitirRefresh, firmarAcceso } from '../seguridad/tokens.js';
 
+export const MARGEN_REINTENTO_MS = 30_000;
+
 const credencialesInvalidas = () =>
   new ErrorApi(401, 'CREDENCIALES_INVALIDAS', 'Email o contraseña incorrectos.');
 
@@ -72,7 +74,9 @@ export async function refrescar(dbs: Dbs, jwtSecret: string, token: string) {
       .where(eq(refreshTokens.hash, sha256(token)))
       .for('update');
     if (!t) return { error: 'invalido' as const };
-    if (t.usadoEn) {
+    // Margen para reintentos (respuesta perdida, wifi inestable): no se considera reuso.
+    const enMargen = t.usadoEn !== null && Date.now() - t.usadoEn.getTime() < MARGEN_REINTENTO_MS;
+    if (t.usadoEn && !enMargen) {
       // Reuso: alguien tiene una copia vieja. Se revoca la familia completa.
       await tx.update(refreshTokens).set({ revocado: true }).where(eq(refreshTokens.familia, t.familia));
       return { error: 'reuso' as const };
@@ -88,7 +92,9 @@ export async function refrescar(dbs: Dbs, jwtSecret: string, token: string) {
       .where(and(eq(usuarios.id, t.usuarioId), eq(usuarios.activo, true)));
     if (!d || !u) return { error: 'invalido' as const };
 
-    await tx.update(refreshTokens).set({ usadoEn: new Date() }).where(eq(refreshTokens.id, t.id));
+    if (!t.usadoEn) {
+      await tx.update(refreshTokens).set({ usadoEn: new Date() }).where(eq(refreshTokens.id, t.id));
+    }
     const nuevo = await emitirRefresh(tx, {
       localId: t.localId,
       dispositivoId: t.dispositivoId,

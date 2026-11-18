@@ -4,7 +4,7 @@ import type { Config } from '../config.js';
 import type { Dbs } from '../db/cliente.js';
 import * as v from '../validacion.js';
 import { firmarAcceso } from '../seguridad/tokens.js';
-import { listarUsuariosActivos, verificarPin } from './pin.js';
+import { fijarUsuarioDelDispositivo, listarUsuariosActivos, verificarPin } from './pin.js';
 import { loginDispositivo, logout, quienSoy, refrescar } from './servicio.js';
 
 const cuerpoLogin = z.object({
@@ -46,6 +46,7 @@ export async function rutasAuth(app: FastifyInstance, opts: { config: Config; db
     const b = z.object({ usuarioId: z.uuid(), pin: z.string().max(10) }).parse(req.body);
     const { localId, dispositivoId } = req.sesion;
     const usuario = await verificarPin(dbs, localId, b.usuarioId, b.pin);
+    await fijarUsuarioDelDispositivo(dbs, localId, dispositivoId, usuario.id);
     const accessToken = await firmarAcceso(
       { sub: usuario.id, loc: localId, dev: dispositivoId, rol: usuario.rol },
       config.jwtSecret,

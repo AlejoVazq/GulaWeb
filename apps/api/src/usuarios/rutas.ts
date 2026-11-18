@@ -53,11 +53,14 @@ async function emailLibre(dbs: Dbs, email: string, exceptoId?: string): Promise<
   if (usados.length) throw new ErrorApi(409, 'EMAIL_EN_USO', 'Ese email ya está registrado.');
 }
 
+/** Bloquea las filas de dueños activos (en orden fijo) para serializar cambios concurrentes. */
 async function duenosActivos(tx: Tx): Promise<number> {
   const filas = await tx
     .select({ id: usuarios.id })
     .from(usuarios)
-    .where(and(eq(usuarios.rol, 'dueno'), eq(usuarios.activo, true)));
+    .where(and(eq(usuarios.rol, 'dueno'), eq(usuarios.activo, true)))
+    .orderBy(asc(usuarios.id))
+    .for('update');
   return filas.length;
 }
 
@@ -112,12 +115,13 @@ export async function rutasUsuarios(app: FastifyInstance, { dbs }: { dbs: Dbs })
     ]);
 
     return conLocal(dbs.dbApp, req.sesion.localId, async (tx) => {
+      const cantidadDuenos = await duenosActivos(tx);
       const [antes] = await tx.select().from(usuarios).where(eq(usuarios.id, id)).for('update');
       if (!antes) throw noEncontrado();
 
       const dejaDeSerDueno =
         antes.rol === 'dueno' && antes.activo && (b.activo === false || (b.rol && b.rol !== 'dueno'));
-      if (dejaDeSerDueno && (await duenosActivos(tx)) <= 1) {
+      if (dejaDeSerDueno && cantidadDuenos <= 1) {
         throw new ErrorApi(409, 'ULTIMO_DUENO', 'El local tiene que tener al menos un dueño activo.');
       }
 

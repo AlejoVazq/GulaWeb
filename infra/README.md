@@ -14,7 +14,7 @@ Requisitos: Docker + plugin compose, puertos 80/443 abiertos, DNS del dominio ap
 
 ```bash
 git clone <repo> gula && cd gula/infra
-cp .env.example .env        # completar DOMINIO y secretos (openssl rand -base64 32)
+cp .env.example .env        # completar DOMINIO y secretos (openssl rand -hex 32; no usar base64)
 docker compose -f compose.prod.yml up -d --build
 curl https://$DOMINIO/api/salud      # → {"ok":true}
 ```

@@ -1,6 +1,6 @@
 import { it, expect, beforeEach, afterAll, afterEach } from 'vitest';
 import type { FastifyInstance } from 'fastify';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { auditoria, usuarios } from '../src/db/schema/index.js';
 import {
   appDePrueba,
@@ -85,4 +85,22 @@ it('no se puede desactivar al último dueño', async () => {
 it('no se puede bajar de rol al último dueño', async () => {
   const r = await patchUsuario(tokenDueno, duenoId, { rol: 'encargado' });
   expect(r.json().error.codigo).toBe('ULTIMO_DUENO');
+});
+
+it('dos bajas simultáneas de dueños no dejan al local sin dueño', async () => {
+  const [d1] = await dbs.dbAdmin.select().from(usuarios).where(eq(usuarios.id, duenoId));
+  const otroDueno = await crearUsuarioDePrueba(d1!.localId, { nombre: 'Socio', rol: 'dueno', pin: '7777' });
+  for (let i = 0; i < 5; i++) {
+    await dbs.dbAdmin.update(usuarios).set({ activo: true }).where(eq(usuarios.rol, 'dueno'));
+    await Promise.all([
+      patchUsuario(tokenDueno, otroDueno, { activo: false }),
+      patchUsuario(tokenDueno, duenoId, { rol: 'encargado' }),
+    ]);
+    const activos = await dbs.dbAdmin
+      .select()
+      .from(usuarios)
+      .where(and(eq(usuarios.localId, d1!.localId), eq(usuarios.rol, 'dueno'), eq(usuarios.activo, true)));
+    expect(activos.length).toBeGreaterThanOrEqual(1);
+    await dbs.dbAdmin.update(usuarios).set({ rol: 'dueno' }).where(eq(usuarios.id, duenoId));
+  }
 });
