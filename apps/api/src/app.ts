@@ -4,6 +4,7 @@ import type { Config } from './config.js';
 import { crearDb, type Dbs } from './db/cliente.js';
 import { registrarErrores } from './errores.js';
 import { rutasAuth } from './auth/rutas.js';
+import { pluginAuth } from './auth/plugin.js';
 
 /** `deps.dbs` permite inyectar conexiones (tests); si no, la app crea y cierra las suyas. */
 export async function buildApp(config: Config, deps: { dbs?: Dbs } = {}): Promise<FastifyInstance> {
@@ -19,6 +20,7 @@ export async function buildApp(config: Config, deps: { dbs?: Dbs } = {}): Promis
   await app.register(rateLimit, { global: false });
 
   app.get('/salud', async () => ({ ok: true }));
+  await app.register(pluginAuth, { dbs, jwtSecret: config.jwtSecret });
   await app.register(rutasAuth, { config, dbs });
   return app;
 }

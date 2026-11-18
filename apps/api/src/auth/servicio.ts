@@ -4,7 +4,8 @@ import type { Dbs } from '../db/cliente.js';
 import { conLocal } from '../db/conLocal.js';
 import { dispositivos, locales, refreshTokens, usuarios } from '../db/schema/index.js';
 import { ErrorApi } from '../errores.js';
-import { hashear, verificarHash } from '../seguridad/hash.js';
+import { sesionInvalida, type Sesion } from './plugin.js';
+import { hashear, sha256, verificarHash } from '../seguridad/hash.js';
 import { emitirRefresh, firmarAcceso } from '../seguridad/tokens.js';
 
 const credencialesInvalidas = () =>
@@ -61,4 +62,74 @@ export async function loginDispositivo(
     usuario: { id: usuario.id, nombre: usuario.nombre, rol: usuario.rol },
     local: { id: local.id, nombre: local.nombre, slug: local.slug },
   };
+}
+
+export async function refrescar(dbs: Dbs, jwtSecret: string, token: string) {
+  const resultado = await dbs.dbAdmin.transaction(async (tx) => {
+    const [t] = await tx
+      .select()
+      .from(refreshTokens)
+      .where(eq(refreshTokens.hash, sha256(token)))
+      .for('update');
+    if (!t) return { error: 'invalido' as const };
+    if (t.usadoEn) {
+      // Reuso: alguien tiene una copia vieja. Se revoca la familia completa.
+      await tx.update(refreshTokens).set({ revocado: true }).where(eq(refreshTokens.familia, t.familia));
+      return { error: 'reuso' as const };
+    }
+    if (t.revocado || t.expiraEn < new Date()) return { error: 'invalido' as const };
+    const [d] = await tx
+      .select({ id: dispositivos.id })
+      .from(dispositivos)
+      .where(and(eq(dispositivos.id, t.dispositivoId), eq(dispositivos.activo, true)));
+    const [u] = await tx
+      .select({ rol: usuarios.rol })
+      .from(usuarios)
+      .where(and(eq(usuarios.id, t.usuarioId), eq(usuarios.activo, true)));
+    if (!d || !u) return { error: 'invalido' as const };
+
+    await tx.update(refreshTokens).set({ usadoEn: new Date() }).where(eq(refreshTokens.id, t.id));
+    const nuevo = await emitirRefresh(tx, {
+      localId: t.localId,
+      dispositivoId: t.dispositivoId,
+      usuarioId: t.usuarioId,
+      familia: t.familia,
+    });
+    return { t, rol: u.rol, nuevo };
+  });
+
+  if ('error' in resultado) {
+    if (resultado.error === 'reuso') {
+      throw new ErrorApi(401, 'TOKEN_REUTILIZADO', 'La sesión se cerró por seguridad. Volvé a ingresar.');
+    }
+    throw sesionInvalida();
+  }
+  const { t, rol, nuevo } = resultado;
+  const accessToken = await firmarAcceso(
+    { sub: t.usuarioId, loc: t.localId, dev: t.dispositivoId, rol },
+    jwtSecret,
+  );
+  return { accessToken, refreshToken: nuevo };
+}
+
+export async function logout(dbs: Dbs, sesion: Sesion): Promise<void> {
+  await conLocal(dbs.dbApp, sesion.localId, async (tx) => {
+    await tx
+      .update(refreshTokens)
+      .set({ revocado: true })
+      .where(eq(refreshTokens.dispositivoId, sesion.dispositivoId));
+    await tx.update(dispositivos).set({ activo: false }).where(eq(dispositivos.id, sesion.dispositivoId));
+  });
+}
+
+export async function quienSoy(dbs: Dbs, sesion: Sesion) {
+  return conLocal(dbs.dbApp, sesion.localId, async (tx) => {
+    const [u] = await tx.select().from(usuarios).where(eq(usuarios.id, sesion.usuarioId));
+    const [l] = await tx.select().from(locales).where(eq(locales.id, sesion.localId));
+    if (!u || !l) throw sesionInvalida();
+    return {
+      usuario: { id: u.id, nombre: u.nombre, rol: u.rol },
+      local: { id: l.id, nombre: l.nombre, slug: l.slug },
+    };
+  });
 }
