@@ -161,6 +161,9 @@ importers:
       '@vitejs/plugin-react':
         specifier: ^5.2.0
         version: 5.2.0(vite@7.3.8(@types/node@24.19.2)(tsx@4.23.15))
+      drizzle-orm:
+        specifier: 0.44.7
+        version: 0.44.7(postgres@3.4.9)
       electron:
         specifier: ^45.3.4
         version: 45.3.4
