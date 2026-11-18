@@ -58,3 +58,10 @@ export async function crearUsuarioDePrueba(
 export function pin(app: FastifyInstance, token: string, datos: { usuarioId: string; pin: string }) {
   return app.inject({ method: 'POST', url: '/auth/pin', headers: bearer(token), payload: datos });
 }
+
+/** Loguea la PC con el dueño y devuelve un access token del usuario indicado (vía PIN). */
+export async function tokenDe(app: FastifyInstance, usuarioId: string, pinUsuario: string) {
+  const base = (await login(app, credenciales)).json().accessToken as string;
+  const r = await pin(app, base, { usuarioId, pin: pinUsuario });
+  return r.json().accessToken as string;
+}
