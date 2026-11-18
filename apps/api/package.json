@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
+    "build": "tsc -p tsconfig.build.json && node -e \"require('fs').cpSync('src/db/migraciones','dist/db/migraciones',{recursive:true})\"",
     "dev": "tsx watch src/server.ts",
     "test": "vitest run",
     "lint": "eslint src test",

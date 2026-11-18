@@ -1,0 +1,54 @@
+name: gula
+services:
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '443:443'
+      - '443:443/udp'
+    environment:
+      DOMINIO: ${DOMINIO:?definí DOMINIO en .env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      api:
+        condition: service_healthy
+
+  api:
+    build:
+      context: ..
+      dockerfile: infra/api.Dockerfile
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: '3000'
+      DATABASE_URL: postgres://gula_app:${GULA_APP_PASSWORD:?}@postgres:5432/gula
+      DATABASE_ADMIN_URL: postgres://postgres:${POSTGRES_PASSWORD:?}@postgres:5432/gula
+      JWT_SECRET: ${JWT_SECRET:?definí JWT_SECRET (32+ caracteres)}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: gula
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
+      GULA_APP_PASSWORD: ${GULA_APP_PASSWORD:?}
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      - ./initdb:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d gula']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  caddy_data:
+  caddy_config:
+  pg_data:
