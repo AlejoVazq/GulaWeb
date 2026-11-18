@@ -73,7 +73,7 @@ export function crearCliente(opts: { urlBase: string | (() => string); sesion: S
     return refrescando;
   }
 
-  async function pedir<T>(metodo: Metodo, ruta: string, cuerpo?: object | FormData): Promise<T> {
+  async function pedir<T>(metodo: Metodo, ruta: string, cuerpo?: object): Promise<T> {
     let s = opts.sesion.actual();
     if (s && !s.accessToken) {
       await refrescar();
