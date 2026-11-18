@@ -176,6 +176,9 @@ importers:
       jsdom:
         specifier: ^26.1.0
         version: 26.1.0
+      postgres:
+        specifier: ^3.4.9
+        version: 3.4.9
       vite:
         specifier: ^7.3.8
         version: 7.3.8(@types/node@24.19.2)(tsx@4.23.15)
