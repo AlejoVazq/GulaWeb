@@ -39,7 +39,8 @@ async function slugDe(tx: Tx, localId: string): Promise<string> {
 export async function rutasMesas(app: FastifyInstance, { dbs }: { dbs: Dbs }) {
   const pre = { preHandler: [app.autenticar, app.requierePermiso('admin.configurar')] };
   app.addHook('onResponse', async (req, reply) => {
-    if (req.method !== 'GET' && reply.statusCode < 400 && req.sesion) app.avisar(req.sesion.localId, 'salon');
+    if (req.method !== 'GET' && reply.statusCode < 400 && req.sesion)
+      app.avisar(req.sesion.localId, 'salon');
   });
 
   app.get('/salon/mesas', pre, async (req) =>
@@ -80,7 +81,11 @@ export async function rutasMesas(app: FastifyInstance, { dbs }: { dbs: Dbs }) {
     const { id } = paramId.parse(req.params);
     return conLocal(dbs.dbApp, req.sesion.localId, async (tx) => {
       await buscarVigente(tx, mesas, id, 'esa mesa');
-      const [m] = await tx.update(mesas).set({ token: nuevoToken() }).where(eq(mesas.id, id)).returning();
+      const [m] = await tx
+        .update(mesas)
+        .set({ token: nuevoToken() })
+        .where(eq(mesas.id, id))
+        .returning();
       return vista(m!, await slugDe(tx, req.sesion.localId));
     });
   });
@@ -93,7 +98,8 @@ export async function rutasMesas(app: FastifyInstance, { dbs }: { dbs: Dbs }) {
         .select({ id: sesionesMesa.id })
         .from(sesionesMesa)
         .where(and(eq(sesionesMesa.mesaId, id), ne(sesionesMesa.estado, 'cerrada')));
-      if (ocupada) throw new ErrorApi(409, 'MESA_OCUPADA', 'La mesa está abierta. Cerrala antes de borrarla.');
+      if (ocupada)
+        throw new ErrorApi(409, 'MESA_OCUPADA', 'La mesa está abierta. Cerrala antes de borrarla.');
       await tx.update(mesas).set({ eliminadoEn: new Date() }).where(eq(mesas.id, id));
     });
     return reply.status(204).send();

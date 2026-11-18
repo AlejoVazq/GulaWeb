@@ -7,6 +7,8 @@ export type Config = {
   databaseAdminUrl: string;
   jwtSecret: string;
   rateLimitAuth: number;
+  /** Pedidos públicos por minuto e IP (varias mesas pueden compartir el wifi del local). */
+  rateLimitPedidosIp: number;
   dirFotos: string;
 };
 
@@ -17,6 +19,7 @@ const esquema = z.object({
   DATABASE_ADMIN_URL: z.string().min(1, 'DATABASE_ADMIN_URL es obligatoria'),
   JWT_SECRET: z.string().min(32, 'JWT_SECRET debe tener al menos 32 caracteres'),
   RATE_LIMIT_AUTH: z.coerce.number().int().positive().default(10),
+  RATE_LIMIT_PEDIDOS_IP: z.coerce.number().int().positive().default(30),
   DIR_FOTOS: z.string().min(1).default('./data/fotos'),
 });
 
@@ -34,6 +37,7 @@ export function cargarConfig(env: NodeJS.ProcessEnv): Config {
     databaseAdminUrl: e.DATABASE_ADMIN_URL,
     jwtSecret: e.JWT_SECRET,
     rateLimitAuth: e.RATE_LIMIT_AUTH,
+    rateLimitPedidosIp: e.RATE_LIMIT_PEDIDOS_IP,
     dirFotos: e.DIR_FOTOS,
   };
 }

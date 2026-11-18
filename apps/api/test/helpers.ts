@@ -19,6 +19,7 @@ export function configDePrueba(extra: Partial<Config> = {}): Config {
     databaseAdminUrl: envValido.DATABASE_ADMIN_URL,
     jwtSecret: envValido.JWT_SECRET,
     rateLimitAuth: 1000,
+    rateLimitPedidosIp: 1000,
     dirFotos: join(tmpdir(), 'gula-fotos-test'),
     ...extra,
   };

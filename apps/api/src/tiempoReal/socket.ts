@@ -10,6 +10,8 @@ declare module 'fastify' {
     /** Avisa a las PCs conectadas del local que hay cambios para traer. */
     avisar: (localId: string, tema: Tema) => void;
     /** Corta los sockets de dispositivos que ya no son válidos (otro login, logout). */
+    /** Cantidad de PCs del local conectadas por tiempo real (presencia, spec §11). */
+    pcsConectadas: (localId: string) => number;
     desconectarDispositivos: (localId: string, filtro: { soloId?: string; exceptoId?: string }) => Promise<void>;
   }
 }
@@ -39,6 +41,7 @@ export const pluginTiempoReal = fp<{ dbs: Dbs; jwtSecret: string }>(
     app.decorate('avisar', (localId: string, tema: Tema) => {
       io.to(sala(localId)).emit('cambios', { tema });
     });
+    app.decorate('pcsConectadas', (localId: string) => io.of('/').adapter.rooms.get(sala(localId))?.size ?? 0);
     app.decorate('desconectarDispositivos', async (localId: string, filtro: { soloId?: string; exceptoId?: string }) => {
     for (const s of await io.in(sala(localId)).fetchSockets()) {
       const dev = (s.data as { sesion?: { dispositivoId: string } }).sesion?.dispositivoId;
