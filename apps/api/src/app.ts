@@ -1,13 +1,24 @@
 import Fastify, { type FastifyInstance } from 'fastify';
+import rateLimit from '@fastify/rate-limit';
 import type { Config } from './config.js';
+import { crearDb, type Dbs } from './db/cliente.js';
 import { registrarErrores } from './errores.js';
+import { rutasAuth } from './auth/rutas.js';
 
-export async function buildApp(config: Config): Promise<FastifyInstance> {
+/** `deps.dbs` permite inyectar conexiones (tests); si no, la app crea y cierra las suyas. */
+export async function buildApp(config: Config, deps: { dbs?: Dbs } = {}): Promise<FastifyInstance> {
   const app = Fastify({
-    logger: config.nodeEnv === 'test' ? false : { level: config.nodeEnv === 'production' ? 'info' : 'debug' },
+    logger:
+      config.nodeEnv === 'test' ? false : { level: config.nodeEnv === 'production' ? 'info' : 'debug' },
     trustProxy: true,
   });
+  const dbs = deps.dbs ?? crearDb(config);
+  if (!deps.dbs) app.addHook('onClose', () => dbs.cerrar());
+
   registrarErrores(app);
+  await app.register(rateLimit, { global: false });
+
   app.get('/salud', async () => ({ ok: true }));
+  await app.register(rutasAuth, { config, dbs });
   return app;
 }
