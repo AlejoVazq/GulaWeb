@@ -8,6 +8,7 @@ import { categorias, gruposOpciones, opciones, productos, sectores } from '../db
 import { hhmm, urlsFoto } from '../carta/comun.js';
 import { esquemaLote, procesarLote } from './operaciones.js';
 import './tiposCarta.js';
+import '../salon/operaciones.js';
 
 /** Solape del pull: un commit puede llegar después con un actualizado_en anterior al cursor. */
 export const SOLAPE_MS = 30_000;
