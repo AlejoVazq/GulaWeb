@@ -5,5 +5,5 @@ export default defineConfig({
   resolve: {
     alias: { '@gula/shared': fileURLToPath(new URL('../../packages/shared/src/index.ts', import.meta.url)) },
   },
-  test: { fileParallelism: false },
+  test: { fileParallelism: false, globalSetup: ['./test/globalSetup.ts'] },
 });
