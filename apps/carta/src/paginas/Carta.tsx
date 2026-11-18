@@ -4,11 +4,15 @@ import type { ProductoPublico } from '@gula/shared';
 import { useCarta } from '../useCarta';
 import { Categorias, anclaCategoria } from '../componentes/Categorias';
 import { ProductoCard } from '../componentes/ProductoCard';
+import { DetalleProducto } from '../componentes/DetalleProducto';
+import { Carrito } from '../componentes/Carrito';
+import { useCarrito } from '../carrito';
 
 export function Carta() {
   const { slug = '' } = useParams();
   const estado = useCarta(slug);
-  const [, setElegido] = useState<ProductoPublico | null>(null);
+  const [elegido, setElegido] = useState<ProductoPublico | null>(null);
+  const { items, despachar } = useCarrito(slug);
 
   if (estado.tipo === 'cargando') return <p className="aviso">Cargando la carta…</p>;
   if (estado.tipo === 'no-encontrado') return <p className="aviso">No encontramos este local</p>;
@@ -38,6 +42,17 @@ export function Carta() {
           </section>
         ))}
       </main>
+      {elegido && (
+        <DetalleProducto
+          producto={elegido}
+          onCerrar={() => setElegido(null)}
+          onAgregar={(item) => {
+            despachar({ tipo: 'agregar', item });
+            setElegido(null);
+          }}
+        />
+      )}
+      {!elegido && <Carrito items={items} despachar={despachar} />}
     </div>
   );
 }

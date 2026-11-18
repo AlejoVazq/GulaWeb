@@ -48,3 +48,18 @@ it('slug inexistente muestra "No encontramos este local"', async () => {
   montar('/nada');
   expect(await screen.findByText('No encontramos este local')).toBeInTheDocument();
 });
+
+it('agregar un producto muestra la barra del pedido y el envío queda deshabilitado', async () => {
+  const { default: userEvent } = await import('@testing-library/user-event');
+  montar();
+  await userEvent.click(await screen.findByRole('button', { name: /Hamburguesa clásica/ }));
+  await userEvent.click(screen.getByLabelText(/Grande/));
+  await userEvent.click(screen.getByRole('button', { name: 'Agregar · $ 6.500' }));
+  const barra = screen.getByRole('button', { name: 'Ver pedido (1) · $ 6.500' });
+  await userEvent.click(barra);
+  expect(screen.getByText('Grande')).toBeInTheDocument();
+  const enviar = screen.getByRole('button', { name: 'Pedí al mozo que habilite la mesa' });
+  expect(enviar).toBeDisabled();
+  await userEvent.click(screen.getByRole('button', { name: 'Quitar Hamburguesa clásica' }));
+  expect(screen.queryByRole('button', { name: /Ver pedido/ })).not.toBeInTheDocument();
+});
