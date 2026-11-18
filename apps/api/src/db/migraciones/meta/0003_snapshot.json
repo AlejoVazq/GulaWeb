@@ -54,9 +54,7 @@
       "uniqueConstraints": {
         "locales_slug_unique": {
           "name": "locales_slug_unique",
-          "columns": [
-            "slug"
-          ],
+          "columns": ["slug"],
           "nullsNotDistinct": false
         }
       },
@@ -143,13 +141,9 @@
         "usuarios_local_id_locales_id_fk": {
           "name": "usuarios_local_id_locales_id_fk",
           "tableFrom": "usuarios",
-          "columnsFrom": [
-            "local_id"
-          ],
+          "columnsFrom": ["local_id"],
           "tableTo": "locales",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "no action"
         }
@@ -158,9 +152,7 @@
       "uniqueConstraints": {
         "usuarios_email_unique": {
           "name": "usuarios_email_unique",
-          "columns": [
-            "email"
-          ],
+          "columns": ["email"],
           "nullsNotDistinct": false
         }
       },
@@ -221,13 +213,9 @@
         "dispositivos_local_id_locales_id_fk": {
           "name": "dispositivos_local_id_locales_id_fk",
           "tableFrom": "dispositivos",
-          "columnsFrom": [
-            "local_id"
-          ],
+          "columnsFrom": ["local_id"],
           "tableTo": "locales",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "no action"
         }
@@ -319,39 +307,27 @@
         "refresh_tokens_local_id_locales_id_fk": {
           "name": "refresh_tokens_local_id_locales_id_fk",
           "tableFrom": "refresh_tokens",
-          "columnsFrom": [
-            "local_id"
-          ],
+          "columnsFrom": ["local_id"],
           "tableTo": "locales",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "no action"
         },
         "refresh_tokens_dispositivo_id_dispositivos_id_fk": {
           "name": "refresh_tokens_dispositivo_id_dispositivos_id_fk",
           "tableFrom": "refresh_tokens",
-          "columnsFrom": [
-            "dispositivo_id"
-          ],
+          "columnsFrom": ["dispositivo_id"],
           "tableTo": "dispositivos",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "no action"
         },
         "refresh_tokens_usuario_id_usuarios_id_fk": {
           "name": "refresh_tokens_usuario_id_usuarios_id_fk",
           "tableFrom": "refresh_tokens",
-          "columnsFrom": [
-            "usuario_id"
-          ],
+          "columnsFrom": ["usuario_id"],
           "tableTo": "usuarios",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "no action"
         }
@@ -360,9 +336,7 @@
       "uniqueConstraints": {
         "refresh_tokens_hash_unique": {
           "name": "refresh_tokens_hash_unique",
-          "columns": [
-            "hash"
-          ],
+          "columns": ["hash"],
           "nullsNotDistinct": false
         }
       },
@@ -463,13 +437,9 @@
         "auditoria_local_id_locales_id_fk": {
           "name": "auditoria_local_id_locales_id_fk",
           "tableFrom": "auditoria",
-          "columnsFrom": [
-            "local_id"
-          ],
+          "columnsFrom": ["local_id"],
           "tableTo": "locales",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "no action"
         }
@@ -570,13 +540,9 @@
         "categorias_local_id_locales_id_fk": {
           "name": "categorias_local_id_locales_id_fk",
           "tableFrom": "categorias",
-          "columnsFrom": [
-            "local_id"
-          ],
+          "columnsFrom": ["local_id"],
           "tableTo": "locales",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "no action"
         }
@@ -678,26 +644,18 @@
         "grupos_opciones_local_id_locales_id_fk": {
           "name": "grupos_opciones_local_id_locales_id_fk",
           "tableFrom": "grupos_opciones",
-          "columnsFrom": [
-            "local_id"
-          ],
+          "columnsFrom": ["local_id"],
           "tableTo": "locales",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "no action"
         },
         "grupos_opciones_producto_id_productos_id_fk": {
           "name": "grupos_opciones_producto_id_productos_id_fk",
           "tableFrom": "grupos_opciones",
-          "columnsFrom": [
-            "producto_id"
-          ],
+          "columnsFrom": ["producto_id"],
           "tableTo": "productos",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "no action"
         }
@@ -804,26 +762,18 @@
         "opciones_local_id_locales_id_fk": {
           "name": "opciones_local_id_locales_id_fk",
           "tableFrom": "opciones",
-          "columnsFrom": [
-            "local_id"
-          ],
+          "columnsFrom": ["local_id"],
           "tableTo": "locales",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "no action"
         },
         "opciones_grupo_id_grupos_opciones_id_fk": {
           "name": "opciones_grupo_id_grupos_opciones_id_fk",
           "tableFrom": "opciones",
-          "columnsFrom": [
-            "grupo_id"
-          ],
+          "columnsFrom": ["grupo_id"],
           "tableTo": "grupos_opciones",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "no action"
         }
@@ -961,39 +911,27 @@
         "productos_local_id_locales_id_fk": {
           "name": "productos_local_id_locales_id_fk",
           "tableFrom": "productos",
-          "columnsFrom": [
-            "local_id"
-          ],
+          "columnsFrom": ["local_id"],
           "tableTo": "locales",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "no action"
         },
         "productos_categoria_id_categorias_id_fk": {
           "name": "productos_categoria_id_categorias_id_fk",
           "tableFrom": "productos",
-          "columnsFrom": [
-            "categoria_id"
-          ],
+          "columnsFrom": ["categoria_id"],
           "tableTo": "categorias",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "no action"
         },
         "productos_sector_id_sectores_id_fk": {
           "name": "productos_sector_id_sectores_id_fk",
           "tableFrom": "productos",
-          "columnsFrom": [
-            "sector_id"
-          ],
+          "columnsFrom": ["sector_id"],
           "tableTo": "sectores",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "no action"
         }
@@ -1064,13 +1002,9 @@
         "sectores_local_id_locales_id_fk": {
           "name": "sectores_local_id_locales_id_fk",
           "tableFrom": "sectores",
-          "columnsFrom": [
-            "local_id"
-          ],
+          "columnsFrom": ["local_id"],
           "tableTo": "locales",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "no action"
         }

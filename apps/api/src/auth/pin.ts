@@ -10,7 +10,8 @@ export const MAX_FALLOS_PIN = 5;
 export const MINUTOS_BLOQUEO_PIN = 5;
 
 export type UsuarioPublico = { id: string; nombre: string; rol: Rol };
-type ResultadoPin = { usuario: UsuarioPublico } | { error: 'no_existe' | 'bloqueado' | 'incorrecto' };
+type ResultadoPin =
+  { usuario: UsuarioPublico } | { error: 'no_existe' | 'bloqueado' | 'incorrecto' };
 
 /**
  * Verifica el PIN de un usuario activo del local. Lleva el contador de fallos y el bloqueo:
@@ -56,9 +57,14 @@ export async function verificarPin(
   });
 
   if ('usuario' in r) return r.usuario;
-  if (r.error === 'no_existe') throw new ErrorApi(404, 'NO_ENCONTRADO', 'No encontramos ese usuario.');
+  if (r.error === 'no_existe')
+    throw new ErrorApi(404, 'NO_ENCONTRADO', 'No encontramos ese usuario.');
   if (r.error === 'bloqueado') {
-    throw new ErrorApi(423, 'PIN_BLOQUEADO', 'Demasiados intentos. Esperá 5 minutos y probá de nuevo.');
+    throw new ErrorApi(
+      423,
+      'PIN_BLOQUEADO',
+      'Demasiados intentos. Esperá 5 minutos y probá de nuevo.',
+    );
   }
   throw new ErrorApi(401, 'PIN_INCORRECTO', 'PIN incorrecto.');
 }

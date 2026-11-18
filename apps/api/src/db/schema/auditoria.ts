@@ -6,7 +6,9 @@ export const auditoria = pgTable(
   'auditoria',
   {
     id: id(),
-    localId: uuid('local_id').notNull().references(() => locales.id),
+    localId: uuid('local_id')
+      .notNull()
+      .references(() => locales.id),
     usuarioId: uuid('usuario_id').notNull(),
     autorizadoPor: uuid('autorizado_por'),
     accion: text('accion').notNull(),

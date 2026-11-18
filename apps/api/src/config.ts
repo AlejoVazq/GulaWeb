@@ -7,6 +7,7 @@ export type Config = {
   databaseAdminUrl: string;
   jwtSecret: string;
   rateLimitAuth: number;
+  dirFotos: string;
 };
 
 const esquema = z.object({
@@ -16,6 +17,7 @@ const esquema = z.object({
   DATABASE_ADMIN_URL: z.string().min(1, 'DATABASE_ADMIN_URL es obligatoria'),
   JWT_SECRET: z.string().min(32, 'JWT_SECRET debe tener al menos 32 caracteres'),
   RATE_LIMIT_AUTH: z.coerce.number().int().positive().default(10),
+  DIR_FOTOS: z.string().min(1).default('./data/fotos'),
 });
 
 export function cargarConfig(env: NodeJS.ProcessEnv): Config {
@@ -32,5 +34,6 @@ export function cargarConfig(env: NodeJS.ProcessEnv): Config {
     databaseAdminUrl: e.DATABASE_ADMIN_URL,
     jwtSecret: e.JWT_SECRET,
     rateLimitAuth: e.RATE_LIMIT_AUTH,
+    dirFotos: e.DIR_FOTOS,
   };
 }

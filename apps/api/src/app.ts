@@ -12,12 +12,15 @@ import { rutasCategorias } from './carta/categorias.rutas.js';
 import { rutasProductos } from './carta/productos.rutas.js';
 import { rutasOpciones } from './carta/opciones.rutas.js';
 import { rutasPublicas } from './carta/publica.js';
+import { rutasFotos } from './carta/fotos.js';
 
 /** `deps.dbs` permite inyectar conexiones (tests); si no, la app crea y cierra las suyas. */
 export async function buildApp(config: Config, deps: { dbs?: Dbs } = {}): Promise<FastifyInstance> {
   const app = Fastify({
     logger:
-      config.nodeEnv === 'test' ? false : { level: config.nodeEnv === 'production' ? 'info' : 'debug' },
+      config.nodeEnv === 'test'
+        ? false
+        : { level: config.nodeEnv === 'production' ? 'info' : 'debug' },
     trustProxy: true,
   });
   const dbs = deps.dbs ?? crearDb(config);
@@ -36,5 +39,6 @@ export async function buildApp(config: Config, deps: { dbs?: Dbs } = {}): Promis
   await app.register(rutasProductos, { dbs });
   await app.register(rutasOpciones, { dbs });
   await app.register(rutasPublicas, { dbs });
+  await app.register(rutasFotos, { dbs, dirFotos: config.dirFotos });
   return app;
 }

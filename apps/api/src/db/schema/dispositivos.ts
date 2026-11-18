@@ -4,7 +4,9 @@ import { locales } from './locales.js';
 
 export const dispositivos = pgTable('dispositivos', {
   id: id(),
-  localId: uuid('local_id').notNull().references(() => locales.id),
+  localId: uuid('local_id')
+    .notNull()
+    .references(() => locales.id),
   nombre: text('nombre').notNull(),
   activo: boolean('activo').notNull().default(true),
   creadoEn: creadoEn(),

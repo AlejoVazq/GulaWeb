@@ -24,13 +24,20 @@ export async function crearLocal(
     throw new ErrorApi(400, 'DATOS_INVALIDOS', r.error.issues.map((i) => i.message).join('; '));
   }
   const d = r.data;
-  const [passwordHash, pinHash] = await Promise.all([hashear(d.dueno.password), hashear(d.dueno.pin)]);
+  const [passwordHash, pinHash] = await Promise.all([
+    hashear(d.dueno.password),
+    hashear(d.dueno.pin),
+  ]);
   const localId = nuevoId();
   const duenoId = nuevoId();
 
   return db.transaction(async (tx) => {
-    const slugUsado = await tx.select({ id: locales.id }).from(locales).where(eq(locales.slug, d.slug));
-    if (slugUsado.length) throw new ErrorApi(409, 'SLUG_EN_USO', 'Ya existe un local con ese slug.');
+    const slugUsado = await tx
+      .select({ id: locales.id })
+      .from(locales)
+      .where(eq(locales.slug, d.slug));
+    if (slugUsado.length)
+      throw new ErrorApi(409, 'SLUG_EN_USO', 'Ya existe un local con ese slug.');
     const emailUsado = await tx
       .select({ id: usuarios.id })
       .from(usuarios)

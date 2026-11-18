@@ -8,9 +8,15 @@ export const refreshTokens = pgTable(
   'refresh_tokens',
   {
     id: id(),
-    localId: uuid('local_id').notNull().references(() => locales.id),
-    dispositivoId: uuid('dispositivo_id').notNull().references(() => dispositivos.id),
-    usuarioId: uuid('usuario_id').notNull().references(() => usuarios.id),
+    localId: uuid('local_id')
+      .notNull()
+      .references(() => locales.id),
+    dispositivoId: uuid('dispositivo_id')
+      .notNull()
+      .references(() => dispositivos.id),
+    usuarioId: uuid('usuario_id')
+      .notNull()
+      .references(() => usuarios.id),
     familia: uuid('familia').notNull(),
     hash: text('hash').notNull().unique(),
     usadoEn: timestamp('usado_en', { withTimezone: true }),

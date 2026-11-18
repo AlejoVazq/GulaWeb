@@ -22,12 +22,21 @@ export function registrarErrores(app: FastifyInstance): void {
       return reply.status(err.status).send(cuerpoError(err.codigo, err.message));
     }
     if (err instanceof ZodError) {
-      return reply.status(400).send(cuerpoError('DATOS_INVALIDOS', 'Los datos enviados no son válidos.'));
+      return reply
+        .status(400)
+        .send(cuerpoError('DATOS_INVALIDOS', 'Los datos enviados no son válidos.'));
     }
     if (err.statusCode === 429) {
       return reply
         .status(429)
-        .send(cuerpoError('DEMASIADOS_INTENTOS', 'Demasiados intentos. Probá de nuevo en un minuto.'));
+        .send(
+          cuerpoError('DEMASIADOS_INTENTOS', 'Demasiados intentos. Probá de nuevo en un minuto.'),
+        );
+    }
+    if (err.statusCode === 413) {
+      return reply
+        .status(413)
+        .send(cuerpoError('ARCHIVO_GRANDE', 'El archivo es demasiado grande (máximo 8 MB).'));
     }
     if (err.statusCode && err.statusCode < 500) {
       return reply.status(err.statusCode).send(cuerpoError('PEDIDO_INVALIDO', err.message));

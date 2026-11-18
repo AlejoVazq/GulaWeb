@@ -78,7 +78,10 @@ export async function refrescar(dbs: Dbs, jwtSecret: string, token: string) {
     const enMargen = t.usadoEn !== null && Date.now() - t.usadoEn.getTime() < MARGEN_REINTENTO_MS;
     if (t.usadoEn && !enMargen) {
       // Reuso: alguien tiene una copia vieja. Se revoca la familia completa.
-      await tx.update(refreshTokens).set({ revocado: true }).where(eq(refreshTokens.familia, t.familia));
+      await tx
+        .update(refreshTokens)
+        .set({ revocado: true })
+        .where(eq(refreshTokens.familia, t.familia));
       return { error: 'reuso' as const };
     }
     if (t.revocado || t.expiraEn < new Date()) return { error: 'invalido' as const };
@@ -106,7 +109,11 @@ export async function refrescar(dbs: Dbs, jwtSecret: string, token: string) {
 
   if ('error' in resultado) {
     if (resultado.error === 'reuso') {
-      throw new ErrorApi(401, 'TOKEN_REUTILIZADO', 'La sesión se cerró por seguridad. Volvé a ingresar.');
+      throw new ErrorApi(
+        401,
+        'TOKEN_REUTILIZADO',
+        'La sesión se cerró por seguridad. Volvé a ingresar.',
+      );
     }
     throw sesionInvalida();
   }
@@ -124,7 +131,10 @@ export async function logout(dbs: Dbs, sesion: Sesion): Promise<void> {
       .update(refreshTokens)
       .set({ revocado: true })
       .where(eq(refreshTokens.dispositivoId, sesion.dispositivoId));
-    await tx.update(dispositivos).set({ activo: false }).where(eq(dispositivos.id, sesion.dispositivoId));
+    await tx
+      .update(dispositivos)
+      .set({ activo: false })
+      .where(eq(dispositivos.id, sesion.dispositivoId));
   });
 }
 

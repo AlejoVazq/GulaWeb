@@ -55,9 +55,7 @@
         "locales_slug_unique": {
           "name": "locales_slug_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "slug"
-          ]
+          "columns": ["slug"]
         }
       },
       "policies": {},
@@ -144,12 +142,8 @@
           "name": "usuarios_local_id_locales_id_fk",
           "tableFrom": "usuarios",
           "tableTo": "locales",
-          "columnsFrom": [
-            "local_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["local_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -159,9 +153,7 @@
         "usuarios_email_unique": {
           "name": "usuarios_email_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "email"
-          ]
+          "columns": ["email"]
         }
       },
       "policies": {},
@@ -222,12 +214,8 @@
           "name": "dispositivos_local_id_locales_id_fk",
           "tableFrom": "dispositivos",
           "tableTo": "locales",
-          "columnsFrom": [
-            "local_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["local_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -320,12 +308,8 @@
           "name": "refresh_tokens_local_id_locales_id_fk",
           "tableFrom": "refresh_tokens",
           "tableTo": "locales",
-          "columnsFrom": [
-            "local_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["local_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -333,12 +317,8 @@
           "name": "refresh_tokens_dispositivo_id_dispositivos_id_fk",
           "tableFrom": "refresh_tokens",
           "tableTo": "dispositivos",
-          "columnsFrom": [
-            "dispositivo_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["dispositivo_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -346,12 +326,8 @@
           "name": "refresh_tokens_usuario_id_usuarios_id_fk",
           "tableFrom": "refresh_tokens",
           "tableTo": "usuarios",
-          "columnsFrom": [
-            "usuario_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["usuario_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -361,9 +337,7 @@
         "refresh_tokens_hash_unique": {
           "name": "refresh_tokens_hash_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "hash"
-          ]
+          "columns": ["hash"]
         }
       },
       "policies": {},
@@ -464,12 +438,8 @@
           "name": "auditoria_local_id_locales_id_fk",
           "tableFrom": "auditoria",
           "tableTo": "locales",
-          "columnsFrom": [
-            "local_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["local_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }

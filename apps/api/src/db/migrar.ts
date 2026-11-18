@@ -12,4 +12,3 @@ export async function migrar(databaseAdminUrl: string): Promise<void> {
     await dbs.cerrar();
   }
 }
-

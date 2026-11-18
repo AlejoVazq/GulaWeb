@@ -120,9 +120,15 @@ export async function rutasUsuarios(app: FastifyInstance, { dbs }: { dbs: Dbs })
       if (!antes) throw noEncontrado();
 
       const dejaDeSerDueno =
-        antes.rol === 'dueno' && antes.activo && (b.activo === false || (b.rol && b.rol !== 'dueno'));
+        antes.rol === 'dueno' &&
+        antes.activo &&
+        (b.activo === false || (b.rol && b.rol !== 'dueno'));
       if (dejaDeSerDueno && cantidadDuenos <= 1) {
-        throw new ErrorApi(409, 'ULTIMO_DUENO', 'El local tiene que tener al menos un dueño activo.');
+        throw new ErrorApi(
+          409,
+          'ULTIMO_DUENO',
+          'El local tiene que tener al menos un dueño activo.',
+        );
       }
 
       const [despues] = await tx
@@ -144,7 +150,11 @@ export async function rutasUsuarios(app: FastifyInstance, { dbs }: { dbs: Dbs })
         entidad: 'usuario',
         entidadId: id,
         antes: publico(antes),
-        despues: { ...publico(despues!), pinCambiado: Boolean(pinHash), passwordCambiada: Boolean(passwordHash) },
+        despues: {
+          ...publico(despues!),
+          pinCambiado: Boolean(pinHash),
+          passwordCambiada: Boolean(passwordHash),
+        },
       });
       return publico(despues!);
     });

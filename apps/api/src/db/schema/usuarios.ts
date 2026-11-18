@@ -8,7 +8,9 @@ export const usuarios = pgTable(
   'usuarios',
   {
     id: id(),
-    localId: uuid('local_id').notNull().references(() => locales.id),
+    localId: uuid('local_id')
+      .notNull()
+      .references(() => locales.id),
     nombre: text('nombre').notNull(),
     rol: text('rol').$type<Rol>().notNull(),
     email: text('email').unique(),

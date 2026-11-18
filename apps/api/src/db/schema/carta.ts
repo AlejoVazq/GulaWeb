@@ -1,12 +1,24 @@
 import { sql } from 'drizzle-orm';
-import { boolean, check, index, integer, pgTable, text, time, timestamp, uuid } from 'drizzle-orm/pg-core';
+import {
+  boolean,
+  check,
+  index,
+  integer,
+  pgTable,
+  text,
+  time,
+  timestamp,
+  uuid,
+} from 'drizzle-orm/pg-core';
 import { creadoEn, id } from './comun.js';
 import { locales } from './locales.js';
 
 // Columnas comunes de las tablas sincronizables (fase 3).
 const sincronizable = () => ({
   id: id(),
-  localId: uuid('local_id').notNull().references(() => locales.id),
+  localId: uuid('local_id')
+    .notNull()
+    .references(() => locales.id),
   creadoEn: creadoEn(),
   actualizadoEn: timestamp('actualizado_en', { withTimezone: true }).notNull().defaultNow(),
   eliminadoEn: timestamp('eliminado_en', { withTimezone: true }),
@@ -35,7 +47,9 @@ export const productos = pgTable(
   'productos',
   {
     ...sincronizable(),
-    categoriaId: uuid('categoria_id').notNull().references(() => categorias.id),
+    categoriaId: uuid('categoria_id')
+      .notNull()
+      .references(() => categorias.id),
     sectorId: uuid('sector_id').references(() => sectores.id),
     nombre: text('nombre').notNull(),
     descripcion: text('descripcion'),
@@ -44,7 +58,10 @@ export const productos = pgTable(
     disponible: boolean('disponible').notNull().default(true),
     visible: boolean('visible').notNull().default(true),
     orden: integer('orden').notNull().default(0),
-    etiquetas: text('etiquetas').array().notNull().default(sql`'{}'::text[]`),
+    etiquetas: text('etiquetas')
+      .array()
+      .notNull()
+      .default(sql`'{}'::text[]`),
   },
   (t) => [
     check('productos_precio_positivo', sql`${t.precio} >= 0`),
@@ -56,7 +73,9 @@ export const gruposOpciones = pgTable(
   'grupos_opciones',
   {
     ...sincronizable(),
-    productoId: uuid('producto_id').notNull().references(() => productos.id),
+    productoId: uuid('producto_id')
+      .notNull()
+      .references(() => productos.id),
     nombre: text('nombre').notNull(),
     min: integer('min').notNull().default(0),
     max: integer('max').notNull().default(1),
@@ -72,7 +91,9 @@ export const opciones = pgTable(
   'opciones',
   {
     ...sincronizable(),
-    grupoId: uuid('grupo_id').notNull().references(() => gruposOpciones.id),
+    grupoId: uuid('grupo_id')
+      .notNull()
+      .references(() => gruposOpciones.id),
     nombre: text('nombre').notNull(),
     recargo: integer('recargo').notNull().default(0),
     disponible: boolean('disponible').notNull().default(true),

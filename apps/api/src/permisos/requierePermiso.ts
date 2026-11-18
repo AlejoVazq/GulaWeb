@@ -7,7 +7,9 @@ import { verificarPin } from '../auth/pin.js';
 
 declare module 'fastify' {
   interface FastifyInstance {
-    requierePermiso: (accion: Accion) => (req: FastifyRequest, reply: FastifyReply) => Promise<void>;
+    requierePermiso: (
+      accion: Accion,
+    ) => (req: FastifyRequest, reply: FastifyReply) => Promise<void>;
   }
 }
 
@@ -27,7 +29,8 @@ export const pluginPermisos = fp<{ dbs: Dbs }>(async (app, { dbs }) => {
     }
     const autorizaId = req.headers['x-autoriza-usuario'];
     const autorizaPin = req.headers['x-autoriza-pin'];
-    if (typeof autorizaId !== 'string' || typeof autorizaPin !== 'string') throw requiereAutorizacion();
+    if (typeof autorizaId !== 'string' || typeof autorizaPin !== 'string')
+      throw requiereAutorizacion();
     try {
       const autorizante = await verificarPin(dbs, req.sesion.localId, autorizaId, autorizaPin);
       if (puede(autorizante.rol, accion) !== 'si') throw requiereAutorizacion();
