@@ -1,7 +1,9 @@
 name: gula
 services:
   caddy:
-    image: caddy:2
+    build:
+      context: ..
+      dockerfile: infra/caddy.Dockerfile
     restart: unless-stopped
     ports:
       - '80:80'
@@ -10,7 +12,7 @@ services:
     environment:
       DOMINIO: ${DOMINIO:?definí DOMINIO en .env}
     volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - fotos:/srv/fotos:ro
       - caddy_data:/data
       - caddy_config:/config
     depends_on:
@@ -28,6 +30,9 @@ services:
       DATABASE_URL: postgres://gula_app:${GULA_APP_PASSWORD:?}@postgres:5432/gula
       DATABASE_ADMIN_URL: postgres://postgres:${POSTGRES_PASSWORD:?}@postgres:5432/gula
       JWT_SECRET: ${JWT_SECRET:?definí JWT_SECRET (32+ caracteres)}
+      DIR_FOTOS: /data/fotos
+    volumes:
+      - fotos:/data/fotos
     depends_on:
       postgres:
         condition: service_healthy
@@ -52,3 +57,4 @@ volumes:
   caddy_data:
   caddy_config:
   pg_data:
+  fotos:

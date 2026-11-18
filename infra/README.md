@@ -29,6 +29,14 @@ docker compose -f compose.prod.yml exec api node dist/admin/cli.js crear-local \
   --email dueno@mail.com --password '<contraseña>' --pin 1234
 ```
 
+### Cargar la carta de demostración
+
+```bash
+docker compose -f compose.prod.yml exec api node dist/admin/cli.js cargar-demo --slug nombre-local
+```
+
+La carta queda en `https://$DOMINIO/nombre-local`.
+
 ### Actualizar
 
 ```bash

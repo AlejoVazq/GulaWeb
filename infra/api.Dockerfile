@@ -15,6 +15,7 @@ FROM node:24-slim
 ENV NODE_ENV=production
 WORKDIR /app
 COPY --from=build --chown=node:node /out .
+RUN mkdir -p /data/fotos && chown node:node /data/fotos
 USER node
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=3s --retries=3 \

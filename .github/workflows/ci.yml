@@ -30,3 +30,4 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
       - run: docker build -f infra/api.Dockerfile .
+      - run: docker build -f infra/caddy.Dockerfile .
