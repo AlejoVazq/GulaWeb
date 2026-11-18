@@ -2,6 +2,7 @@ packages:
   - apps/*
   - packages/*
 onlyBuiltDependencies:
+  - electron
   - esbuild
   - '@node-rs/argon2'
   - sharp

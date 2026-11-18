@@ -1,0 +1,15 @@
+import { defineConfig } from 'vitest/config';
+import react from '@vitejs/plugin-react';
+import { fileURLToPath } from 'node:url';
+
+export default defineConfig({
+  plugins: [react()],
+  resolve: {
+    alias: { '@gula/shared': fileURLToPath(new URL('../../packages/shared/src/index.ts', import.meta.url)) },
+  },
+  test: {
+    fileParallelism: false,
+    environmentMatchGlobs: [['src/renderer/**', 'jsdom']],
+    setupFiles: ['./test/setup.ts'],
+  },
+});
