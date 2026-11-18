@@ -3,6 +3,8 @@ import { z } from 'zod';
 import type { Config } from '../config.js';
 import type { Dbs } from '../db/cliente.js';
 import * as v from '../validacion.js';
+import { firmarAcceso } from '../seguridad/tokens.js';
+import { listarUsuariosActivos, verificarPin } from './pin.js';
 import { loginDispositivo, logout, quienSoy, refrescar } from './servicio.js';
 
 const cuerpoLogin = z.object({
@@ -34,5 +36,20 @@ export async function rutasAuth(app: FastifyInstance, opts: { config: Config; db
   app.post('/auth/logout', { preHandler: app.autenticar }, async (req, reply) => {
     await logout(dbs, req.sesion);
     return reply.status(204).send();
+  });
+
+  app.get('/auth/usuarios', { preHandler: app.autenticar }, async (req) =>
+    listarUsuariosActivos(dbs, req.sesion.localId),
+  );
+
+  app.post('/auth/pin', { preHandler: app.autenticar }, async (req) => {
+    const b = z.object({ usuarioId: z.uuid(), pin: z.string().max(10) }).parse(req.body);
+    const { localId, dispositivoId } = req.sesion;
+    const usuario = await verificarPin(dbs, localId, b.usuarioId, b.pin);
+    const accessToken = await firmarAcceso(
+      { sub: usuario.id, loc: localId, dev: dispositivoId, rol: usuario.rol },
+      config.jwtSecret,
+    );
+    return { accessToken, usuario };
   });
 }
