@@ -10,6 +10,7 @@ import { rutasUsuarios } from './usuarios/rutas.js';
 import { rutasSectores } from './carta/sectores.rutas.js';
 import { rutasCategorias } from './carta/categorias.rutas.js';
 import { rutasProductos } from './carta/productos.rutas.js';
+import { rutasOpciones } from './carta/opciones.rutas.js';
 
 /** `deps.dbs` permite inyectar conexiones (tests); si no, la app crea y cierra las suyas. */
 export async function buildApp(config: Config, deps: { dbs?: Dbs } = {}): Promise<FastifyInstance> {
@@ -32,5 +33,6 @@ export async function buildApp(config: Config, deps: { dbs?: Dbs } = {}): Promis
   await app.register(rutasSectores, { dbs });
   await app.register(rutasCategorias, { dbs });
   await app.register(rutasProductos, { dbs });
+  await app.register(rutasOpciones, { dbs });
   return app;
 }
