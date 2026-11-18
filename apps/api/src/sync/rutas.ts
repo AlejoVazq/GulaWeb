@@ -6,6 +6,8 @@ import type { Dbs, Tx } from '../db/cliente.js';
 import { conLocal } from '../db/conLocal.js';
 import { categorias, gruposOpciones, opciones, productos, sectores } from '../db/schema/index.js';
 import { hhmm, urlsFoto } from '../carta/comun.js';
+import { esquemaLote, procesarLote } from './operaciones.js';
+import './tiposCarta.js';
 
 /** Solape del pull: un commit puede llegar después con un actualizado_en anterior al cursor. */
 export const SOLAPE_MS = 30_000;
@@ -74,4 +76,15 @@ export async function rutasSync(app: FastifyInstance, { dbs }: { dbs: Dbs }) {
       return { cursor: new Date(ahora).toISOString(), ...cambios };
     });
   });
+
+  app.post(
+    '/sync/operaciones',
+    { preHandler: app.autenticar, bodyLimit: 1024 * 1024 },
+    async (req) => {
+      const { operaciones } = esquemaLote.parse(req.body);
+      const { resultados, temas } = await procesarLote(dbs, req.sesion, operaciones);
+      for (const t of temas) app.avisar(req.sesion.localId, t);
+      return { resultados };
+    },
+  );
 }

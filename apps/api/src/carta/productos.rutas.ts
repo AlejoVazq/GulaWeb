@@ -7,6 +7,7 @@ import type { Dbs, Tx } from '../db/cliente.js';
 import { conLocal } from '../db/conLocal.js';
 import { categorias, productos, sectores } from '../db/schema/index.js';
 import { registrarAuditoria } from '../auditoria/registrar.js';
+import type { Sesion } from '../auth/plugin.js';
 import * as v from '../validacion.js';
 import { buscarVigente, datosInvalidos, orden, paramId, reordenar, urlsFoto } from './comun.js';
 
@@ -55,6 +56,32 @@ async function validarReferencias(tx: Tx, b: { categoriaId?: string; sectorId?: 
       .where(and(eq(sectores.id, b.sectorId), isNull(sectores.eliminadoEn)));
     if (!s) throw datosInvalidos('El sector no existe');
   }
+}
+
+/** Lo usan la ruta REST y la operación offline `producto.disponibilidad`. */
+export async function cambiarDisponibilidadProducto(
+  tx: Tx,
+  sesion: Sesion,
+  id: string,
+  disponible: boolean,
+) {
+  const antes = await buscarVigente(tx, productos, id, 'ese producto');
+  const [despues] = await tx
+    .update(productos)
+    .set({ disponible })
+    .where(eq(productos.id, id))
+    .returning();
+  if (antes.disponible !== disponible) {
+    await registrarAuditoria(tx, {
+      sesion,
+      accion: 'producto.disponibilidad',
+      entidad: 'producto',
+      entidadId: id,
+      antes: { disponible: antes.disponible },
+      despues: { disponible },
+    });
+  }
+  return vistaProducto(despues!);
 }
 
 export async function rutasProductos(app: FastifyInstance, { dbs }: { dbs: Dbs }) {
@@ -132,25 +159,9 @@ export async function rutasProductos(app: FastifyInstance, { dbs }: { dbs: Dbs }
   app.patch('/carta/productos/:id/disponibilidad', disponibilidad, async (req) => {
     const { id } = paramId.parse(req.params);
     const { disponible } = z.object({ disponible: z.boolean() }).parse(req.body);
-    return conLocal(dbs.dbApp, req.sesion.localId, async (tx) => {
-      const antes = await buscarVigente(tx, productos, id, 'ese producto');
-      const [despues] = await tx
-        .update(productos)
-        .set({ disponible })
-        .where(eq(productos.id, id))
-        .returning();
-      if (antes.disponible !== disponible) {
-        await registrarAuditoria(tx, {
-          sesion: req.sesion,
-          accion: 'producto.disponibilidad',
-          entidad: 'producto',
-          entidadId: id,
-          antes: { disponible: antes.disponible },
-          despues: { disponible },
-        });
-      }
-      return vistaProducto(despues!);
-    });
+    return conLocal(dbs.dbApp, req.sesion.localId, (tx) =>
+      cambiarDisponibilidadProducto(tx, req.sesion, id, disponible),
+    );
   });
 
   app.delete('/carta/productos/:id', editar, async (req, reply) => {

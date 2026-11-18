@@ -3,7 +3,7 @@ import { avisarCambiosDeCarta } from '../tiempoReal/avisar.js';
 import { and, eq, isNull } from 'drizzle-orm';
 import { z } from 'zod';
 import { nuevoId } from '@gula/shared';
-import type { Dbs } from '../db/cliente.js';
+import type { Dbs, Tx } from '../db/cliente.js';
 import { conLocal } from '../db/conLocal.js';
 import { gruposOpciones, opciones, productos } from '../db/schema/index.js';
 import * as v from '../validacion.js';
@@ -26,6 +26,13 @@ const cuerpoOpcion = z.object({
 const validarMinMax = (min: number, max: number) => {
   if (min > max) throw datosInvalidos('El mínimo no puede ser mayor que el máximo');
 };
+
+/** Lo usan la ruta REST y la operación offline `opcion.disponibilidad`. */
+export async function cambiarDisponibilidadOpcion(tx: Tx, id: string, disponible: boolean) {
+  await buscarVigente(tx, opciones, id, 'esa opción');
+  const [o] = await tx.update(opciones).set({ disponible }).where(eq(opciones.id, id)).returning();
+  return vistaOpcion(o!);
+}
 
 export async function rutasOpciones(app: FastifyInstance, { dbs }: { dbs: Dbs }) {
   avisarCambiosDeCarta(app);
@@ -136,15 +143,9 @@ export async function rutasOpciones(app: FastifyInstance, { dbs }: { dbs: Dbs })
   app.patch('/carta/opciones/:id/disponibilidad', disponibilidad, async (req) => {
     const { id } = paramId.parse(req.params);
     const { disponible } = z.object({ disponible: z.boolean() }).parse(req.body);
-    return conLocal(dbs.dbApp, req.sesion.localId, async (tx) => {
-      await buscarVigente(tx, opciones, id, 'esa opción');
-      const [o] = await tx
-        .update(opciones)
-        .set({ disponible })
-        .where(eq(opciones.id, id))
-        .returning();
-      return vistaOpcion(o!);
-    });
+    return conLocal(dbs.dbApp, req.sesion.localId, (tx) =>
+      cambiarDisponibilidadOpcion(tx, id, disponible),
+    );
   });
 
   app.delete('/carta/opciones/:id', editar, async (req, reply) => {
