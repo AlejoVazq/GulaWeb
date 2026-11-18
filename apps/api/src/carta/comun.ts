@@ -51,3 +51,7 @@ export async function reordenar(
 
 /** '20:00:00' → '20:00' */
 export const hhmm = (t: string | null) => (t ? t.slice(0, 5) : null);
+
+/** Nombre base guardado en productos.foto → URLs públicas de las dos variantes. */
+export const urlsFoto = (base: string | null) =>
+  base ? { chica: `/fotos/${base}-400.webp`, grande: `/fotos/${base}-800.webp` } : null;
