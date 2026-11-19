@@ -6,6 +6,8 @@ import { Carta } from './Carta';
 import { Mesas } from './Mesas';
 import { DetalleMesa } from './DetalleMesa';
 import { TomarPedido } from '../componentes/TomarPedido';
+import { Alerta } from '../componentes/Alerta';
+import { Pendientes } from '../componentes/Pendientes';
 import { useSalon } from '../useSalon';
 
 type Activa = Extract<EstadoSesion, { tipo: 'activa' }>;
@@ -18,11 +20,13 @@ export function Shell({ sesion, sync }: { sesion: Activa; sync: EstadoSync }) {
   const { salon } = useSalon();
   const [aviso, setAviso] = useState<string | null>(null);
   const volver = () => setVista({ tipo: 'seccion' });
+  const sinAtender = salon.pendientes.length + salon.avisos.length;
   return (
     <div className="shell">
-      <header className="barra">
+      <header className={sinAtender ? 'barra barra--alerta' : 'barra'}>
         <strong>{sesion.local.nombre}</strong>
         <Conexion estado={sync} />
+        <Alerta activa={sinAtender > 0} cantidad={sinAtender} />
         <span className="barra__usuario">{sesion.usuario.nombre}</span>
         <button type="button" className="boton" onClick={() => void llamar('sesion:bloquear')}>
           Cambiar usuario
@@ -79,6 +83,7 @@ export function Shell({ sesion, sync }: { sesion: Activa; sync: EstadoSync }) {
         )}
         {seccion === 'carta' && <Carta usuario={sesion.usuario} conexion={sync.conexion} />}
       </section>
+      <Pendientes salon={salon} />
     </div>
   );
 }

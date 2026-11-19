@@ -3,6 +3,7 @@ import { formatearPrecio } from '@gula/shared';
 import type { DetalleMesa as Detalle, Pedido } from '../../compartido/salon';
 import { escuchar, llamar, mensajeDe } from '../gula';
 import { TomarPedido } from '../componentes/TomarPedido';
+import { hora } from '../formato';
 
 const ESTADOS: Record<Pedido['estado'], string> = {
   pendiente: 'Pendiente de confirmar',
@@ -11,9 +12,6 @@ const ESTADOS: Record<Pedido['estado'], string> = {
   anulado: 'Anulado',
 };
 const AVISOS = { llamar: 'Llamó a la moza', cuenta: 'Pidió la cuenta' } as const;
-
-export const hora = (iso: string) =>
-  new Date(iso).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
 
 function TarjetaPedido({ p }: { p: Pedido }) {
   const titulo = p.numero ? `Pedido ${p.numero}` : 'Pedido sin número';
