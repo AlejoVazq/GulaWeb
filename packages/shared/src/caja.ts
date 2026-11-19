@@ -61,3 +61,6 @@ export function resumenTurno(t: {
     efectivoEsperado: t.fondo + porMetodo.efectivo.ventas + porMetodo.efectivo.propinas + ingresos - egresos,
   };
 }
+
+/** Tope de montos de caja en centavos ($ 1.000 millones): muy por encima de un turno real y dentro de lo exacto en JS. */
+export const MONTO_MAXIMO_CAJA = 100_000_000_000;

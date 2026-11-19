@@ -1,13 +1,12 @@
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
-import { MOTIVO_MAXIMO, sinControl } from '@gula/shared';
-import { PRECIO_MAXIMO } from '../carta/productos.rutas.js';
+import { MONTO_MAXIMO_CAJA, MOTIVO_MAXIMO, sinControl } from '@gula/shared';
 import type { Tx } from '../db/cliente.js';
 import { turnosCaja } from '../db/schema/index.js';
 import { ErrorApi } from '../errores.js';
 
-export const monto = z.number().int().min(1).max(PRECIO_MAXIMO);
-export const montoOCero = z.number().int().min(0).max(PRECIO_MAXIMO);
+export const monto = z.number().int().min(1).max(MONTO_MAXIMO_CAJA);
+export const montoOCero = z.number().int().min(0).max(MONTO_MAXIMO_CAJA);
 export const motivo = z.string().max(MOTIVO_MAXIMO).transform(sinControl).pipe(z.string().min(1));
 
 export const cajaCerrada = () =>

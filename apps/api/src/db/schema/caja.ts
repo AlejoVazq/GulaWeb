@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { check, index, integer, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
+import { bigint, check, index, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 import { pedidos, sesionesMesa, sincronizable } from './salon.js';
 
 export const turnosCaja = pgTable(
@@ -8,12 +8,12 @@ export const turnosCaja = pgTable(
     ...sincronizable(),
     abiertoPor: uuid('abierto_por').notNull(),
     abiertoEn: timestamp('abierto_en', { withTimezone: true }).notNull().defaultNow(),
-    fondo: integer('fondo').notNull(),
+    fondo: bigint('fondo', { mode: 'number' }).notNull(),
     cerradoPor: uuid('cerrado_por'),
     cerradoEn: timestamp('cerrado_en', { withTimezone: true }),
-    contado: integer('contado'),
-    esperado: integer('esperado'),
-    diferencia: integer('diferencia'),
+    contado: bigint('contado', { mode: 'number' }),
+    esperado: bigint('esperado', { mode: 'number' }),
+    diferencia: bigint('diferencia', { mode: 'number' }),
     notas: text('notas'),
   },
   (t) => [
@@ -31,10 +31,10 @@ export const cobros = pgTable(
       .references(() => turnosCaja.id),
     sesionId: uuid('sesion_id').references(() => sesionesMesa.id),
     pedidoId: uuid('pedido_id').references(() => pedidos.id),
-    subtotal: integer('subtotal').notNull(),
-    descuento: integer('descuento').notNull().default(0),
+    subtotal: bigint('subtotal', { mode: 'number' }).notNull(),
+    descuento: bigint('descuento', { mode: 'number' }).notNull().default(0),
     motivoDescuento: text('motivo_descuento'),
-    total: integer('total').notNull(),
+    total: bigint('total', { mode: 'number' }).notNull(),
     cobradoPor: uuid('cobrado_por').notNull(),
     cobradoEn: timestamp('cobrado_en', { withTimezone: true }).notNull().defaultNow(),
   },
@@ -56,8 +56,8 @@ export const pagos = pgTable(
       .notNull()
       .references(() => turnosCaja.id),
     metodo: text('metodo', { enum: ['efectivo', 'debito', 'credito', 'transferencia', 'mercadopago', 'otro'] }).notNull(),
-    monto: integer('monto').notNull(),
-    propina: integer('propina').notNull().default(0),
+    monto: bigint('monto', { mode: 'number' }).notNull(),
+    propina: bigint('propina', { mode: 'number' }).notNull().default(0),
   },
   (t) => [
     index('pagos_turno_idx').on(t.turnoId),
@@ -75,7 +75,7 @@ export const movimientosCaja = pgTable(
       .references(() => turnosCaja.id),
     tipo: text('tipo', { enum: ['ingreso', 'egreso'] }).notNull(),
     categoria: text('categoria', { enum: ['proveedores', 'sueldos', 'retiro', 'otro'] }).notNull(),
-    monto: integer('monto').notNull(),
+    monto: bigint('monto', { mode: 'number' }).notNull(),
     motivo: text('motivo').notNull(),
     usuarioId: uuid('usuario_id').notNull(),
     hechoEn: timestamp('hecho_en', { withTimezone: true }).notNull().defaultNow(),

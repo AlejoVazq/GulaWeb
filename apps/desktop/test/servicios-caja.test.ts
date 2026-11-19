@@ -202,3 +202,10 @@ it('los autorizantes son encargados y dueños, y sin conexión salen de la copia
   red = false;
   expect((await servicios['sesion:autorizantes']()).map((u) => u.id)).toEqual(['enc', 'd']);
 });
+
+it('una caja con más de $ 10 millones se cierra (tope de caja, no de precio)', async () => {
+  const { servicios } = await armar();
+  await servicios['caja:abrir']({ fondo: 0 });
+  await servicios['caja:movimiento']({ tipo: 'ingreso', categoria: 'otro', monto: 3_000_000_000, motivo: 'Recaudación' });
+  expect(await servicios['caja:cerrar']({ contado: 3_000_000_000 })).toEqual({ esperado: 3_000_000_000, diferencia: 0 });
+});

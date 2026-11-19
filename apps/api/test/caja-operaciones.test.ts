@@ -89,3 +89,16 @@ it('montos inválidos se rechazan', async () => {
   );
   expect(r.map((x) => x.error?.codigo)).toEqual(['DATOS_INVALIDOS', 'DATOS_INVALIDOS', 'DATOS_INVALIDOS']);
 });
+
+it('una caja con más de $ 20 millones se cierra igual (montos grandes)', async () => {
+  const turnoId = nuevoId();
+  const r = await enviar(
+    e.tokenEncargado,
+    op('caja.abrir', { turnoId, fondo: 0 }),
+    op('caja.movimiento', { movimientoId: nuevoId(), turnoId, tipo: 'ingreso', categoria: 'otro', monto: 3_000_000_000, motivo: 'Recaudación' }),
+    op('caja.cerrar', { turnoId, contado: 3_000_000_000 }),
+  );
+  expect(r.map((x) => x.estado)).toEqual(['aplicada', 'aplicada', 'aplicada']);
+  const [t] = await leer((tx) => tx.select().from(turnosCaja).where(eq(turnosCaja.id, turnoId)));
+  expect(t).toMatchObject({ esperado: 3_000_000_000, contado: 3_000_000_000, diferencia: 0 });
+});

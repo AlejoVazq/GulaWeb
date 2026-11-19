@@ -1,5 +1,6 @@
 import {
   METODOS_PAGO,
+  MONTO_MAXIMO_CAJA,
   MOTIVO_MAXIMO,
   PAGOS_MAXIMOS,
   CATEGORIAS_MOVIMIENTO,
@@ -47,7 +48,7 @@ type Deps = {
 };
 
 const invalido = (m: string) => new ErrorGula('DATOS_INVALIDOS', m);
-const entero = (v: unknown, min: number) => typeof v === 'number' && Number.isInteger(v) && v >= min && v <= 999_999_900;
+const entero = (v: unknown, min: number) => typeof v === 'number' && Number.isInteger(v) && v >= min && v <= MONTO_MAXIMO_CAJA;
 const motivoValido = (m: string) => {
   const t = sinControl(m ?? '');
   if (!t || t.length > MOTIVO_MAXIMO) throw invalido('Escribí el motivo.');
@@ -155,6 +156,7 @@ export function crearServiciosCaja(d: Deps): ServiciosCaja {
         subtotal = p.total;
       }
       if (subtotal <= 0) throw new ErrorGula('ESTADO_INVALIDO', 'No hay nada para cobrar.');
+      if (subtotal > MONTO_MAXIMO_CAJA) throw invalido('El total supera el máximo que acepta la caja.');
       let desc = 0;
       let motivoDescuento: string | null = null;
       if (descuento && descuento.valor) {
