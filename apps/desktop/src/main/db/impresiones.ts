@@ -41,11 +41,11 @@ export function insertarImpresiones(base: BaseLocal, lista: NuevaImpresion[], ah
 }
 
 /** El próximo a imprimir, en orden de creación (el id UUIDv7 ordena por tiempo). */
-export function siguientePendiente(base: BaseLocal): { id: string; documento: Documento } | null {
+export function siguientePendiente(base: BaseLocal): { id: string; documento: string } | null {
   const f = base.db.prepare("SELECT id, documento FROM impresiones WHERE estado = 'pendiente' ORDER BY id LIMIT 1").get() as
     | { id: string; documento: string }
     | undefined;
-  return f ? { id: f.id, documento: JSON.parse(f.documento) as Documento } : null;
+  return f ? { id: f.id, documento: f.documento } : null;
 }
 
 export function marcarImpresion(

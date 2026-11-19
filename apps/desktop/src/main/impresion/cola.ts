@@ -14,6 +14,14 @@ import { aEscPos } from './escpos';
 import type { Transporte } from './windows';
 
 const CLAVE = 'impresion:config';
+
+function leerDocumento(crudo: string): Documento {
+  try {
+    return JSON.parse(crudo) as Documento;
+  } catch {
+    throw new Error('El ticket guardado está dañado y no se puede imprimir.');
+  }
+}
 export const INTERRUMPIDA = 'La app se cerró mientras imprimía: no sabemos si salió.';
 
 type Deps = {
@@ -57,15 +65,20 @@ export function crearColaImpresion(d: Deps) {
       return trabajando;
     }
     trabajando = (async () => {
-      for (let t = siguientePendiente(d.base); t; t = siguientePendiente(d.base)) {
-        marcarImpresion(d.base, t.id, 'imprimiendo');
-        try {
-          await enviar(t.documento);
-          marcarImpresion(d.base, t.id, 'impresa', { impresaEn: ahora().toISOString() });
-        } catch (e) {
-          marcarImpresion(d.base, t.id, 'error', { error: e instanceof Error ? e.message : String(e) });
+      try {
+        for (let t = siguientePendiente(d.base); t; t = siguientePendiente(d.base)) {
+          marcarImpresion(d.base, t.id, 'imprimiendo');
+          try {
+            await enviar(leerDocumento(t.documento));
+            marcarImpresion(d.base, t.id, 'impresa', { impresaEn: ahora().toISOString() });
+          } catch (e) {
+            marcarImpresion(d.base, t.id, 'error', { error: e instanceof Error ? e.message : String(e) });
+          }
+          d.alCambiar();
         }
-        d.alCambiar();
+      } catch (e) {
+        // La base dejó de responder (por ejemplo, al cerrar la app): lo que quedó se resuelve al volver a abrir.
+        console.error('La cola de impresión se detuvo', e);
       }
     })().finally(() => {
       trabajando = null;

@@ -142,3 +142,32 @@ it('un ticket encolado justo cuando termina el anterior también sale', async ()
     base = abrirBase(tmp.ruta(`c${n++}.db`));
   }
 });
+
+it('un ticket roto en la base no traba la cola ni deja promesas sin atrapar', async () => {
+  base.db
+    .prepare(
+      `INSERT INTO impresiones (id, tipo, titulo, documento, estado, intentos, creada_en)
+       VALUES ('019a0000-0000-7000-8000-000000000001', 'comanda', 'Roto', '{no es json', 'pendiente', 0, '2026-11-18T20:00:00Z')`,
+    )
+    .run();
+  const imprimir = vi.fn(async () => {});
+  const cola = crearColaImpresion({ base, transporte: { imprimir }, alVistaPrevia: vi.fn(), alCambiar: vi.fn() });
+  cola.fijarConfig({ modo: 'impresora', impresora: 'Termica', columnas: 48 });
+  cola.encolar([{ tipo: 'comanda', documento: doc('Sana') }]);
+  await cola.esperar();
+  expect(imprimir).toHaveBeenCalledTimes(1);
+  expect(cola.trabajos().conError.map((t) => t.titulo)).toEqual(['Roto']);
+});
+
+it('si la base se cierra mientras imprime, el trabajador termina sin romper', async () => {
+  let soltar = () => {};
+  const transporte: Transporte = { imprimir: () => new Promise<void>((r) => (soltar = r)) };
+  const { cola } = armar(transporte);
+  cola.encolar([{ tipo: 'comanda', documento: doc('A') }]);
+  await new Promise((r) => setTimeout(r, 5));
+  const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+  base.cerrar();
+  soltar();
+  await expect(cola.esperar()).resolves.toBeUndefined();
+  error.mockRestore();
+});
