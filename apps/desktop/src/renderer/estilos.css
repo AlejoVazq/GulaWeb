@@ -890,6 +890,10 @@ input[role='switch'] {
   font-size: 1.5rem;
   max-width: 7ch;
 }
+.mesa__estados {
+  display: grid;
+  align-self: end;
+}
 .mesa__estado {
   font-family: var(--cartelera);
   font-weight: 700;
@@ -899,6 +903,7 @@ input[role='switch'] {
   line-height: 1.1;
 }
 .mesa__detalle {
+  align-self: start;
   font-size: 0.82rem;
   color: var(--texto-suave);
 }

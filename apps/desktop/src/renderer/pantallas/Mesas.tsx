@@ -86,10 +86,25 @@ function AbrirMesa({ mesa, onCerrar, onAbierta }: { mesa: MesaSalon; onCerrar: (
   );
 }
 
+type Filtro = 'todas' | 'abiertas' | 'libres';
+const FILTROS: [Filtro, string][] = [
+  ['todas', 'Todas'],
+  ['abiertas', 'Abiertas'],
+  ['libres', 'Libres'],
+];
+
+/** "Mesa 7" → "7"; un nombre sin número va entero (y la placa se achica). */
+function placaDe(nombre: string): string {
+  const m = /^mesa\s*(\d+)$/i.exec(nombre.trim());
+  return m ? m[1]! : nombre;
+}
+
 export function Mesas({ salon, onVerMesa, onMostrador, porCobrar = [], onCobrar, ahora = new Date() }: Props) {
   const [abriendo, setAbriendo] = useState<MesaSalon | null>(null);
+  const [filtro, setFiltro] = useState<Filtro>('todas');
+  const visibles = salon.mesas.filter((m) => (filtro === 'todas' ? true : filtro === 'abiertas' ? m.sesion : !m.sesion));
   const zonas = new Map<string, MesaSalon[]>();
-  for (const m of salon.mesas) {
+  for (const m of visibles) {
     const z = m.zona ?? 'Mesas';
     if (!zonas.has(z)) zonas.set(z, []);
     zonas.get(z)!.push(m);
@@ -97,9 +112,13 @@ export function Mesas({ salon, onVerMesa, onMostrador, porCobrar = [], onCobrar,
 
   return (
     <div className="mesas">
-      <div className="fila fila--entre">
-        <h1 className="titulo">Mesas</h1>
-        <button type="button" className="boton boton--principal" onClick={onMostrador}>
+      <div className="filtros" role="group" aria-label="Filtrar mesas">
+        {FILTROS.map(([id, texto]) => (
+          <button key={id} type="button" className="filtro" aria-pressed={filtro === id} onClick={() => setFiltro(id)}>
+            {texto}
+          </button>
+        ))}
+        <button type="button" className="boton boton--linea filtros__accion" onClick={onMostrador}>
           Pedido de mostrador
         </button>
       </div>
@@ -131,19 +150,23 @@ export function Mesas({ salon, onVerMesa, onMostrador, porCobrar = [], onCobrar,
             {mesas.map((m) => {
               const estados = estadoDe(m);
               const info = detalle(m, ahora);
+              const placa = placaDe(m.nombre);
               return (
                 <button
                   key={m.id}
                   type="button"
                   className={`mesa mesa--${estados[0]!.tono}`}
+                  aria-label={[m.nombre, estados.map((e) => e.texto).join(', '), info].filter(Boolean).join(' · ')}
                   onClick={() => (m.sesion ? onVerMesa(m.id) : setAbriendo(m))}
                 >
-                  <span className="mesa__nombre">{m.nombre}</span>
-                  {estados.map((e) => (
-                    <span key={e.texto} className={`etiqueta etiqueta--${e.tono}`}>
-                      {e.texto}
-                    </span>
-                  ))}
+                  <span className={placa.length > 3 ? 'mesa__placa mesa__placa--larga' : 'mesa__placa'}>{placa}</span>
+                  <span className="mesa__estados">
+                    {estados.map((e) => (
+                      <span key={e.texto} className="mesa__estado">
+                        {e.texto}
+                      </span>
+                    ))}
+                  </span>
                   {info && <span className="mesa__detalle">{info}</span>}
                 </button>
               );

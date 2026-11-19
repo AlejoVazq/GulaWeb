@@ -116,3 +116,28 @@ it('los pedidos de mostrador sin cobrar se listan con su total y "Cobrar"', asyn
   await userEvent.click(within(bloque).getByRole('button', { name: 'Cobrar pedido 7' }));
   expect(onCobrar).toHaveBeenCalledWith(pedido);
 });
+
+it('filtro "Libres" muestra solo mesas sin sesión y "Abiertas" las ocupadas', async () => {
+  puenteFalso({});
+  render(<Mesas salon={salon} ahora={AHORA} onVerMesa={vi.fn()} onMostrador={vi.fn()} />);
+  await userEvent.click(screen.getByRole('button', { name: 'Libres' }));
+  expect(screen.getByRole('button', { name: 'Libres' })).toHaveAttribute('aria-pressed', 'true');
+  expect(tarjeta('Mesa 1')).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: /^Mesa 2\b/ })).not.toBeInTheDocument();
+  await userEvent.click(screen.getByRole('button', { name: 'Abiertas' }));
+  expect(screen.queryByRole('button', { name: /^Mesa 1\b/ })).not.toBeInTheDocument();
+  expect(tarjeta('Mesa 5')).toBeInTheDocument();
+});
+
+it('la placa muestra el número de la mesa', () => {
+  puenteFalso({});
+  render(<Mesas salon={salon} ahora={AHORA} onVerMesa={vi.fn()} onMostrador={vi.fn()} />);
+  expect(tarjeta('Mesa 3').querySelector('.mesa__placa')).toHaveTextContent(/^3$/);
+});
+
+it('30 mesas con nombres largos se renderizan todas con su nombre completo', () => {
+  puenteFalso({});
+  const muchas = Array.from({ length: 30 }, (_, i) => mesa(`x${i}`, i % 2 ? `Patio ${i}` : `Barra del fondo ${i}`));
+  render(<Mesas salon={{ mesas: muchas, pendientes: [], avisos: [] }} ahora={AHORA} onVerMesa={vi.fn()} onMostrador={vi.fn()} />);
+  for (const m of muchas) expect(tarjeta(m.nombre)).toBeInTheDocument();
+});
