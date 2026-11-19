@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { App } from './App';
 import { puenteFalso } from './pruebas';
 import type { Salon } from '../compartido/salon';
@@ -20,4 +20,26 @@ it('con la PC bloqueada, un pedido pendiente sigue avisando', async () => {
   render(<App />);
   expect(await screen.findByText('Hay pedidos o avisos sin atender')).toBeInTheDocument();
   expect(screen.getByText('1 pendiente: elegí tu usuario para atenderlo.')).toBeInTheDocument();
+});
+
+it('el riel marca la sección activa con aria-current y el cartel muestra su nombre y resumen', async () => {
+  const { default: userEvent } = await import('@testing-library/user-event');
+  puenteFalso({
+    'sesion:estado': () => ({
+      tipo: 'activa',
+      local: { id: 'l1', nombre: 'Gula', slug: 'gula' },
+      usuario: { id: 'u1', nombre: 'Sofía', rol: 'dueno' },
+    }),
+    'sync:estado': () => ({ conexion: 'en-linea', pendientes: 0, rechazadas: 0, ultimaSync: null }),
+    'salon:leer': () => ({ mesas: [], avisos: [], pendientes: [] }),
+    'impresion:trabajos': () => ({ conError: [], recientes: [] }),
+  });
+  render(<App />);
+  const riel = await screen.findByRole('navigation', { name: 'Secciones' });
+  expect(within(riel).getByRole('button', { name: 'Mesas' })).toHaveAttribute('aria-current', 'page');
+  const cartel = screen.getByRole('banner');
+  expect(within(cartel).getByRole('heading', { name: 'Mesas' })).toBeInTheDocument();
+  await userEvent.click(within(riel).getByRole('button', { name: 'Carta' }));
+  expect(within(screen.getByRole('banner')).getByRole('heading', { name: 'Carta' })).toBeInTheDocument();
+  expect(within(riel).getByText('Gula')).toBeInTheDocument();
 });

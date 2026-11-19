@@ -20,9 +20,10 @@ import { Delivery } from './Delivery';
 import { Reportes } from './Reportes';
 import { AvisoImpresion } from '../componentes/AvisoImpresion';
 import { VistaPrevia } from '../componentes/VistaPrevia';
+import { Cartel } from '../componentes/Cartel';
+import { SECCIONES, resumenMesas, type Seccion } from '../secciones';
 
 type Activa = Extract<EstadoSesion, { tipo: 'activa' }>;
-type Seccion = 'mesas' | 'delivery' | 'caja' | 'reportes' | 'carta' | 'impresion';
 type Vista = { tipo: 'seccion' } | { tipo: 'mesa'; mesaId: string } | { tipo: 'mostrador' };
 
 export function Shell({ sesion, sync, salon }: { sesion: Activa; sync: EstadoSync; salon: Salon }) {
@@ -34,43 +35,60 @@ export function Shell({ sesion, sync, salon }: { sesion: Activa; sync: EstadoSyn
   const puedeCobrar = puede(sesion.usuario.rol, 'cobro.registrar') === 'si';
   const { caja } = useCaja();
   const [cobrandoMostrador, setCobrandoMostrador] = useState<Pedido | null>(null);
-  const secciones: [Seccion, string][] = [
-    ['mesas', 'Mesas'],
-    ...(puede(sesion.usuario.rol, 'delivery.gestionar') === 'si' ? [['delivery', 'Delivery'] as [Seccion, string]] : []),
-    ...(puede(sesion.usuario.rol, 'caja.operar') === 'si' ? [['caja', 'Caja'] as [Seccion, string]] : []),
-    ...(puede(sesion.usuario.rol, 'reportes.ver') === 'si' ? [['reportes', 'Reportes'] as [Seccion, string]] : []),
-    ['carta', 'Carta'],
-    ...(puede(sesion.usuario.rol, 'impresion.configurar') === 'si' ? [['impresion', 'Impresión'] as [Seccion, string]] : []),
+  const ids: Seccion[] = [
+    'mesas',
+    ...(puede(sesion.usuario.rol, 'delivery.gestionar') === 'si' ? (['delivery'] as const) : []),
+    ...(puede(sesion.usuario.rol, 'caja.operar') === 'si' ? (['caja'] as const) : []),
+    ...(puede(sesion.usuario.rol, 'reportes.ver') === 'si' ? (['reportes'] as const) : []),
+    'carta',
+    ...(puede(sesion.usuario.rol, 'impresion.configurar') === 'si' ? (['impresion'] as const) : []),
   ];
+  const mesaVista = vista.tipo === 'mesa' ? salon.mesas.find((m) => m.id === vista.mesaId) : undefined;
+  const cartel = (): { placa: string; titulo?: string; resumen?: string } => {
+    if (seccion === 'mesas') {
+      if (vista.tipo === 'mostrador') return { placa: 'M', titulo: 'Mostrador', resumen: 'Pedido para retirar en la barra' };
+      if (mesaVista) return { placa: mesaVista.nombre.replace(/^mesa\s*/i, ''), titulo: mesaVista.nombre };
+      return resumenMesas(salon.mesas);
+    }
+    if (seccion === 'caja') return { placa: caja?.turno ? 'ABIERTA' : 'CERRADA' };
+    return { placa: SECCIONES[seccion].nombre[0]! };
+  };
   return (
     <div className="shell">
-      <header className={sinAtender ? 'barra barra--alerta' : 'barra'}>
-        <strong>{sesion.local.nombre}</strong>
-        <Conexion estado={sync} />
-        <AvisoSync sync={sync} />
-        <AvisoActualizacion />
-        <Alerta activa={sinAtender > 0} cantidad={sinAtender} />
-        <span className="barra__usuario">{sesion.usuario.nombre}</span>
-        <button type="button" className="boton" onClick={() => void llamar('sesion:bloquear')}>
-          Cambiar usuario
-        </button>
-      </header>
-      <nav className="menu" aria-label="Secciones">
-        {secciones.map(([id, nombre]) => (
+      <nav className="riel" aria-label="Secciones">
+        <div className="riel__local">
+          <span className="riel__nombre">{sesion.local.nombre}</span>
+        </div>
+        {ids.map((id) => (
           <button
             key={id}
             type="button"
-            className={seccion === id ? 'menu__item menu__item--activo' : 'menu__item'}
+            className="riel__item"
+            style={{ '--linea': SECCIONES[id].color } as React.CSSProperties}
             aria-current={seccion === id ? 'page' : undefined}
             onClick={() => {
               setSeccion(id);
               setVista({ tipo: 'seccion' });
             }}
           >
-            {nombre}
+            <span className="riel__muestra" aria-hidden="true" />
+            {SECCIONES[id].nombre}
           </button>
         ))}
+        <p className="riel__pie">GulaWeb</p>
       </nav>
+      <Cartel seccion={seccion} {...cartel()}>
+        <Alerta activa={sinAtender > 0} cantidad={sinAtender} />
+        <Conexion estado={sync} />
+        <AvisoSync sync={sync} />
+        <AvisoActualizacion />
+        <span className="cartel__usuario">
+          {sesion.usuario.nombre}
+          <button type="button" className="boton boton--cartel" onClick={() => void llamar('sesion:bloquear')}>
+            Cambiar usuario
+          </button>
+        </span>
+      </Cartel>
       <AvisoImpresion />
       <section className="contenido">
         {aviso && seccion === 'mesas' && vista.tipo === 'seccion' && (
