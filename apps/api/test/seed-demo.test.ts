@@ -1,6 +1,6 @@
 import { it, expect, beforeEach, afterAll } from 'vitest';
 import { validarSeleccion, type Seleccion } from '@gula/shared';
-import { cargarCartaDemo } from '../src/admin/seedDemo.js';
+import { CARTAS, cargarCartaDemo } from '../src/admin/seedDemo.js';
 import { armarCartaPublica } from '../src/carta/publica.js';
 import { localConDueno } from './app.js';
 import { dbs, limpiarDb } from './db.js';
@@ -44,4 +44,18 @@ it('crea 10 mesas en el Salón y 4 en la Vereda, con tokens únicos', async () =
   );
   expect(filas.filter((m) => m.zona === 'Vereda').map((m) => m.nombre)).toEqual(['Vereda 1', 'Vereda 2', 'Vereda 3', 'Vereda 4']);
   expect(new Set(filas.map((m) => m.token)).size).toBe(14);
+});
+
+it('carga la carta de Gula completa y válida', async () => {
+  const { localId } = await localConDueno('gula');
+  const r = await cargarCartaDemo(dbs, localId, CARTAS.gula);
+  expect(r).toMatchObject({ categorias: 6, productos: 28 });
+  const carta = await armarCartaPublica(dbs, 'gula', new Date('2026-11-18T21:00:00-03:00'));
+  const todos = carta.categorias.flatMap((c) => c.productos);
+  expect(todos).toHaveLength(28);
+  for (const p of todos) {
+    const sel: Seleccion = {};
+    for (const g of p.grupos) sel[g.id] = g.opciones.filter((o) => o.disponible).slice(0, g.min).map((o) => o.id);
+    expect(validarSeleccion(p, sel)).toEqual({ ok: true });
+  }
 });

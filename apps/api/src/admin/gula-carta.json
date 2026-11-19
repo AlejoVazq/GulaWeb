@@ -1,0 +1,87 @@
+{
+  "sectores": ["Cocina", "Barra"],
+  "categorias": [
+    {
+      "nombre": "Entrantes",
+      "productos": [
+        { "nombre": "Papas fritas", "precio": 600000, "sector": "Cocina", "descripcion": "Papas fritas clásicas estilo cube" },
+        { "nombre": "Papas con cheddar", "precio": 800000, "sector": "Cocina", "descripcion": "Papas fritas cube con cheddar de la casa" },
+        { "nombre": "Picadita", "precio": 1200000, "sector": "Cocina", "descripcion": "Jamón, queso tybo, queso roquefort y salame" },
+        { "nombre": "Sticks de pollo", "precio": 900000, "sector": "Cocina", "descripcion": "Pollo frito rebozado en cereales" }
+      ]
+    },
+    {
+      "nombre": "Pizzas",
+      "productos": [
+        { "nombre": "Muzzarella", "precio": 1000000, "sector": "Cocina", "descripcion": "Muzzarella y aceitunas", "etiquetas": ["vegetariano"] },
+        { "nombre": "Especial", "precio": 1250000, "sector": "Cocina", "descripcion": "Muzzarella, jamón, huevo, morrón y aceitunas" },
+        { "nombre": "Napolitana", "precio": 1150000, "sector": "Cocina", "descripcion": "Muzzarella, tomate, albahaca y aceitunas", "etiquetas": ["vegetariano"] },
+        { "nombre": "Cuatro quesos", "precio": 1300000, "sector": "Cocina", "descripcion": "Muzzarella, queso tybo, roquefort, parmesano y aceitunas", "etiquetas": ["vegetariano"] },
+        { "nombre": "Roquefort", "precio": 1200000, "sector": "Cocina", "descripcion": "Muzzarella, roquefort y aceitunas", "etiquetas": ["vegetariano"] },
+        { "nombre": "Calabresa", "precio": 1200000, "sector": "Cocina", "descripcion": "Muzzarella, rodajas de calabresa y aceitunas" },
+        { "nombre": "Fugazzetta", "precio": 1150000, "sector": "Cocina", "descripcion": "Muzzarella, cebolla caramelizada y queso gratinado", "etiquetas": ["vegetariano"] }
+      ]
+    },
+    {
+      "nombre": "Burgers",
+      "productos": [
+        { "nombre": "Burger clásica", "precio": 1100000, "sector": "Cocina", "descripcion": "Medallón de carne, jamón, queso, tomate y lechuga" },
+        { "nombre": "Cheese burger", "precio": 1150000, "sector": "Cocina", "descripcion": "Medallón de carne, queso cheddar y cebolla caramelizada" },
+        { "nombre": "Burger roque", "precio": 1200000, "sector": "Cocina", "descripcion": "Medallón de carne, roquefort y cebolla caramelizada" }
+      ]
+    },
+    {
+      "nombre": "Bebidas sin alcohol",
+      "productos": [
+        { "nombre": "Agua mineral", "precio": 250000, "sector": "Barra", "descripcion": "500 ml" },
+        {
+          "nombre": "Gaseosa 500 ml",
+          "precio": 300000,
+          "sector": "Barra",
+          "descripcion": "Coca-Cola, Sprite o Fanta",
+          "grupos": [
+            { "nombre": "Sabor", "min": 1, "max": 1, "opciones": [{ "nombre": "Coca-Cola" }, { "nombre": "Sprite" }, { "nombre": "Fanta" }] }
+          ]
+        },
+        { "nombre": "Energizante", "precio": 350000, "sector": "Barra", "descripcion": "Speed 250 ml" }
+      ]
+    },
+    {
+      "nombre": "Cervezas",
+      "productos": [
+        { "nombre": "Corona", "precio": 450000, "sector": "Barra", "descripcion": "330 ml" },
+        { "nombre": "Stella Artois", "precio": 500000, "sector": "Barra", "descripcion": "473 ml" },
+        { "nombre": "Artesanal", "precio": 550000, "sector": "Barra", "descripcion": "473 ml" }
+      ]
+    },
+    {
+      "nombre": "Bebidas con alcohol",
+      "productos": [
+        { "nombre": "Fernet Branca", "precio": 650000, "sector": "Barra", "descripcion": "Fernet con Coca-Cola" },
+        { "nombre": "Gin Merle", "precio": 600000, "sector": "Barra", "descripcion": "Gin con agua tónica" },
+        { "nombre": "Gin Beefeater", "precio": 800000, "sector": "Barra", "descripcion": "Gin con agua tónica" },
+        {
+          "nombre": "Smirnoff",
+          "precio": 600000,
+          "sector": "Barra",
+          "descripcion": "Vodka con jugo de naranja o con speed",
+          "grupos": [
+            { "nombre": "Mezcla", "min": 1, "max": 1, "opciones": [{ "nombre": "Jugo de naranja" }, { "nombre": "Speed", "recargo": 50000 }] }
+          ]
+        },
+        { "nombre": "Cuba libre", "precio": 600000, "sector": "Barra", "descripcion": "Ron Havana con Coca-Cola y limón" },
+        {
+          "nombre": "Blenders",
+          "precio": 600000,
+          "sector": "Barra",
+          "descripcion": "Whisky con Coca-Cola o con speed",
+          "grupos": [
+            { "nombre": "Mezcla", "min": 1, "max": 1, "opciones": [{ "nombre": "Coca-Cola" }, { "nombre": "Speed", "recargo": 50000 }] }
+          ]
+        },
+        { "nombre": "Gancia", "precio": 550000, "sector": "Barra", "descripcion": "Gancia con Sprite y limón" },
+        { "nombre": "Campari", "precio": 600000, "sector": "Barra", "descripcion": "Campari con jugo de naranja" }
+      ]
+    }
+  ]
+}

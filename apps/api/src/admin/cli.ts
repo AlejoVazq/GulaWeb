@@ -4,11 +4,11 @@ import { crearDb, type Dbs } from '../db/cliente.js';
 import { locales } from '../db/schema/index.js';
 import { ErrorApi } from '../errores.js';
 import { crearLocal } from '../locales/crearLocal.js';
-import { cargarCartaDemo } from './seedDemo.js';
+import { CARTAS, cargarCartaDemo } from './seedDemo.js';
 
 const USO = `Uso:
   admin crear-local --nombre "<nombre>" --slug <slug> --dueno "<nombre>" --email <email> --password <password> --pin <pin>
-  admin cargar-demo --slug <slug>
+  admin cargar-demo --slug <slug> [--carta demo|gula]
   admin marca --slug <slug> [--color '#b5431c'] [--logo /fotos/... | https://...]`;
 
 const [comando, ...resto] = process.argv.slice(2);
@@ -45,14 +45,16 @@ async function crearLocalCli(dbs: Dbs): Promise<void> {
 }
 
 async function cargarDemoCli(dbs: Dbs): Promise<void> {
-  const { values } = parseArgs({ args: resto, options: { slug: { type: 'string' } } });
+  const { values } = parseArgs({ args: resto, options: { slug: { type: 'string' }, carta: { type: 'string' } } });
+  const carta = CARTAS[values.carta ?? 'demo'];
+  if (!carta) throw new ErrorApi(400, 'DATOS_INVALIDOS', `Cartas disponibles: ${Object.keys(CARTAS).join(', ')}.`);
   const [local] = await dbs.dbAdmin
     .select()
     .from(locales)
     .where(eq(locales.slug, values.slug ?? ''));
   if (!local) throw new ErrorApi(404, 'LOCAL_NO_ENCONTRADO', 'No existe un local con ese slug.');
-  const r = await cargarCartaDemo(dbs, local.id);
-  console.log(`Carta demo cargada: ${r.categorias} categorías, ${r.productos} productos, ${r.mesas} mesas`);
+  const r = await cargarCartaDemo(dbs, local.id, carta);
+  console.log(`Carta cargada: ${r.categorias} categorías, ${r.productos} productos, ${r.mesas} mesas`);
 }
 
 async function marcaCli(dbs: Dbs): Promise<void> {

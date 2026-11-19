@@ -6,6 +6,7 @@ import { categorias, gruposOpciones, mesas, opciones, productos, sectores } from
 import { nuevoToken } from '../salon/mesas.rutas.js';
 import { ErrorApi } from '../errores.js';
 import demo from './demo-carta.json' with { type: 'json' };
+import gula from './gula-carta.json' with { type: 'json' };
 
 type OpcionDemo = { nombre: string; recargo?: number; disponible?: boolean };
 type GrupoDemo = { nombre: string; min: number; max: number; opciones: OpcionDemo[] };
@@ -18,7 +19,7 @@ type ProductoDemo = {
   disponible?: boolean;
   grupos?: GrupoDemo[];
 };
-type CartaDemo = {
+export type CartaDemo = {
   sectores: string[];
   categorias: {
     nombre: string;
@@ -26,6 +27,9 @@ type CartaDemo = {
     productos: ProductoDemo[];
   }[];
 };
+
+/** Cartas incluidas: la demo (bar porteño) y la real de Gula (precios provisorios). */
+export const CARTAS: Record<string, CartaDemo> = { demo: demo as CartaDemo, gula: gula as CartaDemo };
 
 /** Carga la carta de demostración (bar porteño) en un local sin productos. */
 export async function cargarCartaDemo(

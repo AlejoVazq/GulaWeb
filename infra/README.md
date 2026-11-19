@@ -33,6 +33,8 @@ docker compose -f compose.prod.yml exec api node dist/admin/cli.js crear-local \
 
 ```bash
 docker compose -f compose.prod.yml exec api node dist/admin/cli.js cargar-demo --slug nombre-local
+# Carta real de Gula (precios provisorios, se ajustan desde la PC):
+docker compose -f compose.prod.yml exec api node dist/admin/cli.js cargar-demo --slug gula --carta gula
 ```
 
 La carta queda en `https://$DOMINIO/nombre-local`.
@@ -40,7 +42,10 @@ La carta queda en `https://$DOMINIO/nombre-local`.
 ### Marca del local (color y logo de la carta)
 
 ```bash
-docker compose -f compose.prod.yml exec api node dist/admin/cli.js marca --slug nombre-local \n  --color '#1f6f43' --logo https://ejemplo.com/logo.png
+docker compose -f compose.prod.yml exec api node dist/admin/cli.js marca --slug nombre-local \
+  --color '#1f6f43' --logo https://ejemplo.com/logo.png
+# Gula (carta en blanco y negro):
+docker compose -f compose.prod.yml exec api node dist/admin/cli.js marca --slug gula --color '#111111'
 ```
 
 ### Actualizar
