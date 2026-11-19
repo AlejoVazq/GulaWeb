@@ -7,7 +7,7 @@ import { join } from 'node:path';
 export type Transporte = { imprimir(impresora: string, datos: Uint8Array): Promise<void> };
 export type Ejecutar = (o: { script: string; env: Record<string, string> }) => Promise<{ codigo: number; salida: string; stderr: string }>;
 
-const TIMEOUT_MS = 20_000;
+const TIMEOUT_MS = 30_000;
 
 /**
  * Envía bytes RAW al spooler (OpenPrinter → StartDocPrinter "RAW" → WritePrinter). El nombre de la
@@ -38,12 +38,14 @@ public static class GulaRaw {
   public static extern bool WritePrinter(IntPtr h, byte[] datos, int n, out int escritos);
   public static string Enviar(string impresora, byte[] datos) {
     IntPtr h;
+    int trabajo = 0;
     if (!OpenPrinter(impresora, out h, IntPtr.Zero)) return "NO_ENCONTRADA";
     try {
       DOCINFO di = new DOCINFO();
       di.pDocName = "GulaWeb";
       di.pDataType = "RAW";
-      if (StartDocPrinter(h, 1, di) == 0) return "NO_ACEPTO";
+      trabajo = StartDocPrinter(h, 1, di);
+      if (trabajo == 0) return "NO_ACEPTO";
       try {
         StartPagePrinter(h);
         int escritos;
@@ -52,14 +54,41 @@ public static class GulaRaw {
         if (!ok || escritos != datos.Length) return "INCOMPLETO";
       } finally { EndDocPrinter(h); }
     } finally { ClosePrinter(h); }
-    return "OK";
+    return "OK:" + trabajo;
   }
 }
 '@
+$nombre = $env:GULA_IMPRESORA
+function Fin($codigo) { [Console]::Out.WriteLine('GULA:' + $codigo); exit 1 }
+# El spooler acepta trabajos con la impresora apagada o sin papel: se mira el estado antes y después.
+function Problema($estado) {
+  $e = [string]$estado
+  if ($e -match 'PaperOut|PaperProblem') { return 'SIN_PAPEL' }
+  if ($e -match 'Offline|NotAvailable|PowerSave|DoorOpen') { return 'DESCONECTADA' }
+  if ($e -match 'Error|PaperJam|UserIntervention|Blocked') { return 'ERROR_IMPRESORA' }
+  return $null
+}
+$impresora = Get-Printer -Name $nombre -ErrorAction SilentlyContinue
+if (-not $impresora) { Fin 'NO_ENCONTRADA' }
+$antes = Problema $impresora.PrinterStatus
+if ($antes) { Fin $antes }
 Add-Type -TypeDefinition $codigo
-$r = [GulaRaw]::Enviar($env:GULA_IMPRESORA, [IO.File]::ReadAllBytes($env:GULA_ARCHIVO))
-if ($r -ne 'OK') { [Console]::Out.WriteLine('GULA:' + $r); exit 1 }
-exit 0
+$r = [GulaRaw]::Enviar($nombre, [IO.File]::ReadAllBytes($env:GULA_ARCHIVO))
+if (-not $r.StartsWith('OK:')) { Fin $r }
+$id = [int]$r.Substring(3)
+# Se espera a que el trabajo salga de la cola; si se traba, se cancela para que nunca salga tarde.
+$limite = (Get-Date).AddSeconds(15)
+while ((Get-Date) -lt $limite) {
+  $t = Get-PrintJob -PrinterName $nombre -ID $id -ErrorAction SilentlyContinue
+  if (-not $t) { exit 0 }
+  $s = [string]$t.JobStatus
+  if ($s -match 'Printed|Complete') { exit 0 }
+  $p = Problema $s
+  if ($p) { Remove-PrintJob -PrinterName $nombre -ID $id -ErrorAction SilentlyContinue; Fin $p }
+  Start-Sleep -Milliseconds 300
+}
+Remove-PrintJob -PrinterName $nombre -ID $id -ErrorAction SilentlyContinue
+Fin 'NO_TERMINO'
 `;
 
 const powershell: Ejecutar = ({ script, env }) =>
@@ -100,6 +129,14 @@ function mensaje(impresora: string, salida: string, stderr: string): string {
       return 'La impresora no aceptó el trabajo.';
     case 'INCOMPLETO':
       return 'La impresora no recibió el ticket completo.';
+    case 'DESCONECTADA':
+      return 'La impresora está apagada o desconectada. Revisala y tocá Reintentar.';
+    case 'SIN_PAPEL':
+      return 'La impresora no tiene papel. Cambiá el rollo y tocá Reintentar.';
+    case 'ERROR_IMPRESORA':
+      return 'La impresora informó un error. Revisala y tocá Reintentar.';
+    case 'NO_TERMINO':
+      return 'La impresora no terminó de imprimir (¿está encendida y con papel?). Se canceló el trabajo para que no salga tarde.';
   }
   // PowerShell con salida redirigida escribe los errores como CLIXML: se extrae el texto legible.
   const texto = stderr.includes('CLIXML')

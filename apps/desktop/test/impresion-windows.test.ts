@@ -48,3 +48,29 @@ it.runIf(process.platform === 'win32')(
   },
   30_000,
 );
+
+it.each([
+  ['DESCONECTADA', 'La impresora está apagada o desconectada'],
+  ['SIN_PAPEL', 'La impresora no tiene papel'],
+  ['ERROR_IMPRESORA', 'La impresora informó un error'],
+  ['NO_TERMINO', 'Se canceló el trabajo para que no salga tarde'],
+])('el estado %s de la impresora se informa como error', async (codigo, mensaje) => {
+  const ejecutar: Ejecutar = async () => ({ codigo: 1, salida: `GULA:${codigo}\r\n`, stderr: '' });
+  const t = crearTransporteWindows({ ejecutar, dirTemporal: tmp.ruta(`w-${codigo}`) });
+  await expect(t.imprimir('Termica', Uint8Array.from([1]))).rejects.toThrow(mensaje);
+});
+
+it('el script revisa el estado antes de enviar y espera a que el trabajo salga de la cola', async () => {
+  let script = '';
+  const t = crearTransporteWindows({
+    ejecutar: async (o) => {
+      script = o.script;
+      return { codigo: 0, salida: '', stderr: '' };
+    },
+    dirTemporal: tmp.ruta('w5'),
+  });
+  await t.imprimir('X', Uint8Array.from([1]));
+  expect(script.indexOf('Get-Printer')).toBeLessThan(script.indexOf('[GulaRaw]::Enviar'));
+  expect(script).toContain('Get-PrintJob');
+  expect(script).toContain('Remove-PrintJob');
+});
