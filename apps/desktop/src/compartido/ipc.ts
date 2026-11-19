@@ -83,6 +83,7 @@ export type ServiciosGula = {
   'impresion:trabajos': () => Promise<{ conError: TrabajoImpresion[]; recientes: TrabajoImpresion[] }>;
   'impresion:reimprimir': (a: { pedidoId: string }) => Promise<void>;
   'impresion:cuenta': (a: { sesionId: string } | { pedidoId: string }) => Promise<void>;
+  'impresion:delivery': (a: { pedidoId: string }) => Promise<void>;
   'impresion:reintentar': (a: { id: string }) => Promise<void>;
   'impresion:descartar': (a: { id: string }) => Promise<void>;
   'caja:leer': () => Promise<EstadoCaja & { porCobrar: Pedido[] }>;
@@ -142,6 +143,7 @@ export const CANALES: CanalServicio[] = [
   'impresion:trabajos',
   'impresion:reimprimir',
   'impresion:cuenta',
+  'impresion:delivery',
   'impresion:reintentar',
   'impresion:descartar',
   'caja:leer',

@@ -1,4 +1,5 @@
-import { METODOS_PAGO, NOMBRE_METODO, formatearPrecio, type ResumenTurno } from '@gula/shared';
+import { METODOS_PAGO, NOMBRE_METODO, formatearPrecio, vuelto, type ResumenTurno } from '@gula/shared';
+import type { PedidoDelivery } from '../../compartido/delivery';
 import type { Documento, Linea } from '../../compartido/impresion';
 import type { Pedido } from '../../compartido/salon';
 
@@ -11,7 +12,8 @@ const hora = (d: Date) =>
 const fecha = (d: Date) =>
   d.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: ZONA });
 
-const destinoDe = (p: PedidoImprimible) => p.mesa?.nombre ?? (p.origen === 'mostrador' ? 'MOSTRADOR' : 'SIN MESA');
+const destinoDe = (p: PedidoImprimible) =>
+  p.mesa?.nombre ?? (p.origen === 'mostrador' ? 'MOSTRADOR' : p.origen === 'delivery' ? 'DELIVERY' : 'SIN MESA');
 
 /** Un ticket por sector presente en el pedido, en el orden de la carta; lo que no tiene sector va a GENERAL al final. */
 export function comandasDePedido(
@@ -143,4 +145,40 @@ export function cierreDeCaja(
     { tipo: 'texto', texto: 'Documento no válido como factura', alinear: 'centro' },
   ];
   return { titulo: `Cierre de caja ${fecha(ctx.ahora)}`, lineas: l };
+}
+
+/** Ticket que sale con el repartidor: a quién, adónde, qué lleva, cuánto cobrar y cuánto cambio llevar. */
+export function ticketDelivery(p: PedidoDelivery, ctx: { local: string; atendio: string; ahora: Date }): Documento {
+  const r = p.delivery;
+  const v = vuelto(p.aCobrar, r.pagaCon);
+  const l: Linea[] = [
+    { tipo: 'texto', texto: ctx.local, alinear: 'centro', negrita: true },
+    { tipo: 'texto', texto: `DELIVERY · Pedido ${p.numero ?? '-'}`, tam: 'doble', alinear: 'centro', negrita: true },
+    { tipo: 'texto', texto: `${fecha(ctx.ahora)} ${hora(ctx.ahora)} · Atendió: ${ctx.atendio}`, alinear: 'centro' },
+    { tipo: 'separador' },
+    { tipo: 'texto', texto: r.cliente.nombre, tam: 'alto', negrita: true },
+    ...(r.cliente.telefono ? [{ tipo: 'texto', texto: `Tel: ${r.cliente.telefono}` } as Linea] : []),
+    { tipo: 'texto', texto: r.cliente.direccion, tam: 'alto', negrita: true },
+    ...(r.cliente.referencias ? [{ tipo: 'texto', texto: r.cliente.referencias } as Linea] : []),
+    { tipo: 'separador' },
+    ...p.items.map(
+      (i): Linea => ({
+        tipo: 'par',
+        izq: `${i.cantidad}x ${i.resumenOpciones ? `${i.nombre} (${i.resumenOpciones})` : i.nombre}`,
+        der: formatearPrecio(i.cantidad * i.precioUnitario),
+      }),
+    ),
+    { tipo: 'par', izq: 'Envío', der: formatearPrecio(r.costoEnvio) },
+    { tipo: 'separador' },
+    { tipo: 'par', izq: 'TOTAL', der: formatearPrecio(p.aCobrar), tam: 'alto', negrita: true },
+    ...(p.estado === 'cobrado' ? [{ tipo: 'texto', texto: 'YA PAGADO', alinear: 'centro', negrita: true } as Linea] : []),
+    ...(r.pagaCon != null && p.estado !== 'cobrado'
+      ? [{ tipo: 'par', izq: 'Paga con', der: formatearPrecio(r.pagaCon) } as Linea]
+      : []),
+    ...(v != null && p.estado !== 'cobrado' ? [{ tipo: 'par', izq: 'Vuelto', der: formatearPrecio(v), negrita: true } as Linea] : []),
+    ...(p.notas ? [{ tipo: 'separador' } as Linea, { tipo: 'texto', texto: `Nota: ${p.notas}`, negrita: true } as Linea] : []),
+    { tipo: 'espacio' },
+    { tipo: 'texto', texto: 'Documento no válido como factura', alinear: 'centro' },
+  ];
+  return { titulo: `Delivery · Pedido ${p.numero ?? '-'}`, lineas: l };
 }

@@ -5,7 +5,8 @@ import type { BaseLocal } from './db/base';
 import { leerSectores } from './db/carta';
 import { leerPedido, leerPedidoConAnulados, mesaDeSesion, pedidosDeSesion } from './db/salon';
 import type { ColaImpresion } from './impresion/cola';
-import { cierreDeCaja, comandasDePedido, cuentaDe, ticketPrueba } from './impresion/documentos';
+import { cierreDeCaja, comandasDePedido, cuentaDe, ticketDelivery, ticketPrueba } from './impresion/documentos';
+import { leerDelivery } from './db/delivery';
 import { ErrorGula } from './errores';
 
 type CanalImpresion = Extract<keyof ServiciosGula, `impresion:${string}`>;
@@ -47,6 +48,15 @@ export function crearServiciosImpresion(d: Deps) {
       { anulacion: motivo },
     );
     d.cola.encolar(docs.map((c) => ({ tipo: 'comanda', pedidoId, sectorId: c.sectorId, documento: c.documento })));
+  }
+
+  /** Ticket para el repartidor (cliente, dirección, total con envío y vuelto). */
+  function delivery(pedidoId: string) {
+    const p = leerDelivery(d.base, pedidoId);
+    if (!p) throw new ErrorGula('NO_ENCONTRADO', 'No encontramos ese delivery.');
+    if (p.estado === 'anulado') throw new ErrorGula('ESTADO_INVALIDO', 'Ese delivery está anulado.');
+    const q = d.quien();
+    d.cola.encolar([{ tipo: 'cuenta', pedidoId, documento: ticketDelivery(p, { local: q.local, atendio: q.usuario, ahora: ahora() }) }]);
   }
 
   function cierre(t: Parameters<typeof cierreDeCaja>[0], r: Parameters<typeof cierreDeCaja>[1]) {
@@ -94,11 +104,16 @@ export function crearServiciosImpresion(d: Deps) {
       } else {
         const p = leerPedido(d.base, a.pedidoId);
         if (!p) throw new ErrorGula('NO_ENCONTRADO', 'No encontramos ese pedido.');
-        destino = p.mesa?.nombre ?? `Mostrador · Pedido ${p.numero ?? '-'}`;
+        destino = p.mesa?.nombre ?? `${p.origen === 'delivery' ? 'Delivery' : 'Mostrador'} · Pedido ${p.numero ?? '-'}`;
         pedidos = [p];
       }
       if (!pedidos.some((p) => p.items.length)) throw new ErrorGula('ESTADO_INVALIDO', 'No hay nada confirmado para cobrar.');
       d.cola.encolar([{ tipo: 'cuenta', documento: cuentaDe(pedidos, { local: q.local, atendio: q.usuario, ahora: ahora(), destino }) }]);
+    },
+
+    'impresion:delivery': async ({ pedidoId }) => {
+      d.exigir('comanda.imprimir');
+      delivery(pedidoId);
     },
 
     'impresion:reintentar': async ({ id }) => {
@@ -112,5 +127,5 @@ export function crearServiciosImpresion(d: Deps) {
     },
   };
 
-  return { servicios, comandas, anulacion, cierre };
+  return { servicios, comandas, anulacion, cierre, delivery };
 }

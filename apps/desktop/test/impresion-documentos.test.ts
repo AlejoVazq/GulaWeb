@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { maquetar, type Documento } from '../src/compartido/impresion';
 import type { Item, Pedido } from '../src/compartido/salon';
-import { comandasDePedido, cuentaDe, ticketPrueba } from '../src/main/impresion/documentos';
+import { comandasDePedido, cuentaDe, ticketDelivery, ticketPrueba } from '../src/main/impresion/documentos';
 
 const ahora = new Date('2026-11-19T00:05:00.000Z'); // 21:05 en Buenos Aires
 const sectores = [
@@ -118,4 +118,39 @@ it('ticket de prueba con acentos y regla', () => {
   const t = texto(ticketPrueba('Bar Gula', 32, ahora), 32);
   expect(t.join('\n')).toContain('ñ á é í ó ú ¿ ¡');
   expect(t).toContain('1234567890'.repeat(4).slice(0, 32));
+});
+
+describe('delivery', () => {
+  const reparto = {
+    cliente: { nombre: 'Juana Pérez', telefono: '1155551234', direccion: 'Av. Siempreviva 742', referencias: 'Timbre B' },
+    costoEnvio: 150000,
+    pagaCon: 2000000,
+    repartidor: null,
+    estado: 'preparando' as const,
+    enCaminoEn: null,
+    entregadoEn: null,
+  };
+  const delivery = () => {
+    const p = pedido([item('Pizza', 'coc', { precioUnitario: 1100000 })], { origen: 'delivery', sesionId: null, mesaId: null, mesa: null });
+    return { ...p, delivery: reparto, aCobrar: p.total + reparto.costoEnvio };
+  };
+
+  it('la comanda dice DELIVERY', () => {
+    const [c] = comandasDePedido(delivery(), ctx);
+    expect(texto(c!.documento).join('\n')).toContain('DELIVERY');
+  });
+
+  it('el ticket del repartidor lleva dirección, envío, total y vuelto', () => {
+    const t = texto(ticketDelivery(delivery(), { local: 'Bar Gula', atendio: 'Ana', ahora })).join('\n');
+    expect(t).toContain('Pedido 12');
+    expect(t).toContain('Juana Pérez');
+    expect(t).toContain('1155551234');
+    expect(t).toContain('Av. Siempreviva 742');
+    expect(t).toContain('Timbre B');
+    expect(t).toMatch(/Envío\s+\$ 1\.500$/m);
+    expect(t).toMatch(/TOTAL\s+\$ 12\.500$/m);
+    expect(t).toMatch(/Paga con\s+\$ 20\.000$/m);
+    expect(t).toMatch(/Vuelto\s+\$ 7\.500$/m);
+    expect(t).toContain('Documento no válido como factura');
+  });
 });
