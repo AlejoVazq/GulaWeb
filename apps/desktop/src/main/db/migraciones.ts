@@ -70,4 +70,15 @@ export const MIGRACIONES: string[] = [
   );
   CREATE INDEX avisos_sesion ON avisos(sesion_id);
   `,
+  // v4: cola de impresión (solo de esta PC; no se sincroniza).
+  `
+  CREATE TABLE impresiones (
+    id TEXT PRIMARY KEY,
+    tipo TEXT NOT NULL CHECK (tipo IN ('comanda', 'cuenta', 'prueba', 'cierre')),
+    pedido_id TEXT, sector_id TEXT, titulo TEXT NOT NULL, documento TEXT NOT NULL,
+    estado TEXT NOT NULL CHECK (estado IN ('pendiente', 'imprimiendo', 'impresa', 'error', 'descartada')),
+    error TEXT, intentos INTEGER NOT NULL DEFAULT 0, creada_en TEXT NOT NULL, impresa_en TEXT
+  );
+  CREATE INDEX impresiones_estado ON impresiones(estado);
+  `,
 ];
