@@ -1,4 +1,4 @@
-import { expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { abrirBase, type BaseLocal } from '../src/main/db/base';
 import { aplicarCambiosCarta } from '../src/main/db/carta';
 import { aplicarCambiosSalon } from '../src/main/db/salon';
@@ -218,4 +218,44 @@ it('lista lo rechazado por el servidor y "visto" lo saca', async () => {
   expect(await servicios['sync:rechazadas']()).toMatchObject([{ id: op.id, tipo: 'caja.abrir', error: 'CAJA_ABIERTA' }]);
   await servicios['sync:descartarRechazada']({ id: op.id });
   expect(await servicios['sync:rechazadas']()).toEqual([]);
+});
+
+describe('autorización sin conexión con el PIN guardado en la PC', () => {
+  /** Primero una anulación con red (deja el verificador del encargado), después se corta. */
+  async function conVerificador() {
+    const red = { hay: true };
+    const a = await armar('mesero', async () => {
+      if (!red.hay) throw new SinConexion();
+      return { usuario: { id: 'enc', rol: 'encargado' } };
+    });
+    const primero = await mesaConPedido(a.servicios);
+    await a.servicios['salon:anularPedido']({ pedidoId: primero.pedidoId, motivo: 'Error', autorizacion: { usuarioId: 'enc', pin: '5555' } });
+    red.hay = false;
+    const p = await a.servicios['salon:crearPedido']({ origen: 'manual', sesionId: primero.sesionId, items: [muzza()] });
+    const cuentaAnular = () => pendientes(a.base).filter((o) => o.tipo === 'pedido.anular').length;
+    return { ...a, pedidoId: p.pedidoId, cuentaAnular };
+  }
+
+  it('con el PIN correcto anula', async () => {
+    const { servicios, pedidoId, cuentaAnular } = await conVerificador();
+    await servicios['salon:anularPedido']({ pedidoId, motivo: 'Error', autorizacion: { usuarioId: 'enc', pin: '5555' } });
+    expect(cuentaAnular()).toBe(2);
+  });
+
+  it('con un PIN incorrecto no encola nada y responde REQUIERE_AUTORIZACION', async () => {
+    const { servicios, pedidoId, cuentaAnular } = await conVerificador();
+    await expect(
+      servicios['salon:anularPedido']({ pedidoId, motivo: 'Error', autorizacion: { usuarioId: 'enc', pin: '0000' } }),
+    ).rejects.toMatchObject({ codigo: 'REQUIERE_AUTORIZACION', mensaje: 'PIN incorrecto.' });
+    expect(cuentaAnular()).toBe(1);
+  });
+
+  it('cinco PIN incorrectos bloquean al autorizante', async () => {
+    const { servicios, pedidoId } = await conVerificador();
+    const intentar = (pin: string) =>
+      servicios['salon:anularPedido']({ pedidoId, motivo: 'Error', autorizacion: { usuarioId: 'enc', pin } });
+    for (let i = 0; i < 4; i++) await expect(intentar('0000')).rejects.toMatchObject({ codigo: 'REQUIERE_AUTORIZACION' });
+    await expect(intentar('0000')).rejects.toMatchObject({ codigo: 'PIN_BLOQUEADO' });
+    await expect(intentar('5555')).rejects.toMatchObject({ codigo: 'PIN_BLOQUEADO' });
+  });
 });

@@ -101,9 +101,19 @@ export function crearServicios(d: Deps): ServiciosGula & { bloquearPorInactivida
   const autorizar = async (a: { usuarioId: string; pin: string }, accion: Accion) => {
     try {
       await d.cliente.pedir('POST', '/auth/autorizar', { usuarioId: a.usuarioId, pin: a.pin, accion });
+      pinLocal.recordar(a.usuarioId, a.pin);
     } catch (e) {
-      if (e instanceof SinConexion) return; // lo verifica el servidor al sincronizar
-      if (e instanceof ErrorApiCliente) throw new ErrorGula('REQUIERE_AUTORIZACION', e.mensaje);
+      if (e instanceof SinConexion) {
+        // Sin verificador local: lo verifica el servidor al sincronizar.
+        const r = pinLocal.verificar(a.usuarioId, a.pin);
+        if (r === 'incorrecto') throw new ErrorGula('REQUIERE_AUTORIZACION', 'PIN incorrecto.');
+        if (r === 'bloqueado') throw new ErrorGula('PIN_BLOQUEADO', 'Demasiados intentos. Esperá 5 minutos.');
+        return;
+      }
+      if (e instanceof ErrorApiCliente) {
+        if (e.codigo === 'PIN_INCORRECTO' || e.codigo === 'REQUIERE_AUTORIZACION') pinLocal.olvidar(a.usuarioId);
+        throw new ErrorGula('REQUIERE_AUTORIZACION', e.mensaje);
+      }
       throw e;
     }
   };
