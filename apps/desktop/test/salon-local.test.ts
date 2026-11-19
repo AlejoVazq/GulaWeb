@@ -8,6 +8,7 @@ import {
   confirmarPedidoLocal,
   crearPedidoLocal,
   leerMesa,
+  leerPedido,
   leerSalon,
   rechazarPedidoLocal,
   siguienteNumero,
@@ -272,4 +273,20 @@ it('cerrar la mesa con la operación en vuelo no resucita sus pendientes', () =>
   const s = leerSalon(base);
   expect(s.mesas[0]!.sesion).toBeNull();
   expect(s.pendientes).toEqual([]);
+});
+
+it('leerPedido trae un pedido con sus ítems vigentes y el nombre de la mesa', () => {
+  aplicarCambiosSalon(
+    base,
+    pull({
+      sesiones: [sesion('s1', 'm2')],
+      pedidos: [pedidoQr('p1', 's1', 'm2')],
+      items: [item('i1', 'p1', 2), { ...item('i2', 'p1'), anulado: true }],
+    }),
+  );
+  const p = leerPedido(base, 'p1')!;
+  expect(p.mesa).toEqual({ id: 'm2', nombre: 'Mesa 2' });
+  expect(p.items.map((i) => i.id)).toEqual(['i1']);
+  expect(p.total).toBe(1000000);
+  expect(leerPedido(base, 'nada')).toBeNull();
 });

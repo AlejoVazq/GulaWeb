@@ -234,6 +234,17 @@ export function leerMesa(base: BaseLocal, mesaId: string): DetalleMesa | null {
   return { mesa: aMesa(m), sesion, pedidos, avisos };
 }
 
+/** Un pedido con sus ítems vigentes y el nombre de su mesa (para imprimirlo). */
+export function leerPedido(base: BaseLocal, pedidoId: string): (Pedido & { mesa: { id: string; nombre: string } | null }) | null {
+  const f = base.db.prepare('SELECT * FROM pedidos WHERE id = ? AND eliminado_en IS NULL').get(pedidoId) as F | undefined;
+  if (!f) return null;
+  const [p] = conItems(base, [f]);
+  const m = p!.mesaId
+    ? (base.db.prepare('SELECT id, nombre FROM mesas WHERE id = ?').get(p!.mesaId) as { id: string; nombre: string } | undefined)
+    : undefined;
+  return { ...p!, mesa: m ? { id: m.id, nombre: m.nombre } : null };
+}
+
 /** Correlativo del día; nunca repite un número que ya esté en la base (aunque se haya perdido el contador). */
 export function siguienteNumero(base: BaseLocal, dia: string): number {
   return base.transaccion(() => {

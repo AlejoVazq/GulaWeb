@@ -3,7 +3,7 @@ export type Tam = 'normal' | 'alto' | 'doble';
 export type Alinear = 'izq' | 'centro' | 'der';
 
 export type Linea =
-  | { tipo: 'texto'; texto: string; alinear?: Alinear; tam?: Tam; negrita?: boolean }
+  | { tipo: 'texto'; texto: string; alinear?: Alinear; tam?: Tam; negrita?: boolean; sangria?: number }
   | { tipo: 'par'; izq: string; der: string; negrita?: boolean; tam?: 'normal' | 'alto' }
   | { tipo: 'separador' }
   | { tipo: 'espacio' };
@@ -93,8 +93,9 @@ export function maquetar(doc: Documento, columnas: number): Renglon[] {
     else if (l.tipo === 'texto') {
       const tam = l.tam ?? 'normal';
       const ancho = tam === 'doble' ? Math.floor(columnas / 2) : columnas;
-      for (const t of cortar(imprimible(l.texto), ancho))
-        r.push({ texto: t, tam, negrita: !!l.negrita, alinear: l.alinear ?? 'izq' });
+      const sangria = ' '.repeat(Math.min(l.sangria ?? 0, 8));
+      for (const t of cortar(imprimible(l.texto), ancho - sangria.length))
+        r.push({ texto: sangria + t, tam, negrita: !!l.negrita, alinear: l.alinear ?? 'izq' });
     } else {
       const der = imprimible(l.der);
       const base = { tam: l.tam ?? 'normal', negrita: !!l.negrita, alinear: 'izq' as const };
