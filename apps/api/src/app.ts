@@ -17,6 +17,7 @@ import { rutasFotos } from './carta/fotos.js';
 import { rutasSync } from './sync/rutas.js';
 import { rutasMesas } from './salon/mesas.rutas.js';
 import { rutasPublicasSalon } from './salon/publico.js';
+import { rutasPullSalon } from './salon/pull.js';
 
 /** `deps.dbs` permite inyectar conexiones (tests); si no, la app crea y cierra las suyas. */
 export async function buildApp(config: Config, deps: { dbs?: Dbs } = {}): Promise<FastifyInstance> {
@@ -48,5 +49,6 @@ export async function buildApp(config: Config, deps: { dbs?: Dbs } = {}): Promis
   await app.register(rutasSync, { dbs });
   await app.register(rutasMesas, { dbs });
   await app.register(rutasPublicasSalon, { dbs, config });
+  await app.register(rutasPullSalon, { dbs });
   return app;
 }

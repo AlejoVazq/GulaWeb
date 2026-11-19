@@ -15,7 +15,7 @@ export const SOLAPE_MS = 30_000;
 
 const iso = (d: Date | null) => (d ? d.toISOString() : null);
 
-function sinLocal<
+export function sinLocal<
   T extends { localId: string; creadoEn: Date; actualizadoEn: Date; eliminadoEn: Date | null },
 >(f: T) {
   const { localId: _l, creadoEn, actualizadoEn, eliminadoEn, ...resto } = f;
@@ -27,7 +27,7 @@ function sinLocal<
   };
 }
 
-async function cambiados<T extends PgTable & { actualizadoEn: PgColumn }>(
+export async function cambiados<T extends PgTable & { actualizadoEn: PgColumn }>(
   tx: Tx,
   tabla: T,
   desde: Date | null,
@@ -37,6 +37,22 @@ async function cambiados<T extends PgTable & { actualizadoEn: PgColumn }>(
     .select()
     .from(tabla as PgTable)
     .where(filtro) as Promise<T['$inferSelect'][]>;
+}
+
+/** El cursor se toma antes de leer: lo que se escriba durante la lectura entra en el próximo pull. */
+export async function tomarCursor(tx: Tx): Promise<string> {
+  const [{ ahora }] = (await tx.execute(sql`select clock_timestamp() as ahora`)) as unknown as [
+    { ahora: Date | string },
+  ];
+  return new Date(ahora).toISOString();
+}
+
+/** `?desde=` menos el solape, o null para un pull completo. */
+export function desdeConSolape(query: unknown): Date | null {
+  const q = z
+    .object({ desde: z.iso.datetime({ offset: true }).optional().or(z.literal('')) })
+    .parse(query);
+  return q.desde ? new Date(new Date(q.desde).getTime() - SOLAPE_MS) : null;
 }
 
 export async function leerCambiosCarta(tx: Tx, desde: Date | null) {
@@ -64,17 +80,10 @@ export async function rutasSync(app: FastifyInstance, { dbs }: { dbs: Dbs }) {
   const pre = { preHandler: [app.autenticar, app.requierePermiso('pedido.ver')] };
 
   app.get('/sync/carta', pre, async (req) => {
-    const q = z
-      .object({ desde: z.iso.datetime({ offset: true }).optional().or(z.literal('')) })
-      .parse(req.query);
-    const desde = q.desde ? new Date(new Date(q.desde).getTime() - SOLAPE_MS) : null;
+    const desde = desdeConSolape(req.query);
     return conLocal(dbs.dbApp, req.sesion.localId, async (tx) => {
-      // El cursor se toma antes de leer: lo que se escriba durante la lectura entra en el próximo pull.
-      const [{ ahora }] = (await tx.execute(sql`select clock_timestamp() as ahora`)) as unknown as [
-        { ahora: Date | string },
-      ];
-      const cambios = await leerCambiosCarta(tx, desde);
-      return { cursor: new Date(ahora).toISOString(), ...cambios };
+      const cursor = await tomarCursor(tx);
+      return { cursor, ...(await leerCambiosCarta(tx, desde)) };
     });
   });
 
