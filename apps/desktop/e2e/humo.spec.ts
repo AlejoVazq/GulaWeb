@@ -203,3 +203,57 @@ test('caja: se abre, se cobra la Mesa 3 en efectivo y se cierra contando lo espe
     await sql.end();
   }
 });
+
+test('delivery: se carga, sale, se cobra con el envío al entregar y el servidor lo ve entregado', async () => {
+  const v = await app.firstWindow();
+  const previa = v.getByRole('complementary', { name: 'Vista previa de impresión' });
+  if (await previa.isVisible()) await previa.getByRole('button', { name: 'Cerrar' }).click();
+  const menu = v.getByRole('navigation', { name: 'Secciones' });
+
+  await menu.getByRole('button', { name: 'Caja' }).click();
+  await v.getByLabel('Fondo de cambio').fill('0');
+  await v.getByRole('button', { name: 'Abrir caja' }).click();
+  await expect(v.getByText(/Efectivo esperado/)).toBeVisible();
+
+  await menu.getByRole('button', { name: 'Delivery' }).click();
+  await v.getByRole('button', { name: 'Nuevo delivery' }).click();
+  await v.getByLabel('Teléfono').fill('1155551234');
+  await v.getByLabel('Nombre').fill('Juana');
+  await v.getByLabel('Dirección').fill('Av. Siempreviva 742');
+  await v.getByLabel('Envío').fill('1.500');
+  await v.getByRole('button', { name: 'Elegir productos' }).click();
+  await v.getByLabel('Buscar producto').fill('Tostado');
+  await v.getByRole('button', { name: /Tostado de jamón y queso/ }).click();
+  await v.getByRole('dialog', { name: 'Tostado de jamón y queso' }).getByRole('button', { name: /Agregar/ }).click();
+  await v.getByRole('button', { name: 'Enviar a cocina' }).click();
+  await expect(v.getByRole('status').filter({ hasText: /Delivery \d+ cargado/ })).toBeVisible();
+  await expect(previa.getByRole('figure', { name: /^Delivery · Pedido/ })).toContainText('Av. Siempreviva 742');
+
+  const tarjeta = v.getByRole('article', { name: /Juana/ });
+  await tarjeta.getByRole('button', { name: 'Salió' }).click();
+  await v.getByLabel('Repartidor').fill('Juan');
+  await v.getByRole('button', { name: 'Confirmar salida' }).click();
+  await expect(v.getByRole('region', { name: 'En camino' }).getByRole('article', { name: /Juana/ })).toBeVisible();
+
+  await tarjeta.getByRole('button', { name: 'Entregado' }).click();
+  const cobro = v.getByRole('dialog', { name: /^Cobrar delivery/ });
+  await expect(cobro).toContainText('Subtotal $ 9.300');
+  await cobro.getByRole('button', { name: 'Cobrar', exact: true }).click();
+  await expect(v.getByRole('region', { name: 'Entregados hoy' }).getByRole('article', { name: /Juana/ })).toContainText('Cobrado');
+
+  const sql = await base();
+  try {
+    await expect
+      .poll(
+        async () =>
+          (
+            await sql`select p.estado, d.estado as reparto, d.repartidor from pedidos p join deliveries d on d.id = p.id
+                      join locales l on l.id = p.local_id where l.slug = ${SLUG}`
+          ).map((f) => `${f.estado}:${f.reparto}:${f.repartidor}`),
+        { timeout: 20_000 },
+      )
+      .toEqual(['cobrado:entregado:Juan']);
+  } finally {
+    await sql.end();
+  }
+});
