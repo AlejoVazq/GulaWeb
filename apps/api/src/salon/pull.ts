@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { and, gt, inArray, isNull, ne, or } from 'drizzle-orm';
 import type { Dbs, Tx } from '../db/cliente.js';
 import { conLocal } from '../db/conLocal.js';
-import { avisosMesa, itemsPedido, mesas, pedidos, sesionesMesa } from '../db/schema/index.js';
+import { avisosMesa, deliveries, itemsPedido, mesas, pedidos, sesionesMesa } from '../db/schema/index.js';
 import { cambiados, desdeConSolape, sinLocal, tomarCursor } from '../sync/rutas.js';
 
 const VENTANA_MS = 24 * 3_600_000;
@@ -32,7 +32,10 @@ async function salonCompleto(tx: Tx) {
   const avisos = idsSesion.length
     ? await tx.select().from(avisosMesa).where(inArray(avisosMesa.sesionId, idsSesion))
     : [];
-  return { ms, ses, peds, items, avisos };
+  const delivs = idsPedido.length
+    ? await tx.select().from(deliveries).where(inArray(deliveries.pedidoId, idsPedido))
+    : [];
+  return { ms, ses, peds, items, avisos, delivs };
 }
 
 async function salonDesde(tx: Tx, desde: Date) {
@@ -42,6 +45,7 @@ async function salonDesde(tx: Tx, desde: Date) {
     peds: await cambiados(tx, pedidos, desde),
     items: await cambiados(tx, itemsPedido, desde),
     avisos: await cambiados(tx, avisosMesa, desde),
+    delivs: await cambiados(tx, deliveries, desde),
   };
 }
 
@@ -53,6 +57,7 @@ export async function leerCambiosSalon(tx: Tx, desde: Date | null) {
     pedidos: d.peds.map(sinLocal),
     items: d.items.map(sinLocal),
     avisos: d.avisos.map(sinLocal),
+    deliveries: d.delivs.map(sinLocal),
   };
 }
 

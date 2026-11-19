@@ -16,8 +16,8 @@ import { buscarVigente, datosInvalidos, noEncontrado } from '../carta/comun.js';
 import { registrarTipoOperacion } from '../sync/operaciones.js';
 
 const estadoInvalido = (mensaje: string) => new ErrorApi(409, 'ESTADO_INVALIDO', mensaje);
-const dia = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
-const numero = z.number().int().min(1).max(100_000);
+export const dia = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+export const numero = z.number().int().min(1).max(100_000);
 const seleccion = z.record(z.uuid(), z.array(z.uuid()).max(30));
 
 async function sesionNoCerrada(tx: Tx, sesionId: string) {
@@ -100,7 +100,7 @@ registrarTipoOperacion('mesa.cerrar', {
   },
 });
 
-const itemCreado = z.object({
+export const itemCreado = z.object({
   itemId: z.uuid(),
   productoId: z.uuid(),
   nombre: z.string().max(120).transform(sinControl).pipe(z.string().min(1)),
@@ -131,46 +131,61 @@ registrarTipoOperacion('pedido.crear', {
     ),
   aplicar: async (tx, { sesion, hechaEn }, d) => {
     const s = d.sesionId ? await sesionNoCerrada(tx, d.sesionId) : null;
-    // Un sector borrado del todo no rompe el pedido: el ítem queda sin sector.
-    const idsSector = [...new Set(d.items.map((i) => i.sectorId).filter((x): x is string => !!x))];
-    const validos = new Set(
-      idsSector.length
-        ? (
-            await tx
-              .select({ id: sectores.id })
-              .from(sectores)
-              .where(inArray(sectores.id, idsSector))
-          ).map((x) => x.id)
-        : [],
-    );
-    const ahora = hechaEn;
-    await tx.insert(pedidos).values({
-      id: d.pedidoId,
-      localId: sesion.localId,
-      origen: d.origen,
-      estado: 'confirmado',
-      sesionId: s?.id ?? null,
-      mesaId: s?.mesaId ?? null,
-      numero: d.numero,
-      dia: d.dia,
-      notas: d.notas ?? null,
-      creadoPor: sesion.usuarioId,
-      confirmadoPor: sesion.usuarioId,
-      confirmadoEn: ahora,
-      creadoEn: ahora,
-    });
-    await tx.insert(itemsPedido).values(
-      d.items.map(({ itemId, sectorId, ...i }) => ({
-        ...i,
-        id: itemId,
-        localId: sesion.localId,
-        pedidoId: d.pedidoId,
-        creadoEn: ahora,
-        sectorId: sectorId && validos.has(sectorId) ? sectorId : null,
-      })),
-    );
+    await insertarPedido(tx, sesion, hechaEn, { ...d, sesionId: s?.id ?? null, mesaId: s?.mesaId ?? null });
   },
 });
+
+type ItemCreado = z.infer<typeof itemCreado>;
+
+/** Inserta un pedido cargado en la PC (nace confirmado) con sus ítems. Lo usan `pedido.crear` y `delivery.crear`. */
+export async function insertarPedido(
+  tx: Tx,
+  sesion: { localId: string; usuarioId: string },
+  ahora: Date,
+  d: {
+    pedidoId: string;
+    origen: 'manual' | 'mostrador' | 'delivery';
+    sesionId: string | null;
+    mesaId: string | null;
+    numero: number;
+    dia: string;
+    notas?: string | null;
+    items: ItemCreado[];
+  },
+) {
+  // Un sector borrado del todo no rompe el pedido: el ítem queda sin sector.
+  const idsSector = [...new Set(d.items.map((i) => i.sectorId).filter((x): x is string => !!x))];
+  const validos = new Set(
+    idsSector.length
+      ? (await tx.select({ id: sectores.id }).from(sectores).where(inArray(sectores.id, idsSector))).map((x) => x.id)
+      : [],
+  );
+  await tx.insert(pedidos).values({
+    id: d.pedidoId,
+    localId: sesion.localId,
+    origen: d.origen,
+    estado: 'confirmado',
+    sesionId: d.sesionId,
+    mesaId: d.mesaId,
+    numero: d.numero,
+    dia: d.dia,
+    notas: d.notas ?? null,
+    creadoPor: sesion.usuarioId,
+    confirmadoPor: sesion.usuarioId,
+    confirmadoEn: ahora,
+    creadoEn: ahora,
+  });
+  await tx.insert(itemsPedido).values(
+    d.items.map(({ itemId, sectorId, ...i }) => ({
+      ...i,
+      id: itemId,
+      localId: sesion.localId,
+      pedidoId: d.pedidoId,
+      creadoEn: ahora,
+      sectorId: sectorId && validos.has(sectorId) ? sectorId : null,
+    })),
+  );
+}
 
 registrarTipoOperacion('pedido.confirmar', {
   permiso: 'pedido.confirmar',

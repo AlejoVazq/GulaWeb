@@ -10,6 +10,7 @@ import { esquemaLote, procesarLote } from './operaciones.js';
 import './tiposCarta.js';
 import '../salon/operaciones.js';
 import '../caja/operaciones.js';
+import '../delivery/operaciones.js';
 
 /** Solape del pull: un commit puede llegar después con un actualizado_en anterior al cursor. */
 export const SOLAPE_MS = 30_000;

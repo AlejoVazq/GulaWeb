@@ -85,6 +85,20 @@
       "when": 1795064566895,
       "tag": "0011_caja_montos",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1795066354200,
+      "tag": "0012_delivery",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1795066366576,
+      "tag": "0013_delivery_rls",
+      "breakpoints": true
     }
   ]
 }

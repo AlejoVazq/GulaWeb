@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { boolean, check, index, integer, jsonb, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
+import { bigint, boolean, check, index, integer, jsonb, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 import { creadoEn, id } from './comun.js';
 import { locales } from './locales.js';
 import { sectores } from './carta.js';
@@ -52,7 +52,7 @@ export const pedidos = pgTable(
   'pedidos',
   {
     ...sincronizable(),
-    origen: text('origen', { enum: ['qr', 'manual', 'mostrador'] }).notNull(),
+    origen: text('origen', { enum: ['qr', 'manual', 'mostrador', 'delivery'] }).notNull(),
     estado: text('estado', { enum: ['pendiente', 'confirmado', 'rechazado', 'anulado', 'cobrado'] }).notNull(),
     sesionId: uuid('sesion_id').references(() => sesionesMesa.id),
     mesaId: uuid('mesa_id').references(() => mesas.id),
@@ -71,7 +71,7 @@ export const pedidos = pgTable(
   (t) => [
     index('pedidos_local_idx').on(t.localId),
     index('pedidos_sesion_idx').on(t.sesionId),
-    check('pedidos_origen', sql`${t.origen} in ('qr', 'manual', 'mostrador')`),
+    check('pedidos_origen', sql`${t.origen} in ('qr', 'manual', 'mostrador', 'delivery')`),
     check('pedidos_estado', sql`${t.estado} in ('pendiente', 'confirmado', 'rechazado', 'anulado', 'cobrado')`),
   ],
 );
@@ -117,5 +117,32 @@ export const avisosMesa = pgTable(
   (t) => [
     index('avisos_sesion_idx').on(t.sesionId),
     check('avisos_tipo', sql`${t.tipo} in ('llamar', 'cuenta')`),
+  ],
+);
+
+/** Datos de reparto de un pedido de delivery (1:1; el id es el del pedido). */
+export const deliveries = pgTable(
+  'deliveries',
+  {
+    ...sincronizable(),
+    pedidoId: uuid('pedido_id')
+      .notNull()
+      .unique()
+      .references(() => pedidos.id),
+    clienteNombre: text('cliente_nombre').notNull(),
+    telefono: text('telefono').notNull().default(''),
+    direccion: text('direccion').notNull(),
+    referencias: text('referencias').notNull().default(''),
+    costoEnvio: bigint('costo_envio', { mode: 'number' }).notNull().default(0),
+    pagaCon: bigint('paga_con', { mode: 'number' }),
+    repartidor: text('repartidor'),
+    estado: text('estado', { enum: ['preparando', 'en_camino', 'entregado'] }).notNull(),
+    enCaminoEn: timestamp('en_camino_en', { withTimezone: true }),
+    entregadoEn: timestamp('entregado_en', { withTimezone: true }),
+  },
+  (t) => [
+    index('deliveries_local_idx').on(t.localId),
+    check('deliveries_estado', sql`${t.estado} in ('preparando', 'en_camino', 'entregado')`),
+    check('deliveries_envio', sql`${t.costoEnvio} >= 0`),
   ],
 );
