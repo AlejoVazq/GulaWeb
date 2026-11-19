@@ -1,6 +1,6 @@
 import type { ProductoPublico, Seleccion } from './carta.js';
 
-export type EstadoPedido = 'pendiente' | 'confirmado' | 'rechazado' | 'anulado';
+export type EstadoPedido = 'pendiente' | 'confirmado' | 'rechazado' | 'anulado' | 'cobrado';
 export type OrigenPedido = 'qr' | 'manual' | 'mostrador';
 export type EstadoSesion = 'abierta' | 'cuenta_pedida' | 'cerrada';
 export type TipoAviso = 'llamar' | 'cuenta';

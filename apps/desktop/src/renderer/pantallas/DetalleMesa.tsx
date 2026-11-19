@@ -10,6 +10,7 @@ const ESTADOS: Record<Pedido['estado'], string> = {
   confirmado: 'Confirmado',
   rechazado: 'Rechazado',
   anulado: 'Anulado',
+  cobrado: 'Cobrado',
 };
 const AVISOS = { llamar: 'Llamó a la moza', cuenta: 'Pidió la cuenta' } as const;
 

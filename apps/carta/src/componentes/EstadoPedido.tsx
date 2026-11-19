@@ -11,6 +11,7 @@ function texto(p: PedidoPublico): string {
     case 'pendiente':
       return 'Enviado — esperando confirmación';
     case 'confirmado':
+    case 'cobrado':
       return '¡Pedido confirmado!';
     case 'rechazado':
       return `No pudimos tomar tu pedido: ${p.motivoRechazo ?? 'consultá con la moza'}`;

@@ -4,3 +4,4 @@ export * from './permisos.js';
 export * from './dinero.js';
 export * from './carta.js';
 export * from './salon.js';
+export * from './caja.js';
