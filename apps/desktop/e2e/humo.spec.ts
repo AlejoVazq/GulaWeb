@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { randomBytes } from 'node:crypto';
+import { formatearPrecio } from '@gula/shared';
 
 /**
  * Humo de punta a punta: API real (tsx) contra gula_dev + app de escritorio compilada.
@@ -256,4 +257,26 @@ test('delivery: se carga, sale, se cobra con el envío al entregar y el servidor
   } finally {
     await sql.end();
   }
+});
+
+test('reportes: el mes muestra lo cobrado en salón y delivery', async () => {
+  const v = await app.firstWindow();
+  const menu = v.getByRole('navigation', { name: 'Secciones' });
+  const sql = await base();
+  let total: number;
+  try {
+    const [f] = await sql`select coalesce(sum(c.total), 0)::bigint as total from cobros c join locales l on l.id = c.local_id where l.slug = ${SLUG}`;
+    total = Number(f!.total);
+  } finally {
+    await sql.end();
+  }
+  expect(total).toBeGreaterThan(0);
+
+  await menu.getByRole('button', { name: 'Reportes' }).click();
+  const ventas = v.getByRole('group', { name: 'Ventas' });
+  await expect(ventas).toContainText(formatearPrecio(total), { timeout: 20_000 });
+  const origen = v.getByRole('table', { name: 'Por origen' });
+  await expect(origen).toContainText('Salón');
+  await expect(origen).toContainText('Delivery');
+  await expect(v.getByRole('group', { name: 'Resultado' })).toBeVisible();
 });
