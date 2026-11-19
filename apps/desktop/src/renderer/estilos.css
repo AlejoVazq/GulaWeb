@@ -82,3 +82,15 @@ input[type='checkbox'], input[type='radio'] { width: 18px; height: 18px; min-hei
 .etiqueta { justify-self: start; padding: 2px 8px; border-radius: 999px; font-size: 0.8rem; font-weight: 600; background: var(--color-borde); }
 .etiqueta--abierta { background: color-mix(in srgb, var(--color-ok) 18%, transparent); }
 .etiqueta--pendiente, .etiqueta--aviso, .etiqueta--cuenta { background: var(--color-acento); color: #fff; }
+.ok { color: var(--color-ok); margin: 0; font-weight: 600; }
+.tomar { display: grid; grid-template-columns: 1fr 340px; gap: var(--espacio-4); align-items: start; }
+.tomar__carta { display: grid; gap: var(--espacio-3); }
+.tomar__resumen { position: sticky; top: var(--espacio-4); }
+.grilla-productos { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: var(--espacio-2); }
+.producto { display: grid; gap: 2px; min-height: 64px; padding: var(--espacio-2) var(--espacio-3); border-radius: 8px; border: 1px solid var(--color-borde); background: var(--color-superficie); text-align: left; cursor: pointer; }
+.producto:disabled { opacity: 0.5; cursor: not-allowed; }
+.lista { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--espacio-2); }
+.lista__item { display: flex; justify-content: space-between; align-items: center; gap: var(--espacio-2); }
+.pedido__total { margin: 0; text-align: right; font-weight: 700; }
+.pedido--rechazado, .pedido--anulado { opacity: 0.6; }
+.bloque--aviso { border-color: var(--color-acento); }

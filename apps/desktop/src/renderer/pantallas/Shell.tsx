@@ -4,6 +4,8 @@ import { llamar } from '../gula';
 import { Conexion } from '../componentes/Conexion';
 import { Carta } from './Carta';
 import { Mesas } from './Mesas';
+import { DetalleMesa } from './DetalleMesa';
+import { TomarPedido } from '../componentes/TomarPedido';
 import { useSalon } from '../useSalon';
 
 type Activa = Extract<EstadoSesion, { tipo: 'activa' }>;
@@ -14,6 +16,8 @@ export function Shell({ sesion, sync }: { sesion: Activa; sync: EstadoSync }) {
   const [seccion, setSeccion] = useState<Seccion>('mesas');
   const [vista, setVista] = useState<Vista>({ tipo: 'seccion' });
   const { salon } = useSalon();
+  const [aviso, setAviso] = useState<string | null>(null);
+  const volver = () => setVista({ tipo: 'seccion' });
   return (
     <div className="shell">
       <header className="barra">
@@ -46,10 +50,30 @@ export function Shell({ sesion, sync }: { sesion: Activa; sync: EstadoSync }) {
         ))}
       </nav>
       <section className="contenido">
+        {aviso && seccion === 'mesas' && vista.tipo === 'seccion' && (
+          <p className="ok" role="status">
+            {aviso}
+          </p>
+        )}
+        {seccion === 'mesas' && vista.tipo === 'mesa' && <DetalleMesa mesaId={vista.mesaId} onVolver={volver} />}
+        {seccion === 'mesas' && vista.tipo === 'mostrador' && (
+          <TomarPedido
+            titulo="Mostrador"
+            onCancelar={volver}
+            onEnviar={async (items) => {
+              const r = await llamar('salon:crearPedido', { origen: 'mostrador', items });
+              setAviso(`Pedido de mostrador ${r.numero} enviado.`);
+              volver();
+            }}
+          />
+        )}
         {seccion === 'mesas' && vista.tipo === 'seccion' && (
           <Mesas
             salon={salon}
-            onVerMesa={(mesaId) => setVista({ tipo: 'mesa', mesaId })}
+            onVerMesa={(mesaId) => {
+              setAviso(null);
+              setVista({ tipo: 'mesa', mesaId });
+            }}
             onMostrador={() => setVista({ tipo: 'mostrador' })}
           />
         )}
