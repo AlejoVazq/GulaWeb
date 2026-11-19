@@ -84,3 +84,22 @@ export function contarRechazadas(base: BaseLocal): number {
 export function vaciarOutbox(base: BaseLocal): void {
   base.db.exec('DELETE FROM outbox');
 }
+
+export type Rechazada = { id: string; tipo: string; datos: unknown; error: string | null; creadaEn: string };
+
+/** Operaciones que el servidor rechazó (para mostrarlas; nunca se reenvían). */
+export function leerRechazadas(base: BaseLocal): Rechazada[] {
+  return (
+    base.db.prepare("SELECT id, tipo, datos, ultimo_error, creada_en FROM outbox WHERE estado = 'rechazada' ORDER BY id").all() as {
+      id: string;
+      tipo: string;
+      datos: string;
+      ultimo_error: string | null;
+      creada_en: string;
+    }[]
+  ).map((f) => ({ id: f.id, tipo: f.tipo, datos: JSON.parse(f.datos) as unknown, error: f.ultimo_error, creadaEn: f.creada_en }));
+}
+
+export function borrarRechazada(base: BaseLocal, id: string): void {
+  base.db.prepare("DELETE FROM outbox WHERE id = ? AND estado = 'rechazada'").run(id);
+}

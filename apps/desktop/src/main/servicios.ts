@@ -4,7 +4,7 @@ import { puede, type Accion } from '@gula/shared';
 import type { EdicionCarta, EstadoSesion, EventoGula, ServiciosGula, UsuarioPublico } from '../compartido/ipc';
 import type { BaseLocal } from './db/base';
 import { fijarDisponibilidadLocal, leerCarta, vaciarCartaLocal } from './db/carta';
-import { encolar, vaciarOutbox } from './db/outbox';
+import { borrarRechazada, encolar, leerRechazadas, vaciarOutbox } from './db/outbox';
 import { vaciarSalonLocal } from './db/salon';
 import { vaciarCajaLocal } from './db/caja';
 import { crearServiciosSalon } from './servicios.salon';
@@ -229,6 +229,15 @@ export function crearServicios(d: Deps): ServiciosGula & { bloquearPorInactivida
     },
 
     'sync:estado': async () => d.motor.estado(),
+
+    'sync:rechazadas': async () => leerRechazadas(d.base),
+
+    'sync:descartarRechazada': async ({ id }) => {
+      exigir('pedido.ver');
+      borrarRechazada(d.base, id);
+      d.emitir('caja:cambio', null);
+      d.emitir('sync:estado', d.motor.estado());
+    },
 
     /** Bloqueo automático por inactividad; sin conexión no se bloquea (no se podría volver a entrar). */
     bloquearPorInactividad() {

@@ -97,7 +97,11 @@ export type ServiciosGula = {
   'salon:anularItem': (a: { itemId: string; motivo: string; autorizacion?: Autorizacion }) => Promise<void>;
   'salon:anularPedido': (a: { pedidoId: string; motivo: string; autorizacion?: Autorizacion }) => Promise<void>;
   'sesion:autorizantes': () => Promise<UsuarioPublico[]>;
+  'sync:rechazadas': () => Promise<OperacionRechazada[]>;
+  'sync:descartarRechazada': (a: { id: string }) => Promise<void>;
 };
+
+export type OperacionRechazada = { id: string; tipo: string; datos: unknown; error: string | null; creadaEn: string };
 
 /** Usuario y PIN de quien autoriza (encargado o dueño). */
 export type Autorizacion = { usuarioId: string; pin: string };
@@ -148,6 +152,8 @@ export const CANALES: CanalServicio[] = [
   'salon:anularItem',
   'salon:anularPedido',
   'sesion:autorizantes',
+  'sync:rechazadas',
+  'sync:descartarRechazada',
 ];
 
 /** API expuesta en window.gula por el preload. */

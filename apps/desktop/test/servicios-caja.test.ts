@@ -209,3 +209,13 @@ it('una caja con más de $ 10 millones se cierra (tope de caja, no de precio)', 
   await servicios['caja:movimiento']({ tipo: 'ingreso', categoria: 'otro', monto: 3_000_000_000, motivo: 'Recaudación' });
   expect(await servicios['caja:cerrar']({ contado: 3_000_000_000 })).toEqual({ esperado: 3_000_000_000, diferencia: 0 });
 });
+
+it('lista lo rechazado por el servidor y "visto" lo saca', async () => {
+  const { servicios, base } = await armar();
+  await servicios['caja:abrir']({ fondo: 0 });
+  const op = pendientes(base).find((o) => o.tipo === 'caja.abrir')!;
+  base.db.prepare("UPDATE outbox SET estado = 'rechazada', ultimo_error = 'CAJA_ABIERTA' WHERE id = ?").run(op.id);
+  expect(await servicios['sync:rechazadas']()).toMatchObject([{ id: op.id, tipo: 'caja.abrir', error: 'CAJA_ABIERTA' }]);
+  await servicios['sync:descartarRechazada']({ id: op.id });
+  expect(await servicios['sync:rechazadas']()).toEqual([]);
+});
