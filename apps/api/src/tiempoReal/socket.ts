@@ -48,7 +48,8 @@ export const pluginTiempoReal = fp<{ dbs: Dbs; jwtSecret: string }>(
       if ((filtro.soloId && dev === filtro.soloId) || (filtro.exceptoId && dev !== filtro.exceptoId)) s.disconnect(true);
     }
   });
-  app.addHook('onClose', async () => {
+  // En preClose: si no, server.close() espera para siempre a los websockets abiertos de las PCs.
+  app.addHook('preClose', async () => {
       await io.close();
     });
   },
