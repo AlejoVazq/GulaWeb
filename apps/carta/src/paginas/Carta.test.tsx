@@ -65,7 +65,7 @@ it('agregar un producto muestra la barra del pedido y el envío queda deshabilit
   montar();
   await userEvent.click(await screen.findByRole('button', { name: /^Hamburguesa clásica/ }));
   await userEvent.click(screen.getByLabelText(/Grande/));
-  await userEvent.click(screen.getByRole('button', { name: 'Agregar · $ 6.500' }));
+  await userEvent.click(screen.getByRole('button', { name: 'Agregar a la comanda · $ 6.500' }));
   const barra = screen.getByRole('button', { name: 'Ver pedido (1) · $ 6.500' });
   await userEvent.click(barra);
   expect(screen.getByText('Grande')).toBeInTheDocument();

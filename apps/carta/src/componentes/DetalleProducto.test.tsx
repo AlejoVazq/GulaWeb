@@ -15,11 +15,11 @@ it('al elegir Grande el precio se actualiza y agrega el ítem', async () => {
   const onAgregar = vi.fn();
   render(<DetalleProducto producto={producto} onAgregar={onAgregar} onCerrar={() => {}} />);
   await userEvent.click(screen.getByLabelText(/Grande/));
-  const boton = screen.getByRole('button', { name: 'Agregar · $ 6.500' });
+  const boton = screen.getByRole('button', { name: 'Agregar a la comanda · $ 6.500' });
   expect(boton).toBeEnabled();
-  await userEvent.click(screen.getByRole('button', { name: '+' }));
+  await userEvent.click(screen.getByRole('button', { name: 'Sumar uno' }));
   await userEvent.type(screen.getByLabelText('Nota para la cocina'), 'sin pepino');
-  await userEvent.click(screen.getByRole('button', { name: 'Agregar · $ 13.000' }));
+  await userEvent.click(screen.getByRole('button', { name: 'Agregar a la comanda · $ 13.000' }));
   expect(onAgregar).toHaveBeenCalledWith(
     expect.objectContaining({
       productoId: 'p1',
@@ -51,4 +51,23 @@ it('al abrir enfoca el panel, Escape cierra y Tab no se escapa', async () => {
   expect(screen.getByRole('button', { name: 'fondo' })).not.toHaveFocus();
   await userEvent.keyboard('{Escape}');
   expect(onCerrar).toHaveBeenCalled();
+});
+
+it('el botón dice "Agregar a la comanda" con el total que incluye recargos y cantidad', async () => {
+  render(<DetalleProducto producto={producto} onAgregar={vi.fn()} onCerrar={vi.fn()} />);
+  await userEvent.click(screen.getByLabelText(/Grande/));
+  await userEvent.click(screen.getByLabelText(/Cheddar/));
+  await userEvent.click(screen.getByRole('button', { name: 'Sumar uno' }));
+  expect(screen.getByRole('button', { name: 'Agregar a la comanda · $ 14.600' })).toBeEnabled();
+});
+
+it('una nota de 140 caracteres se acepta y se ve completa', async () => {
+  const agregar = vi.fn();
+  render(<DetalleProducto producto={producto} onAgregar={agregar} onCerrar={vi.fn()} />);
+  const nota = 'sin cebolla, '.repeat(11).slice(0, 140);
+  await userEvent.click(screen.getByLabelText(/Simple/));
+  await userEvent.type(screen.getByLabelText('Nota para la cocina'), nota);
+  expect(screen.getByLabelText('Nota para la cocina')).toHaveValue(nota);
+  await userEvent.click(screen.getByRole('button', { name: /^Agregar a la comanda/ }));
+  expect(agregar).toHaveBeenCalledWith(expect.objectContaining({ nota: nota.trim() }));
 });

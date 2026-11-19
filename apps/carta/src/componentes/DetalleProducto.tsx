@@ -9,6 +9,7 @@ import {
 } from '@gula/shared';
 import type { ItemCarrito } from '../carrito';
 import { useDialogo } from './useDialogo';
+import { IconoCerrar, IconoMas, IconoMenos, IconoTilde } from './Iconos';
 
 type Props = {
   producto: ProductoPublico;
@@ -64,7 +65,10 @@ function Grupo({
                 else onCambiar(marcada ? elegidas.filter((x) => x !== o.id) : [...elegidas, o.id]);
               }}
             />
-            <span>{o.nombre}</span>
+            <span className="opcion__caja" aria-hidden="true">
+              <IconoTilde />
+            </span>
+            <span className="opcion__nombre">{o.nombre}</span>
             {!o.disponible && <span className="opcion__extra">Sin stock</span>}
             {o.disponible && o.recargo > 0 && (
               <span className="opcion__extra">+{formatearPrecio(o.recargo)}</span>
@@ -89,10 +93,10 @@ export function DetalleProducto({ producto: p, onAgregar, onCerrar }: Props) {
     <div className="hoja" role="dialog" aria-modal="true" aria-label={p.nombre} ref={dialogo}>
       <div className="hoja__contenido">
         <button type="button" className="hoja__cerrar" onClick={onCerrar} aria-label="Cerrar">
-          ×
+          <IconoCerrar />
         </button>
         {p.foto && <img className="hoja__foto" src={p.foto.grande} alt="" />}
-        <h2>{p.nombre}</h2>
+        <h2 className="hoja__titulo">{p.nombre}</h2>
         {p.descripcion && <p className="hoja__desc">{p.descripcion}</p>}
         <p className="hoja__precio">{formatearPrecio(p.precio)}</p>
 
@@ -116,42 +120,42 @@ export function DetalleProducto({ producto: p, onAgregar, onCerrar }: Props) {
           />
         </label>
 
-        <div className="cantidad" aria-label="Cantidad">
+        {!validacion.ok && <p className="hoja__error">{validacion.errores[0]}</p>}
+        <div className="detalle__pie">
+          <div className="cantidad" role="group" aria-label="Cantidad">
+            <button
+              type="button"
+              aria-label="Restar uno"
+              onClick={() => setCantidad((c) => Math.max(1, c - 1))}
+              disabled={cantidad <= 1}
+            >
+              <IconoMenos />
+            </button>
+            <span aria-live="polite">{cantidad}</span>
+            <button type="button" aria-label="Sumar uno" onClick={() => setCantidad((c) => Math.min(50, c + 1))}>
+              <IconoMas />
+            </button>
+          </div>
           <button
             type="button"
-            onClick={() => setCantidad((c) => Math.max(1, c - 1))}
-            disabled={cantidad <= 1}
+            className="boton-principal"
+            disabled={!validacion.ok}
+            onClick={() =>
+              onAgregar({
+                clave: '',
+                productoId: p.id,
+                nombre: p.nombre,
+                seleccion: Object.fromEntries(Object.entries(seleccion).filter(([, ids]) => ids.length > 0)),
+                resumenOpciones: resumen(p, seleccion),
+                nota: nota.trim(),
+                cantidad,
+                precioUnitario: unitario,
+              })
+            }
           >
-            −
-          </button>
-          <span aria-live="polite">{cantidad}</span>
-          <button type="button" onClick={() => setCantidad((c) => Math.min(50, c + 1))}>
-            +
+            Agregar a la comanda · {formatearPrecio(unitario * cantidad)}
           </button>
         </div>
-
-        {!validacion.ok && <p className="hoja__error">{validacion.errores[0]}</p>}
-        <button
-          type="button"
-          className="boton-principal"
-          disabled={!validacion.ok}
-          onClick={() =>
-            onAgregar({
-              clave: '',
-              productoId: p.id,
-              nombre: p.nombre,
-              seleccion: Object.fromEntries(
-                Object.entries(seleccion).filter(([, ids]) => ids.length > 0),
-              ),
-              resumenOpciones: resumen(p, seleccion),
-              nota: nota.trim(),
-              cantidad,
-              precioUnitario: unitario,
-            })
-          }
-        >
-          Agregar · {formatearPrecio(unitario * cantidad)}
-        </button>
       </div>
     </div>
   );

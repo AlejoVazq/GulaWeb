@@ -1,4 +1,5 @@
 import { formatearPrecio, type ProductoPublico } from '@gula/shared';
+import { IconoMas } from './Iconos';
 
 type Props = {
   producto: ProductoPublico;
@@ -48,13 +49,5 @@ export function ProductoCard({ producto: p, habilitado, cantidadEnComanda, onEle
         {lleno ? cantidadEnComanda : <IconoMas />}
       </button>
     </article>
-  );
-}
-
-function IconoMas() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
-      <path d="M8 2v12M2 8h12" stroke="currentColor" strokeWidth="2.25" strokeLinecap="square" fill="none" />
-    </svg>
   );
 }

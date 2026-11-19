@@ -75,7 +75,7 @@ function montar() {
 async function agregarHamburguesa() {
   await userEvent.click(await screen.findByRole('button', { name: /^Hamburguesa clásica/ }));
   await userEvent.click(screen.getByLabelText(/Grande/));
-  await userEvent.click(screen.getByRole('button', { name: 'Agregar · $ 6.500' }));
+  await userEvent.click(screen.getByRole('button', { name: 'Agregar a la comanda · $ 6.500' }));
   await userEvent.click(screen.getByRole('button', { name: /Ver pedido/ }));
 }
 
