@@ -64,6 +64,20 @@
       "when": 1795045668328,
       "tag": "0008_salon_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1795058746396,
+      "tag": "0009_caja",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1795058749550,
+      "tag": "0010_caja_rls",
+      "breakpoints": true
     }
   ]
 }

@@ -72,6 +72,8 @@ export type Escenario = {
   tokenEncargado: string;
   tokenMoza: string;
   otroLocalId: string;
+  encId: string;
+  mozaId: string;
 };
 
 /** Local A con dueño, encargado y moza logueados en la misma PC, y un local B vacío. */
@@ -83,7 +85,7 @@ export async function escenario(app: FastifyInstance): Promise<Escenario> {
   const tokenDueno = (await login(app, credenciales)).json().accessToken as string;
   const tokenEncargado = (await pin(app, tokenDueno, { usuarioId: encId, pin: '5555' })).json().accessToken;
   const tokenMoza = (await pin(app, tokenDueno, { usuarioId: mozaId, pin: '4321' })).json().accessToken;
-  return { localId: a.localId, tokenDueno, tokenEncargado, tokenMoza, otroLocalId: b.localId };
+  return { localId: a.localId, tokenDueno, tokenEncargado, tokenMoza, otroLocalId: b.localId, encId, mozaId };
 }
 
 type Metodo = 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';

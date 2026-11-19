@@ -1,5 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
+import { ACCIONES, puede } from '@gula/shared';
+import { ErrorApi } from '../errores.js';
 import type { Config } from '../config.js';
 import type { Dbs } from '../db/cliente.js';
 import * as v from '../validacion.js';
@@ -45,6 +47,22 @@ export async function rutasAuth(app: FastifyInstance, opts: { config: Config; db
   app.get('/auth/usuarios', { preHandler: app.autenticar }, async (req) =>
     listarUsuariosActivos(dbs, req.sesion.localId),
   );
+
+  /**
+   * Autorización de un encargado para una acción puntual (anular, descontar): verifica su PIN sin cambiar
+   * el usuario de la PC. Los fallos cuentan para el bloqueo del PIN como en /auth/pin.
+   */
+  app.post('/auth/autorizar', { preHandler: app.autenticar }, async (req) => {
+    const b = z
+      .object({ usuarioId: z.uuid(), pin: z.string().max(10), accion: z.enum(ACCIONES) })
+      .parse(req.body);
+    const usuario = await verificarPin(dbs, req.sesion.localId, b.usuarioId, b.pin).catch((e: unknown) => {
+      throw new ErrorApi(403, 'REQUIERE_AUTORIZACION', e instanceof Error ? e.message : 'El PIN no es correcto.');
+    });
+    if (puede(usuario.rol, b.accion) !== 'si')
+      throw new ErrorApi(403, 'REQUIERE_AUTORIZACION', `${usuario.nombre} no puede autorizar esto.`);
+    return { usuario };
+  });
 
   app.post('/auth/pin', { preHandler: app.autenticar }, async (req) => {
     const b = z.object({ usuarioId: z.uuid(), pin: z.string().max(10) }).parse(req.body);

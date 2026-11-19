@@ -6,3 +6,4 @@ export * from './auditoria.js';
 export * from './carta.js';
 export * from './sync.js';
 export * from './salon.js';
+export * from './caja.js';

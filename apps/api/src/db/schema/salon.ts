@@ -4,7 +4,7 @@ import { creadoEn, id } from './comun.js';
 import { locales } from './locales.js';
 import { sectores } from './carta.js';
 
-const sincronizable = () => ({
+export const sincronizable = () => ({
   id: id(),
   localId: uuid('local_id')
     .notNull()
@@ -53,7 +53,7 @@ export const pedidos = pgTable(
   {
     ...sincronizable(),
     origen: text('origen', { enum: ['qr', 'manual', 'mostrador'] }).notNull(),
-    estado: text('estado', { enum: ['pendiente', 'confirmado', 'rechazado', 'anulado'] }).notNull(),
+    estado: text('estado', { enum: ['pendiente', 'confirmado', 'rechazado', 'anulado', 'cobrado'] }).notNull(),
     sesionId: uuid('sesion_id').references(() => sesionesMesa.id),
     mesaId: uuid('mesa_id').references(() => mesas.id),
     numero: integer('numero'),
@@ -64,12 +64,15 @@ export const pedidos = pgTable(
     confirmadoPor: uuid('confirmado_por'),
     confirmadoEn: timestamp('confirmado_en', { withTimezone: true }),
     rechazadoEn: timestamp('rechazado_en', { withTimezone: true }),
+    anuladoPor: uuid('anulado_por'),
+    motivoAnulacion: text('motivo_anulacion'),
+    anuladoEn: timestamp('anulado_en', { withTimezone: true }),
   },
   (t) => [
     index('pedidos_local_idx').on(t.localId),
     index('pedidos_sesion_idx').on(t.sesionId),
     check('pedidos_origen', sql`${t.origen} in ('qr', 'manual', 'mostrador')`),
-    check('pedidos_estado', sql`${t.estado} in ('pendiente', 'confirmado', 'rechazado', 'anulado')`),
+    check('pedidos_estado', sql`${t.estado} in ('pendiente', 'confirmado', 'rechazado', 'anulado', 'cobrado')`),
   ],
 );
 
@@ -89,6 +92,9 @@ export const itemsPedido = pgTable(
     nota: text('nota').notNull().default(''),
     sectorId: uuid('sector_id').references(() => sectores.id),
     anulado: boolean('anulado').notNull().default(false),
+    anuladoPor: uuid('anulado_por'),
+    motivoAnulacion: text('motivo_anulacion'),
+    anuladoEn: timestamp('anulado_en', { withTimezone: true }),
   },
   (t) => [
     index('items_pedido_idx').on(t.pedidoId),
