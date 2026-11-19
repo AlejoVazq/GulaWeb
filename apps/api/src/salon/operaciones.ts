@@ -66,26 +66,37 @@ registrarTipoOperacion('mesa.abrir', {
   },
 });
 
+/** Cierra la sesión: lo que quedó sin resolver se cierra con ella (el cliente ve el rechazo y la PC deja de sonar). */
+export async function cerrarSesion(tx: Tx, sesionId: string, usuarioId: string, ahora: Date) {
+  await tx
+    .update(pedidos)
+    .set({ estado: 'rechazado', motivoRechazo: 'La mesa se cerró', rechazadoEn: ahora })
+    .where(and(eq(pedidos.sesionId, sesionId), eq(pedidos.estado, 'pendiente')));
+  await tx
+    .update(avisosMesa)
+    .set({ atendidoEn: ahora, atendidoPor: usuarioId })
+    .where(and(eq(avisosMesa.sesionId, sesionId), isNull(avisosMesa.atendidoEn)));
+  await tx
+    .update(sesionesMesa)
+    .set({ estado: 'cerrada', cerradaEn: ahora, cerradaPor: usuarioId })
+    .where(eq(sesionesMesa.id, sesionId));
+}
+
+export { sesionNoCerrada };
+
 registrarTipoOperacion('mesa.cerrar', {
   permiso: 'mesa.operar',
   tema: 'salon',
   esquema: z.object({ sesionId: z.uuid() }),
   aplicar: async (tx, { sesion, hechaEn }, d) => {
     await sesionNoCerrada(tx, d.sesionId);
-    const ahora = hechaEn;
-    // Lo que quedó sin resolver se cierra con la mesa: el cliente ve el rechazo y la PC deja de sonar.
-    await tx
-      .update(pedidos)
-      .set({ estado: 'rechazado', motivoRechazo: 'La mesa se cerró', rechazadoEn: ahora })
-      .where(and(eq(pedidos.sesionId, d.sesionId), eq(pedidos.estado, 'pendiente')));
-    await tx
-      .update(avisosMesa)
-      .set({ atendidoEn: ahora, atendidoPor: sesion.usuarioId })
-      .where(and(eq(avisosMesa.sesionId, d.sesionId), isNull(avisosMesa.atendidoEn)));
-    await tx
-      .update(sesionesMesa)
-      .set({ estado: 'cerrada', cerradaEn: ahora, cerradaPor: sesion.usuarioId })
-      .where(eq(sesionesMesa.id, d.sesionId));
+    const [sinCobrar] = await tx
+      .select({ id: pedidos.id })
+      .from(pedidos)
+      .where(and(eq(pedidos.sesionId, d.sesionId), eq(pedidos.estado, 'confirmado')));
+    if (sinCobrar)
+      throw new ErrorApi(409, 'CUENTA_PENDIENTE', 'Cobrá la mesa (o anulá sus pedidos) antes de cerrarla.');
+    await cerrarSesion(tx, d.sesionId, sesion.usuarioId, hechaEn);
   },
 });
 

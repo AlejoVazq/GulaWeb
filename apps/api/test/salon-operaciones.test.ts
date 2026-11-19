@@ -205,7 +205,7 @@ it('reintentar pedido.crear con el mismo id de operación da un solo pedido', as
   expect(await leer((tx) => tx.select().from(itemsPedido))).toHaveLength(1);
 });
 
-it('abrir mesa, pedir y cerrar en un solo lote (como llega después de un corte)', async () => {
+it('abrir mesa, pedir y cerrar sin cobrar en un solo lote: el cierre se rechaza (CUENTA_PENDIENTE)', async () => {
   const m = await mesaDePrueba(e.localId, 'Mesa 5', false);
   const sesionId = nuevoId();
   const resultados = await enviar(
@@ -213,7 +213,8 @@ it('abrir mesa, pedir y cerrar en un solo lote (como llega después de un corte)
     op('pedido.crear', { pedidoId: nuevoId(), origen: 'manual', sesionId, numero: 1, dia: '2026-11-18', items: [itemManual()] }),
     op('mesa.cerrar', { sesionId }),
   );
-  expect(resultados.map((r) => r.estado)).toEqual(['aplicada', 'aplicada', 'aplicada']);
+  expect(resultados.map((r) => r.estado)).toEqual(['aplicada', 'aplicada', 'rechazada']);
+  expect(resultados[2]!.error!.codigo).toBe('CUENTA_PENDIENTE');
 });
 
 it('atender un aviso registra quién y cuándo', async () => {

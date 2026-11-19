@@ -25,7 +25,7 @@ type TipoOperacion<D> = {
   esquema: ZodType<D>;
   aplicar: (tx: Tx, ctx: Contexto, datos: D) => Promise<void>;
   /** Tema a avisar por tiempo real si se aplicó. */
-  tema?: Tema;
+  tema?: Tema | Tema[];
 };
 
 const tipos = new Map<string, TipoOperacion<unknown>>();
@@ -145,7 +145,7 @@ async function procesar(
       );
       await guardar(tx, sesion, op, resultado);
     });
-    if (def.tema) temas.add(def.tema);
+    for (const t of [def.tema ?? []].flat()) temas.add(t);
     return resultado;
   } catch (e) {
     if (!(e instanceof ErrorApi)) {
