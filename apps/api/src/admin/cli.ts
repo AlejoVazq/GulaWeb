@@ -65,7 +65,7 @@ async function marcaCli(dbs: Dbs): Promise<void> {
     marca.colorAcento = values.color;
   }
   if (values.logo !== undefined) {
-    if (!/^(/|https://)/.test(values.logo)) throw new ErrorApi(400, 'DATOS_INVALIDOS', 'El logo va como /fotos/... o https://...');
+    if (!values.logo.startsWith('/') && !values.logo.startsWith('https://')) throw new ErrorApi(400, 'DATOS_INVALIDOS', 'El logo va como /fotos/... o https://...');
     marca.logo = values.logo;
   }
   await dbs.dbAdmin.update(locales).set({ marca }).where(eq(locales.id, local.id));
