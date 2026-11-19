@@ -12,7 +12,8 @@ import { ErrorApi } from '../api';
 import { EstadoPedido } from '../componentes/EstadoPedido';
 import { AvisosMesa } from '../componentes/AvisosMesa';
 import type { Envio } from '../componentes/Carrito';
-import { estiloMarca, leerMarca } from '../marca';
+import { leerMarca } from '@gula/shared';
+import { estiloMarca } from '../marca';
 
 const MOTIVOS = {
   mesa_cerrada: 'Pedile a la moza que habilite la mesa',

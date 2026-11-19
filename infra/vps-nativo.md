@@ -23,7 +23,7 @@ Gestión Dalmata usaba este dominio: su bloque quedó en `/root/gestiond.caddy.d
 ssh root@187.53.106.37
 gula-admin crear-local --nombre "Gula" --slug gula --dueno "<nombre>" --email <email> --password '<clave>' --pin <pin>
 gula-admin cargar-demo --slug gula --carta gula
-gula-admin marca --slug gula --color '#111111'
+gula-admin marca --slug gula --tema comanda-bn --lema 'est. 2024' --logo /marcas/gula-hoja.svg
 ```
 
 ## Actualizar

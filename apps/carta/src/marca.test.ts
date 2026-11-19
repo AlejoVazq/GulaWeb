@@ -1,13 +1,13 @@
 import { expect, it } from 'vitest';
-import { estiloMarca, leerMarca } from './marca';
+import { leerMarca } from '@gula/shared';
+import { atributosTema, estiloMarca } from './marca';
 
-it('toma color y logo válidos', () => {
-  expect(leerMarca({ colorAcento: '#1A7f3c', logo: '/fotos/l1/logo.webp' })).toEqual({ colorAcento: '#1A7f3c', logo: '/fotos/l1/logo.webp' });
-  expect(estiloMarca({ colorAcento: '#123456' })).toEqual({ '--color-acento': '#123456' });
+it('atributosTema expone tema y modo como data-*', () => {
+  expect(atributosTema(leerMarca({ modo: 'oscuro' }))).toEqual({ 'data-tema': 'comanda-bn', 'data-modo': 'oscuro' });
+  expect(atributosTema(leerMarca({}))).toEqual({ 'data-tema': 'comanda-bn', 'data-modo': 'auto' });
 });
 
-it('ignora valores peligrosos o mal formados', () => {
-  expect(leerMarca({ colorAcento: 'red;background:url(x)', logo: 'javascript:alert(1)' })).toEqual({});
-  expect(leerMarca({ logo: 'http://x.com/a.png' })).toEqual({});
-  expect(leerMarca(undefined)).toEqual({});
+it('estiloMarca pasa el color de acento válido como variable', () => {
+  expect(estiloMarca(leerMarca({ colorAcento: '#123456' }))).toEqual({ '--color-acento': '#123456' });
+  expect(estiloMarca(leerMarca({}))).toEqual({});
 });
