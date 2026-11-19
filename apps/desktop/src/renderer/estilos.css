@@ -112,6 +112,7 @@ p {
 input,
 select,
 textarea {
+  font-weight: 400;
   min-height: 40px;
   padding: var(--e2) var(--e3);
   border: 1.5px solid var(--borde-fuerte);
@@ -235,8 +236,11 @@ input[role='switch'] {
   background: var(--tinta);
   color: #fff;
 }
+.centrado > div {
+  width: min(560px, 100%);
+}
 .tarjeta {
-  width: min(520px, 100%);
+  width: 100%;
   background: var(--superficie);
   color: var(--texto);
   border-radius: var(--radio);
@@ -1171,4 +1175,7 @@ input[role='switch'] {
   grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
   gap: var(--e4);
   align-items: start;
+}
+.tarjeta > .enlace {
+  margin-top: var(--e4);
 }
