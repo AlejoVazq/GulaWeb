@@ -40,6 +40,9 @@ export const cobros = pgTable(
   },
   (t) => [
     index('cobros_turno_idx').on(t.turnoId),
+    index('cobros_local_fecha_idx').on(t.localId, t.cobradoEn),
+    index('cobros_sesion_idx').on(t.sesionId),
+    index('cobros_pedido_idx').on(t.pedidoId),
     check('cobros_destino', sql`(${t.sesionId} is null) <> (${t.pedidoId} is null)`),
     check('cobros_montos', sql`${t.descuento} >= 0 and ${t.descuento} <= ${t.subtotal} and ${t.total} = ${t.subtotal} - ${t.descuento}`),
   ],
@@ -61,6 +64,7 @@ export const pagos = pgTable(
   },
   (t) => [
     index('pagos_turno_idx').on(t.turnoId),
+    index('pagos_cobro_idx').on(t.cobroId),
     check('pagos_metodo', sql`${t.metodo} in ('efectivo', 'debito', 'credito', 'transferencia', 'mercadopago', 'otro')`),
     check('pagos_montos', sql`${t.monto} > 0 and ${t.propina} >= 0`),
   ],
@@ -82,6 +86,7 @@ export const movimientosCaja = pgTable(
   },
   (t) => [
     index('movimientos_turno_idx').on(t.turnoId),
+    index('movimientos_local_fecha_idx').on(t.localId, t.hechoEn),
     check('movimientos_tipo', sql`${t.tipo} in ('ingreso', 'egreso')`),
     check('movimientos_categoria', sql`${t.categoria} in ('proveedores', 'sueldos', 'retiro', 'otro')`),
     check('movimientos_monto', sql`${t.monto} > 0`),
