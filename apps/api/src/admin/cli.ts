@@ -51,7 +51,7 @@ async function cargarDemoCli(dbs: Dbs): Promise<void> {
     .where(eq(locales.slug, values.slug ?? ''));
   if (!local) throw new ErrorApi(404, 'LOCAL_NO_ENCONTRADO', 'No existe un local con ese slug.');
   const r = await cargarCartaDemo(dbs, local.id);
-  console.log(`Carta demo cargada: ${r.categorias} categorías, ${r.productos} productos`);
+  console.log(`Carta demo cargada: ${r.categorias} categorías, ${r.productos} productos, ${r.mesas} mesas`);
 }
 
 const comandos: Record<string, (dbs: Dbs) => Promise<void>> = {

@@ -2,7 +2,8 @@ import { isNull } from 'drizzle-orm';
 import { nuevoId } from '@gula/shared';
 import type { Dbs } from '../db/cliente.js';
 import { conLocal } from '../db/conLocal.js';
-import { categorias, gruposOpciones, opciones, productos, sectores } from '../db/schema/index.js';
+import { categorias, gruposOpciones, mesas, opciones, productos, sectores } from '../db/schema/index.js';
+import { nuevoToken } from '../salon/mesas.rutas.js';
 import { ErrorApi } from '../errores.js';
 import demo from './demo-carta.json' with { type: 'json' };
 
@@ -31,7 +32,7 @@ export async function cargarCartaDemo(
   dbs: Dbs,
   localId: string,
   carta: CartaDemo = demo as CartaDemo,
-): Promise<{ categorias: number; productos: number }> {
+): Promise<{ categorias: number; productos: number; mesas: number }> {
   return conLocal(dbs.dbApp, localId, async (tx) => {
     const existentes = await tx
       .select({ id: productos.id })
@@ -98,6 +99,17 @@ export async function cargarCartaDemo(
         }
       }
     }
-    return { categorias: carta.categorias.length, productos: totalProductos };
+    // Mesas de demostración (solo si el local todavía no tiene).
+    const [hayMesas] = await tx.select({ id: mesas.id }).from(mesas).where(isNull(mesas.eliminadoEn)).limit(1);
+    const nuevas = hayMesas
+      ? []
+      : [
+          ...Array.from({ length: 10 }, (_, i) => ({ nombre: `Mesa ${i + 1}`, zona: 'Salón', capacidad: 4 })),
+          ...Array.from({ length: 4 }, (_, i) => ({ nombre: `Vereda ${i + 1}`, zona: 'Vereda', capacidad: 2 })),
+        ];
+    for (const [orden, m] of nuevas.entries()) {
+      await tx.insert(mesas).values({ id: nuevoId(), localId, token: nuevoToken(), orden, ...m });
+    }
+    return { categorias: carta.categorias.length, productos: totalProductos, mesas: nuevas.length };
   });
 }

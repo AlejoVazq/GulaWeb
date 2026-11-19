@@ -4,6 +4,9 @@ import { cargarCartaDemo } from '../src/admin/seedDemo.js';
 import { armarCartaPublica } from '../src/carta/publica.js';
 import { localConDueno } from './app.js';
 import { dbs, limpiarDb } from './db.js';
+import { asc } from 'drizzle-orm';
+import { conLocal } from '../src/db/conLocal.js';
+import { mesas } from '../src/db/schema/index.js';
 
 beforeEach(limpiarDb);
 afterAll(() => dbs.cerrar());
@@ -29,4 +32,16 @@ it('no carga dos veces', async () => {
   const { localId } = await localConDueno('demo');
   await cargarCartaDemo(dbs, localId);
   await expect(cargarCartaDemo(dbs, localId)).rejects.toMatchObject({ codigo: 'CARTA_NO_VACIA' });
+});
+
+it('crea 10 mesas en el Salón y 4 en la Vereda, con tokens únicos', async () => {
+  const { localId } = await localConDueno('demo');
+  const r = await cargarCartaDemo(dbs, localId);
+  expect(r.mesas).toBe(14);
+  const filas = await conLocal(dbs.dbApp, localId, (tx) => tx.select().from(mesas).orderBy(asc(mesas.orden)));
+  expect(filas.filter((m) => m.zona === 'Salón').map((m) => m.nombre)).toEqual(
+    Array.from({ length: 10 }, (_, i) => `Mesa ${i + 1}`),
+  );
+  expect(filas.filter((m) => m.zona === 'Vereda').map((m) => m.nombre)).toEqual(['Vereda 1', 'Vereda 2', 'Vereda 3', 'Vereda 4']);
+  expect(new Set(filas.map((m) => m.token)).size).toBe(14);
 });
