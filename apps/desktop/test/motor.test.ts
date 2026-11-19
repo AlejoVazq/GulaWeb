@@ -437,3 +437,20 @@ it('calcula el desfase del reloj de la PC con la fecha que manda el servidor', a
   await motor.sincronizarAhora();
   expect(Math.abs(motor.estado().desfaseReloj! - 600_000)).toBeLessThan(2_000);
 });
+
+it('un pull de salón con solo un delivery cambiado avisa salon:cambio', async () => {
+  const avisos: number[] = [];
+  const delivery = {
+    id: 'd1', pedidoId: 'd1', clienteNombre: 'Juana', telefono: '1155551234', direccion: 'Av. Siempreviva 742', referencias: '',
+    costoEnvio: 0, pagaCon: null, repartidor: 'Juan', estado: 'en_camino' as const, enCaminoEn: null, entregadoEn: null,
+    actualizadoEn: '2026-11-19T22:00:00.000Z', eliminadoEn: null,
+  };
+  const motor = crearMotor({
+    base,
+    crearSocket: sinSocket,
+    alCambiarSalon: () => avisos.push(1),
+    cliente: clienteFalso(() => pullDePrueba(), () => ({ ...salonVacio, deliveries: [delivery] })),
+  });
+  await motor.sincronizarAhora();
+  expect(avisos).toHaveLength(1);
+});

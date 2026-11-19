@@ -39,3 +39,9 @@ it('una transacción anidada se deshace junto con la de afuera', () => {
   expect(b.db.prepare("SELECT count(*) AS n FROM kv WHERE clave = 'x'").get()).toEqual({ n: 0 });
   b.cerrar();
 });
+
+it('escribe en modo durable (synchronous = FULL)', () => {
+  const base = abrirBase(tmp.ruta('durable.db'));
+  expect(base.db.prepare('PRAGMA synchronous').get()).toEqual({ synchronous: 2 });
+  base.cerrar();
+});

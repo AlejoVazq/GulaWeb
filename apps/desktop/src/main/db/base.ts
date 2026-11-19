@@ -11,7 +11,8 @@ export type BaseLocal = {
 
 export function abrirBase(ruta: string): BaseLocal {
   const db = new DatabaseSync(ruta);
-  db.exec('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 3000;');
+  // synchronous = FULL: con WAL, un corte de luz no pierde la última transacción confirmada.
+  db.exec('PRAGMA journal_mode = WAL; PRAGMA synchronous = FULL; PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 3000;');
 
   // Reentrante: una transacción anidada corre dentro de la de afuera (todo o nada).
   let profundidad = 0;

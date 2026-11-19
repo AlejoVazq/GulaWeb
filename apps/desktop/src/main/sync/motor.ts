@@ -69,7 +69,7 @@ export const socketIo: CrearSocket = (url, path, obtenerToken) =>
 const hayFilas = (c: RespuestaPullCarta) =>
   c.sectores.length + c.categorias.length + c.productos.length + c.grupos.length + c.opciones.length > 0;
 const hayFilasSalon = (c: RespuestaPullSalon) =>
-  c.mesas.length + c.sesiones.length + c.pedidos.length + c.items.length + c.avisos.length > 0;
+  c.mesas.length + c.sesiones.length + c.pedidos.length + c.items.length + c.avisos.length + (c.deliveries?.length ?? 0) > 0;
 
 export function crearMotor(opts: {
   base: BaseLocal;
