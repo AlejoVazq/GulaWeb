@@ -1,0 +1,31 @@
+# Instalador de Windows (NSIS) y auto-update desde el propio VPS.
+# Build: pnpm --filter @gula/desktop dist   (requiere GULA_ACTUALIZACIONES con la URL pública)
+appId: ar.gulaweb.desktop
+productName: GulaWeb
+copyright: GulaWeb
+directories:
+  output: release
+  buildResources: build
+files:
+  - out/**/*
+  - package.json
+asarUnpack:
+  - '**/*.node'
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+  artifactName: GulaWeb-Setup-${version}.${ext}
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: always
+  createStartMenuShortcut: true
+  shortcutName: GulaWeb
+  deleteAppDataOnUninstall: false
+# electron-updater lee latest.yml de esta carpeta (Caddy la sirve en /actualizaciones/).
+publish:
+  provider: generic
+  url: ${env.GULA_ACTUALIZACIONES}
+  channel: latest

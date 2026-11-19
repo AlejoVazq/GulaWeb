@@ -9,3 +9,6 @@ coverage
 .superpowers
 out
 test-results
+release/
+infra/actualizaciones/*
+!infra/actualizaciones/.gitkeep

@@ -70,6 +70,19 @@ GULA_SERVIDOR=https://$DOMINIO/api pnpm --filter @gula/desktop dev
 
 La URL del servidor también se puede cambiar en la pantalla de ingreso ("Opciones avanzadas").
 
+### Instalador y actualizaciones automáticas
+
+```bash
+# 1. subir "version" en apps/desktop/package.json
+# 2. compilar y publicar (sube instalador + latest.yml a infra/actualizaciones/ del VPS)
+DOMINIO=gula.com.ar VPS=usuario@ip infra/scripts/publicar-desktop.sh
+```
+
+- El instalador queda en `https://$DOMINIO/actualizaciones/GulaWeb-Setup-<versión>.exe`: se baja en la PC del local y se instala (no pide permisos de administrador).
+- La app instalada apunta sola a `https://$DOMINIO/api`, busca versiones nuevas al abrir y cada 4 h, las baja en segundo plano y las instala **al cerrarse** (o con "Reiniciar ahora" en la barra). Nunca reinicia en medio del servicio.
+- Los datos locales (SQLite, cola de impresión) viven en `%APPDATA%/GulaWeb` y sobreviven a actualizaciones y desinstalaciones.
+- Sin certificado de firma, Windows SmartScreen muestra "Editor desconocido" la primera vez (Más información → Ejecutar de todas formas). Para firmar: `CSC_LINK`/`CSC_KEY_PASSWORD` de electron-builder.
+
 Humo de punta a punta (API real + app compilada, requiere el Postgres de desarrollo):
 
 ```bash

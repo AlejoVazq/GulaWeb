@@ -8,6 +8,8 @@ export default defineConfig({
   main: {
     plugins: [externalizeDepsPlugin({ exclude: ['@gula/shared'] })],
     resolve: { alias: { '@gula/shared': shared } },
+    // Servidor por defecto de la app instalada (lo fija el script de publicación).
+    define: { __SERVIDOR_DEFECTO__: JSON.stringify(process.env.GULA_SERVIDOR_DEFECTO ?? 'http://localhost:3000') },
   },
   preload: {
     // Preload con sandbox: tiene que ser CommonJS.

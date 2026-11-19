@@ -120,6 +120,9 @@ export type ServiciosGula = {
   'reportes:exportar': (a: { formato: 'csv' | 'pdf'; reporte: RespuestaReporte }) => Promise<boolean>;
   /** Hoja A4 con el QR de cada mesa; false si se canceló el guardado. */
   'mesas:hojaQr': () => Promise<boolean>;
+  'app:actualizacion': () => Promise<EstadoActualizacion>;
+  /** Cierra la app e instala la versión ya descargada. */
+  'app:instalarActualizacion': () => Promise<void>;
   'sync:rechazadas': () => Promise<OperacionRechazada[]>;
   'sync:descartarRechazada': (a: { id: string }) => Promise<void>;
 };
@@ -137,7 +140,13 @@ export type VistaImpresion = { documento: Documento; columnas: number };
 export type ItemPedido = { productoId: string; seleccion: Seleccion; nota: string; cantidad: number };
 
 export type CanalServicio = keyof ServiciosGula;
-export type EventoGula = 'sync:estado' | 'carta:cambio' | 'sesion:cambio' | 'salon:cambio' | 'impresion:cambio' | 'impresion:vista' | 'caja:cambio';
+export type EventoGula = 'sync:estado' | 'carta:cambio' | 'sesion:cambio' | 'salon:cambio' | 'impresion:cambio' | 'impresion:vista' | 'caja:cambio' | 'app:actualizacion';
+
+/** Auto-update: la versión nueva se baja sola y se instala al cerrar la app. */
+export type EstadoActualizacion =
+  | { tipo: 'al-dia'; version: string }
+  | { tipo: 'bajando'; porcentaje: number }
+  | { tipo: 'lista'; version: string };
 
 export const CANALES: CanalServicio[] = [
   'sesion:estado',
@@ -186,6 +195,8 @@ export const CANALES: CanalServicio[] = [
   'reportes:obtener',
   'reportes:exportar',
   'mesas:hojaQr',
+  'app:actualizacion',
+  'app:instalarActualizacion',
   'sync:rechazadas',
   'sync:descartarRechazada',
 ];

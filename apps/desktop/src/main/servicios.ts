@@ -16,6 +16,7 @@ import { crearServiciosCaja } from './servicios.caja';
 import { crearServiciosDelivery } from './servicios.delivery';
 import { crearServiciosReportes } from './servicios.reportes';
 import { crearServiciosQr } from './servicios.qr';
+import type { EstadoActualizacion } from '../compartido/ipc';
 import type { Motor } from './sync/motor';
 import { ErrorGula, sinConexion } from './errores';
 import { crearColaImpresion, type ColaImpresion } from './impresion/cola';
@@ -23,6 +24,7 @@ import { crearTransporteWindows } from './impresion/windows';
 import { crearServiciosImpresion } from './servicios.impresion';
 
 type Deps = {
+  actualizador?: { estado(): EstadoActualizacion; instalarAhora(): void };
   base: BaseLocal;
   sesion: Sesion;
   cliente: { pedir: Cliente['pedir']; pin: Cliente['pin']; login: (email: string, password: string, nombrePc: string, servidor?: string) => Promise<unknown> };
@@ -248,6 +250,8 @@ export function crearServicios(d: Deps): ServiciosGula & { bloquearPorInactivida
       guardarArchivo: d.guardarArchivo ?? (async () => false),
       htmlAPdf: d.htmlAPdf ?? (async () => new Uint8Array()),
     }),
+    'app:actualizacion': async () => d.actualizador?.estado() ?? { tipo: 'al-dia', version: '' },
+    'app:instalarActualizacion': async () => d.actualizador?.instalarAhora(),
     /** Al iniciar la app: resuelve lo que quedó a medio imprimir. */
     recuperarImpresion: () => cola.recuperar(),
 

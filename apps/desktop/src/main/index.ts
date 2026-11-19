@@ -10,8 +10,10 @@ import { crearMotor } from './sync/motor';
 import { crearServicios } from './servicios';
 import { registrarIpc } from './ipc';
 import { esFramePropio, esUrlExternaPermitida } from './seguridad';
+import { crearActualizador } from './actualizador';
 
-const SERVIDOR_POR_DEFECTO = 'http://localhost:3000';
+declare const __SERVIDOR_DEFECTO__: string;
+const SERVIDOR_POR_DEFECTO = __SERVIDOR_DEFECTO__;
 
 // Carpeta de datos alternativa (tests e2e): GULA_DATOS
 if (process.env.GULA_DATOS) app.setPath('userData', process.env.GULA_DATOS);
@@ -80,7 +82,9 @@ void app.whenReady().then(() => {
   motor.on('estado', (e) => emitir('sync:estado', e));
 
   let ventana: BrowserWindow | null = null;
+  const actualizador = crearActualizador((e) => emitir('app:actualizacion', e));
   const servicios = crearServicios({
+    actualizador,
     base,
     cifrador: cifradorSistema,
     listarImpresoras: async () => (ventana ? (await ventana.webContents.getPrintersAsync()).map((p) => p.name) : []),

@@ -3,6 +3,7 @@ import type { EstadoSesion, EstadoSync } from '../../compartido/ipc';
 import { llamar } from '../gula';
 import { Conexion } from '../componentes/Conexion';
 import { AvisoSync } from '../componentes/AvisoSync';
+import { AvisoActualizacion } from '../componentes/AvisoActualizacion';
 import { Carta } from './Carta';
 import { Mesas } from './Mesas';
 import { DetalleMesa } from './DetalleMesa';
@@ -47,6 +48,7 @@ export function Shell({ sesion, sync, salon }: { sesion: Activa; sync: EstadoSyn
         <strong>{sesion.local.nombre}</strong>
         <Conexion estado={sync} />
         <AvisoSync sync={sync} />
+        <AvisoActualizacion />
         <Alerta activa={sinAtender > 0} cantidad={sinAtender} />
         <span className="barra__usuario">{sesion.usuario.nombre}</span>
         <button type="button" className="boton" onClick={() => void llamar('sesion:bloquear')}>

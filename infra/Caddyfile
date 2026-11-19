@@ -18,6 +18,14 @@
 		file_server
 	}
 
+	# Instalador y auto-update de la app de PC (electron-updater lee latest.yml).
+	handle_path /actualizaciones/* {
+		root * /srv/actualizaciones
+		@indice path *.yml
+		header @indice Cache-Control "no-cache"
+		file_server
+	}
+
 	# Carta (SPA): assets con hash cacheables, index.html siempre fresco.
 	handle /assets/* {
 		root * /srv/carta
