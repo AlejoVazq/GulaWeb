@@ -30,9 +30,10 @@ it('muestra los pedidos con número, ítems y total', async () => {
   render(<DetalleMesa mesaId="m1" onVolver={vi.fn()} />);
   expect(await screen.findByRole('heading', { name: 'Mesa 3' })).toBeInTheDocument();
   const pedido = screen.getByRole('article', { name: 'Pedido 4' });
-  expect(within(pedido).getByText('2× Clásica')).toBeInTheDocument();
+  expect(within(pedido).getByText('2×')).toBeInTheDocument();
+  expect(within(pedido).getByText('Clásica')).toBeInTheDocument();
   expect(within(pedido).getByText('Doble · sin cebolla')).toBeInTheDocument();
-  expect(within(pedido).getByText('Confirmado')).toBeInTheDocument();
+  expect(within(pedido).getByRole('status')).toHaveTextContent('CONFIRMADO');
   expect(screen.getByText(/Total de la mesa/)).toHaveTextContent('13.000');
 });
 
@@ -82,7 +83,7 @@ it('"Imprimir cuenta" y "Reimprimir" mandan a imprimir', async () => {
   const pedido = screen.getByRole('article', { name: 'Pedido 4' });
   await userEvent.click(within(pedido).getByRole('button', { name: 'Reimprimir' }));
   expect(p.invocar).toHaveBeenCalledWith('impresion:reimprimir', { pedidoId: 'p1' });
-  expect(await screen.findByRole('status')).toHaveTextContent('Enviado a imprimir.');
+  expect(await screen.findByText('Enviado a imprimir.')).toHaveAttribute('role', 'status');
 });
 
 it('con pedidos sin cobrar no se puede cerrar la mesa', async () => {
@@ -122,4 +123,13 @@ it('una moza anula un ítem con el PIN de un encargado', async () => {
     motivo: 'Error de carga',
     autorizacion: { usuarioId: 'enc', pin: '5555' },
   });
+});
+
+it('un pedido anulado sigue en el detalle con el sello ANULADO', async () => {
+  const anulado = { ...detalle, pedidos: [{ ...detalle.pedidos[0]!, estado: 'anulado' as const, motivoAnulacion: 'Error de carga' }] };
+  puenteFalso({ 'salon:mesa': () => anulado });
+  render(<DetalleMesa mesaId="m1" onVolver={vi.fn()} />);
+  const pedido = await screen.findByRole('article', { name: 'Pedido 4' });
+  expect(within(pedido).getByRole('status')).toHaveTextContent('ANULADO');
+  expect(within(pedido).getByText('Anulado: Error de carga')).toBeInTheDocument();
 });

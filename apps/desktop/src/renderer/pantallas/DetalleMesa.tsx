@@ -6,75 +6,94 @@ import { TomarPedido } from '../componentes/TomarPedido';
 import { hora } from '../formato';
 import { Cobrar } from '../componentes/Cobrar';
 import { Anular } from '../componentes/Anular';
+import { PapelComanda, selloDeEstado, type LineaPapel } from '@gula/ui';
 
-type Anulando = { tipo: 'item'; id: string; titulo: string } | { tipo: 'pedido'; id: string; titulo: string };
+type Anulando =
+  { tipo: 'item'; id: string; titulo: string } | { tipo: 'pedido'; id: string; titulo: string };
 
-const ESTADOS: Record<Pedido['estado'], string> = {
-  pendiente: 'Pendiente de confirmar',
-  confirmado: 'Confirmado',
-  rechazado: 'Rechazado',
-  anulado: 'Anulado',
-  cobrado: 'Cobrado',
-};
 const AVISOS = { llamar: 'Llamó a la moza', cuenta: 'Pidió la cuenta' } as const;
 
-function TarjetaPedido({ p, onReimprimir, onAnular }: { p: Pedido; onReimprimir: () => void; onAnular: (a: Anulando) => void }) {
+function TarjetaPedido({
+  p,
+  onReimprimir,
+  onAnular,
+}: {
+  p: Pedido;
+  onReimprimir: () => void;
+  onAnular: (a: Anulando) => void;
+}) {
   const titulo = p.numero ? `Pedido ${p.numero}` : 'Pedido sin número';
+  const lineas: LineaPapel[] = p.items.map((i) => ({
+    id: i.id,
+    cantidad: i.cantidad,
+    nombre: i.nombre,
+    importe: i.precioUnitario * i.cantidad,
+    detalle: [i.resumenOpciones, i.nota].filter(Boolean).join(' · ') || undefined,
+    quitada: i.anulado,
+  }));
+  const porId = new Map(p.items.map((i) => [i.id, i]));
   return (
-    <article className={`bloque pedido pedido--${p.estado}`} aria-label={titulo}>
-      <div className="fila fila--entre">
-        <strong>{titulo}</strong>
-        <span className="suave">
-          {hora(p.creadoEn)} · {p.origen === 'qr' ? 'QR' : 'Moza'}
-        </span>
-        <span className={`etiqueta etiqueta--${p.estado === 'pendiente' ? 'pendiente' : 'abierta'}`}>{ESTADOS[p.estado]}</span>
-      </div>
-      <ul className="lista">
-        {p.items.map((i) => {
-          const detalle = [i.resumenOpciones, i.nota].filter(Boolean).join(' · ');
-          return (
-            <li key={i.id} className="lista__item">
-              <div>
-                <div>{`${i.cantidad}× ${i.nombre}`}</div>
-                {detalle && <div className="suave">{detalle}</div>}
-              </div>
-              <span>{formatearPrecio(i.precioUnitario * i.cantidad)}</span>
-              {p.estado === 'confirmado' && (
+    <PapelComanda
+      compacto
+      aria-label={titulo}
+      titulo={titulo.toUpperCase()}
+      subtitulo={`${hora(p.creadoEn)} · ${p.origen === 'qr' ? 'QR' : 'MOZA'}`}
+      lineas={lineas}
+      total={p.total}
+      sello={selloDeEstado(p.estado)}
+      accionesLinea={
+        p.estado === 'confirmado'
+          ? (l) => {
+              const i = porId.get(l.id)!;
+              return i.anulado ? null : (
                 <button
                   type="button"
                   className="boton boton--chico"
                   aria-label={`Anular ${i.cantidad}× ${i.nombre}`}
-                  onClick={() => onAnular({ tipo: 'item', id: i.id, titulo: `Anular ${i.cantidad}× ${i.nombre}` })}
+                  onClick={() =>
+                    onAnular({
+                      tipo: 'item',
+                      id: i.id,
+                      titulo: `Anular ${i.cantidad}× ${i.nombre}`,
+                    })
+                  }
                 >
                   Anular
                 </button>
-              )}
-            </li>
-          );
-        })}
-      </ul>
+              );
+            }
+          : undefined
+      }
+    >
       {p.motivoRechazo && <p className="suave">Motivo: {p.motivoRechazo}</p>}
       {p.motivoAnulacion && <p className="suave">Anulado: {p.motivoAnulacion}</p>}
-      <div className="fila fila--entre">
-        {p.estado === 'confirmado' ? (
-          <span className="fila">
-            <button type="button" className="boton" onClick={onReimprimir}>
-              Reimprimir
-            </button>
-            <button type="button" className="boton" onClick={() => onAnular({ tipo: 'pedido', id: p.id, titulo: `Anular ${titulo}` })}>
-              Anular pedido
-            </button>
-          </span>
-        ) : (
-          <span />
-        )}
-        <p className="pedido__total">{formatearPrecio(p.total)}</p>
-      </div>
-    </article>
+      {p.estado === 'confirmado' && (
+        <div className="fila">
+          <button type="button" className="boton" onClick={onReimprimir}>
+            Reimprimir
+          </button>
+          <button
+            type="button"
+            className="boton boton--peligro"
+            onClick={() => onAnular({ tipo: 'pedido', id: p.id, titulo: `Anular ${titulo}` })}
+          >
+            Anular pedido
+          </button>
+        </div>
+      )}
+    </PapelComanda>
   );
 }
 
-export function DetalleMesa({ mesaId, onVolver, rol = 'mesero' }: { mesaId: string; onVolver: () => void; rol?: Rol }) {
+export function DetalleMesa({
+  mesaId,
+  onVolver,
+  rol = 'mesero',
+}: {
+  mesaId: string;
+  onVolver: () => void;
+  rol?: Rol;
+}) {
   const [cobrando, setCobrando] = useState(false);
   const [anulando, setAnulando] = useState<Anulando | null>(null);
   const [d, setD] = useState<Detalle | null>(null);
@@ -124,7 +143,11 @@ export function DetalleMesa({ mesaId, onVolver, rol = 'mesero' }: { mesaId: stri
         titulo={mesa.nombre}
         onCancelar={() => setTomando(false)}
         onEnviar={async (items) => {
-          const r = await llamar('salon:crearPedido', { origen: 'manual', sesionId: sesion.id, items });
+          const r = await llamar('salon:crearPedido', {
+            origen: 'manual',
+            sesionId: sesion.id,
+            items,
+          });
           setTomando(false);
           setAviso(`Pedido ${r.numero} enviado.`);
         }}
@@ -140,7 +163,7 @@ export function DetalleMesa({ mesaId, onVolver, rol = 'mesero' }: { mesaId: stri
         <button type="button" className="boton" onClick={onVolver}>
           ← Mesas
         </button>
-        <h1 className="titulo">{mesa.nombre}</h1>
+        <h1 className="sr-solo">{mesa.nombre}</h1>
         <span className="suave">
           Abierta {hora(sesion.abiertaEn)}
           {sesion.comensales ? ` · ${sesion.comensales} personas` : ''}
@@ -192,12 +215,22 @@ export function DetalleMesa({ mesaId, onVolver, rol = 'mesero' }: { mesaId: stri
           Imprimir cuenta
         </button>
         {puede(rol, 'cobro.registrar') === 'si' && (
-          <button type="button" className="boton boton--principal" disabled={!vigentes.length} onClick={() => setCobrando(true)}>
+          <button
+            type="button"
+            className="boton boton--principal"
+            disabled={!vigentes.length}
+            onClick={() => setCobrando(true)}
+          >
             Cobrar
           </button>
         )}
         {!confirmandoCierre && (
-          <button type="button" className="boton" disabled={vigentes.length > 0} onClick={() => setConfirmandoCierre(true)}>
+          <button
+            type="button"
+            className="boton"
+            disabled={vigentes.length > 0}
+            onClick={() => setConfirmandoCierre(true)}
+          >
             Cerrar mesa
           </button>
         )}
@@ -221,8 +254,10 @@ export function DetalleMesa({ mesaId, onVolver, rol = 'mesero' }: { mesaId: stri
           necesitaPin={puede(rol, 'pedido.anular') === 'con_autorizacion'}
           onCancelar={() => setAnulando(null)}
           onConfirmar={async (motivo, autorizacion) => {
-            if (anulando.tipo === 'item') await llamar('salon:anularItem', { itemId: anulando.id, motivo, autorizacion });
-            else await llamar('salon:anularPedido', { pedidoId: anulando.id, motivo, autorizacion });
+            if (anulando.tipo === 'item')
+              await llamar('salon:anularItem', { itemId: anulando.id, motivo, autorizacion });
+            else
+              await llamar('salon:anularPedido', { pedidoId: anulando.id, motivo, autorizacion });
             setAnulando(null);
             setAviso('Anulado. Se avisó a cocina.');
           }}
@@ -235,7 +270,9 @@ export function DetalleMesa({ mesaId, onVolver, rol = 'mesero' }: { mesaId: stri
             type="button"
             className="boton boton--peligro"
             onClick={() =>
-              void intentar(() => llamar('salon:cerrarMesa', { sesionId: sesion.id })).then((ok) => ok && onVolver())
+              void intentar(() => llamar('salon:cerrarMesa', { sesionId: sesion.id })).then(
+                (ok) => ok && onVolver(),
+              )
             }
           >
             Sí, cerrar
@@ -247,20 +284,22 @@ export function DetalleMesa({ mesaId, onVolver, rol = 'mesero' }: { mesaId: stri
       )}
 
       {!d.pedidos.length && <p className="suave">Todavía no hay pedidos en esta mesa.</p>}
-      {d.pedidos.map((p) => (
-        <TarjetaPedido
-          key={p.id}
-          p={p}
-          onAnular={setAnulando}
-          onReimprimir={() =>
-            void intentar(() => llamar('impresion:reimprimir', { pedidoId: p.id })).then(
-              (ok) => ok && setAviso('Enviado a imprimir.'),
-            )
-          }
-        />
-      ))}
-      <p>
-        <strong>Total de la mesa {formatearPrecio(total)}</strong>
+      <div className="detalle__pedidos">
+        {d.pedidos.map((p) => (
+          <TarjetaPedido
+            key={p.id}
+            p={p}
+            onAnular={setAnulando}
+            onReimprimir={() =>
+              void intentar(() => llamar('impresion:reimprimir', { pedidoId: p.id })).then(
+                (ok) => ok && setAviso('Enviado a imprimir.'),
+              )
+            }
+          />
+        ))}
+      </div>
+      <p className="detalle__total">
+        Total de la mesa <span className="cifra">{formatearPrecio(total)}</span>
       </p>
     </div>
   );

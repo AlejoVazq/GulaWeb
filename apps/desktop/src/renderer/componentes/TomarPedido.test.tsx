@@ -30,9 +30,10 @@ it('arma el pedido con opciones, nota y cantidad, y "Enviar a cocina" lo manda',
   await userEvent.click(within(d).getByRole('button', { name: /Agregar/ }));
 
   const resumen = screen.getByRole('region', { name: 'Pedido' });
-  expect(within(resumen).getByText('2× Clásica')).toBeInTheDocument();
+  expect(within(resumen).getByText('2×')).toBeInTheDocument();
+  expect(within(resumen).getByText('Clásica')).toBeInTheDocument();
   expect(within(resumen).getByText('Doble · sin cebolla')).toBeInTheDocument();
-  expect(within(resumen).getByText(/Total/)).toHaveTextContent('14.000');
+  expect(resumen.querySelector('.papel__total')).toHaveTextContent('14.000');
 
   await userEvent.click(screen.getByRole('button', { name: 'Enviar a cocina' }));
   expect(onEnviar).toHaveBeenCalledWith([{ productoId: 'p1', seleccion: { g1: ['o2'] }, nota: 'sin cebolla', cantidad: 2 }]);

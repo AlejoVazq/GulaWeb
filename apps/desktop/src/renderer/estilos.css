@@ -1199,3 +1199,32 @@ input[role='switch'] {
 .tarjeta > .enlace {
   margin-top: var(--e4);
 }
+.sr-solo {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.detalle__pedidos {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: var(--e4);
+  align-items: start;
+}
+.detalle__total {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--e3);
+  align-items: baseline;
+  font-family: var(--cartelera);
+  font-weight: 700;
+  font-size: 1.2rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.detalle__total .cifra {
+  font-family: var(--cifras);
+  font-size: 1.5rem;
+}

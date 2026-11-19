@@ -1,3 +1,4 @@
+import { PapelComanda } from '@gula/ui';
 import { useEffect, useMemo, useState } from 'react';
 import {
   CANTIDAD_MAXIMA,
@@ -170,7 +171,7 @@ export function TomarPedido({ titulo, onEnviar, onCancelar }: Props) {
     <div className="tomar">
       <div className="tomar__carta">
         <div className="fila fila--entre">
-          <h2 className="titulo">Nuevo pedido · {titulo}</h2>
+          <h2 className="titulo">Nuevo pedido</h2>
           <button type="button" className="boton" onClick={onCancelar}>
             Cancelar
           </button>
@@ -212,54 +213,52 @@ export function TomarPedido({ titulo, onEnviar, onCancelar }: Props) {
               onClick={() => setEligiendo(p)}
             >
               <span>{p.nombre}</span>
-              <span className="suave">{p.disponible ? formatearPrecio(p.precio) : 'Sin stock'}</span>
+              <span className="suave cifra">{p.disponible ? formatearPrecio(p.precio) : 'Sin stock'}</span>
             </button>
           ))}
           {carta && !productos.length && <p className="suave">No hay productos con ese nombre.</p>}
         </div>
       </div>
 
-      <section className="tomar__resumen bloque" aria-labelledby="resumen-pedido">
-        <h3 id="resumen-pedido">Pedido</h3>
-        {!lineas.length && <p className="suave">Tocá un producto para agregarlo.</p>}
-        <ul className="lista">
-          {lineas.map((l) => {
-            const detalle = [resumirOpciones(l.producto, l.seleccion), l.nota].filter(Boolean).join(' · ');
-            return (
-              <li key={l.clave} className="lista__item">
-                <div>
-                  <div>{`${l.cantidad}× ${l.producto.nombre}`}</div>
-                  {detalle && <div className="suave">{detalle}</div>}
-                </div>
-                <span>{formatearPrecio(precioUnitario(l.producto, l.seleccion) * l.cantidad)}</span>
-                <button
-                  type="button"
-                  className="boton boton--peligro"
-                  aria-label={`Quitar ${l.producto.nombre}`}
-                  onClick={() => setLineas((ls) => ls.filter((x) => x.clave !== l.clave))}
-                >
-                  Quitar
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-        <p>
-          <strong>Total {formatearPrecio(total)}</strong>
-        </p>
-        {error && (
-          <p className="error" role="alert">
-            {error}
-          </p>
-        )}
-        <button
-          type="button"
-          className="boton boton--principal"
-          disabled={!lineas.length || enviando}
-          onClick={() => void enviar()}
+      <section className="tomar__resumen" aria-label="Pedido">
+        <PapelComanda
+          compacto
+          titulo={titulo.toUpperCase()}
+          subtitulo="PEDIDO NUEVO"
+          lineas={lineas.map((l) => ({
+            id: String(l.clave),
+            cantidad: l.cantidad,
+            nombre: l.producto.nombre,
+            importe: precioUnitario(l.producto, l.seleccion) * l.cantidad,
+            detalle: [resumirOpciones(l.producto, l.seleccion), l.nota].filter(Boolean).join(' · ') || undefined,
+          }))}
+          total={lineas.length ? total : undefined}
+          accionesLinea={(linea) => (
+            <button
+              type="button"
+              className="boton boton--chico boton--peligro"
+              aria-label={`Quitar ${linea.nombre}`}
+              onClick={() => setLineas((ls) => ls.filter((x) => String(x.clave) !== linea.id))}
+            >
+              Quitar
+            </button>
+          )}
         >
-          Enviar a cocina
-        </button>
+          {!lineas.length && <p className="suave">Tocá un producto para agregarlo.</p>}
+          {error && (
+            <p className="error" role="alert">
+              {error}
+            </p>
+          )}
+          <button
+            type="button"
+            className="boton boton--principal"
+            disabled={!lineas.length || enviando}
+            onClick={() => void enviar()}
+          >
+            Enviar a cocina
+          </button>
+        </PapelComanda>
       </section>
 
       {eligiendo && (
