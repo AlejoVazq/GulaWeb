@@ -64,3 +64,17 @@ it('al cerrar muestra la diferencia antes de confirmar', async () => {
   await userEvent.click(screen.getByRole('button', { name: 'Confirmar cierre' }));
   expect(p.invocar).toHaveBeenCalledWith('caja:cerrar', { contado: 1400000 });
 });
+
+it('un doble clic en "Registrar" registra un solo movimiento', async () => {
+  let soltar = () => {};
+  const p = puenteFalso({ 'caja:leer': () => conCaja, 'caja:movimiento': () => new Promise<void>((r) => (soltar = r)) });
+  render(<Caja />);
+  const form = await screen.findByRole('group', { name: 'Nuevo movimiento' });
+  await userEvent.type(within(form).getByLabelText('Monto'), '100');
+  await userEvent.type(within(form).getByLabelText('Motivo'), 'Hielo');
+  const boton = within(form).getByRole('button', { name: 'Registrar' });
+  await userEvent.click(boton);
+  await userEvent.click(boton);
+  soltar();
+  expect(p.invocar.mock.calls.filter((c) => c[0] === 'caja:movimiento')).toHaveLength(1);
+});

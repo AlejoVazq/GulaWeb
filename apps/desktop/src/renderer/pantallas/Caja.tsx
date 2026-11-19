@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   CATEGORIAS_MOVIMIENTO,
   METODOS_PAGO,
@@ -36,7 +36,13 @@ export function Caja() {
   const [ok, setOk] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // Un solo envío a la vez: un doble clic no registra dos movimientos (ni dos aperturas o cierres).
+  const enCurso = useRef(false);
+  const [enviando, setEnviando] = useState(false);
   const intentar = async (fn: () => Promise<unknown>, mensaje: string) => {
+    if (enCurso.current) return false;
+    enCurso.current = true;
+    setEnviando(true);
     setOk(null);
     setError(null);
     try {
@@ -46,6 +52,9 @@ export function Caja() {
     } catch (e) {
       setError(mensajeDe(e));
       return false;
+    } finally {
+      enCurso.current = false;
+      setEnviando(false);
     }
   };
 
@@ -78,7 +87,7 @@ export function Caja() {
         <button
           type="button"
           className="boton boton--principal"
-          disabled={f === null}
+          disabled={f === null || enviando}
           onClick={() => void intentar(() => llamar('caja:abrir', { fondo: f! }), 'Caja abierta.').then((x) => x && setFondo(''))}
         >
           Abrir caja
@@ -156,7 +165,7 @@ export function Caja() {
             <button
               type="button"
               className="boton boton--principal"
-              disabled={c === null}
+              disabled={c === null || enviando}
               onClick={() =>
                 void intentar(() => llamar('caja:cerrar', { contado: c! }), 'Caja cerrada. Se imprimió el cierre.').then((x) => {
                   if (x) {
@@ -207,7 +216,7 @@ export function Caja() {
         <button
           type="button"
           className="boton boton--principal"
-          disabled={!montoMov || !mov.motivo.trim()}
+          disabled={!montoMov || !mov.motivo.trim() || enviando}
           onClick={() =>
             void intentar(
               () => llamar('caja:movimiento', { tipo: mov.tipo, categoria: mov.categoria, monto: montoMov!, motivo: mov.motivo.trim() }),
