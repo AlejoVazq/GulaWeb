@@ -95,6 +95,8 @@ it('cobrar la mesa la cierra y encola el cobro con el subtotal', async () => {
   expect((await servicios['salon:leer']()).mesas[0]!.sesion).toBeNull();
   const op = pendientes(base).find((o) => o.tipo === 'cuenta.cobrar')!;
   expect(op.datos).toMatchObject({ sesionId, subtotal: 2800000, descuento: { monto: 280000, motivo: 'Habitué' } });
+  const { pedidoId } = (await servicios['salon:leer']()) && (pendientes(base).find((o) => o.tipo === 'pedido.crear')!.datos as { pedidoId: string });
+  expect((op.datos as { pedidoIds: string[] }).pedidoIds).toEqual([pedidoId]);
   const caja = await servicios['caja:leer']();
   expect(caja.resumen!.porMetodo.efectivo).toEqual({ ventas: 1520000, propinas: 200000 });
 });

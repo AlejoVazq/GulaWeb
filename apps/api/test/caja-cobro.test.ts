@@ -52,6 +52,7 @@ it('cobrar una mesa con pago dividido deja los pedidos cobrados y la mesa cerrad
   const b = await pedidoEnMesa(m.sesionId, 800000);
   const [r] = await cobrar({
     sesionId: m.sesionId,
+    pedidoIds: [a.pedidoId, b.pedidoId],
     subtotal: 2000000,
     pagos: [
       { pagoId: nuevoId(), metodo: 'efectivo', monto: 1200000, propina: 100000 },
@@ -71,26 +72,26 @@ it('cobrar una mesa con pago dividido deja los pedidos cobrados y la mesa cerrad
 it('pagos que no suman el total se rechazan', async () => {
   await abrirCaja();
   const m = await mesaDePrueba(e.localId);
-  await pedidoEnMesa(m.sesionId, 1000000);
-  const [r] = await cobrar({ sesionId: m.sesionId, subtotal: 1000000, pagos: [{ pagoId: nuevoId(), metodo: 'efectivo', monto: 1100000, propina: 0 }] });
+  const { pedidoId } = await pedidoEnMesa(m.sesionId, 1000000);
+  const [r] = await cobrar({ sesionId: m.sesionId, pedidoIds: [pedidoId], subtotal: 1000000, pagos: [{ pagoId: nuevoId(), metodo: 'efectivo', monto: 1100000, propina: 0 }] });
   expect(r!.error!.codigo).toBe('DATOS_INVALIDOS');
 });
 
 it('sin caja abierta no se cobra', async () => {
   const m = await mesaDePrueba(e.localId);
-  await pedidoEnMesa(m.sesionId, 1000000);
-  const [r] = await cobrar({ sesionId: m.sesionId, subtotal: 1000000, pagos: [{ pagoId: nuevoId(), metodo: 'efectivo', monto: 1000000, propina: 0 }] });
+  const { pedidoId } = await pedidoEnMesa(m.sesionId, 1000000);
+  const [r] = await cobrar({ sesionId: m.sesionId, pedidoIds: [pedidoId], subtotal: 1000000, pagos: [{ pagoId: nuevoId(), metodo: 'efectivo', monto: 1000000, propina: 0 }] });
   expect(r!.error!.codigo).toBe('CAJA_CERRADA');
 });
 
 it('un descuento necesita motivo y queda auditado', async () => {
   await abrirCaja();
   const m = await mesaDePrueba(e.localId);
-  await pedidoEnMesa(m.sesionId, 1000000);
+  const { pedidoId } = await pedidoEnMesa(m.sesionId, 1000000);
   const pago = { pagoId: nuevoId(), metodo: 'efectivo', monto: 900000, propina: 0 };
-  const [sin] = await cobrar({ sesionId: m.sesionId, subtotal: 1000000, descuento: { monto: 100000, motivo: '' }, pagos: [pago] });
+  const [sin] = await cobrar({ sesionId: m.sesionId, pedidoIds: [pedidoId], subtotal: 1000000, descuento: { monto: 100000, motivo: '' }, pagos: [pago] });
   expect(sin!.error!.codigo).toBe('DATOS_INVALIDOS');
-  const [con] = await cobrar({ sesionId: m.sesionId, subtotal: 1000000, descuento: { monto: 100000, motivo: 'Cliente habitual' }, pagos: [pago] });
+  const [con] = await cobrar({ sesionId: m.sesionId, pedidoIds: [pedidoId], subtotal: 1000000, descuento: { monto: 100000, motivo: 'Cliente habitual' }, pagos: [pago] });
   expect(con!.estado).toBe('aplicada');
   const [a] = await leer((tx) => tx.select().from(auditoria).where(eq(auditoria.accion, 'cobro.descuento')));
   expect(a!.despues).toMatchObject({ descuento: 100000, motivo: 'Cliente habitual' });
@@ -108,8 +109,8 @@ it('un pedido de mostrador se cobra solo', async () => {
 it('cobrar dos veces la misma mesa: el segundo se rechaza', async () => {
   await abrirCaja();
   const m = await mesaDePrueba(e.localId);
-  await pedidoEnMesa(m.sesionId, 500000);
-  const datos = { sesionId: m.sesionId, subtotal: 500000, pagos: [{ pagoId: nuevoId(), metodo: 'efectivo', monto: 500000, propina: 0 }] };
+  const { pedidoId } = await pedidoEnMesa(m.sesionId, 500000);
+  const datos = { sesionId: m.sesionId, pedidoIds: [pedidoId], subtotal: 500000, pagos: [{ pagoId: nuevoId(), metodo: 'efectivo', monto: 500000, propina: 0 }] };
   await cobrar(datos);
   const [r] = await cobrar({ ...datos, pagos: [{ ...datos.pagos[0]!, pagoId: nuevoId() }] });
   expect(r!.error!.codigo).toBe('ESTADO_INVALIDO');
@@ -152,7 +153,35 @@ it('no se anula un pedido ya cobrado', async () => {
   await abrirCaja();
   const m = await mesaDePrueba(e.localId);
   const { pedidoId } = await pedidoEnMesa(m.sesionId, 500000);
-  await cobrar({ sesionId: m.sesionId, subtotal: 500000, pagos: [{ pagoId: nuevoId(), metodo: 'efectivo', monto: 500000, propina: 0 }] });
+  await cobrar({ sesionId: m.sesionId, pedidoIds: [pedidoId], subtotal: 500000, pagos: [{ pagoId: nuevoId(), metodo: 'efectivo', monto: 500000, propina: 0 }] });
   const [r] = await enviar(e.tokenEncargado, op('pedido.anular', { pedidoId, motivo: 'x' }));
   expect(r!.error!.codigo).toBe('ESTADO_INVALIDO');
+});
+
+it('el cobro marca solo los pedidos que lista; si queda otro confirmado la mesa sigue abierta y se audita', async () => {
+  // Como cuando una anulación offline con PIN inválido se rechaza antes del cobro.
+  await abrirCaja();
+  const m = await mesaDePrueba(e.localId);
+  const cobrado = await pedidoEnMesa(m.sesionId, 500000);
+  const fuera = await pedidoEnMesa(m.sesionId, 300000);
+  const [r] = await cobrar({
+    sesionId: m.sesionId, pedidoIds: [cobrado.pedidoId], subtotal: 500000,
+    pagos: [{ pagoId: nuevoId(), metodo: 'efectivo', monto: 500000, propina: 0 }],
+  });
+  expect(r!.estado).toBe('aplicada');
+  const ps = await leer((tx) => tx.select().from(pedidos));
+  expect(ps.find((p) => p.id === cobrado.pedidoId)!.estado).toBe('cobrado');
+  expect(ps.find((p) => p.id === fuera.pedidoId)!.estado).toBe('confirmado');
+  const [s] = await leer((tx) => tx.select().from(sesionesMesa).where(eq(sesionesMesa.id, m.sesionId!)));
+  expect(s!.estado).not.toBe('cerrada');
+  const [a] = await leer((tx) => tx.select().from(auditoria).where(eq(auditoria.accion, 'cobro.discrepancia')));
+  expect(a!.despues).toMatchObject({ sinCobrar: [fuera.pedidoId] });
+});
+
+it('un cobro de mesa sin la lista de pedidos se rechaza', async () => {
+  await abrirCaja();
+  const m = await mesaDePrueba(e.localId);
+  await pedidoEnMesa(m.sesionId, 500000);
+  const [r] = await cobrar({ sesionId: m.sesionId, subtotal: 500000, pagos: [{ pagoId: nuevoId(), metodo: 'efectivo', monto: 500000, propina: 0 }] });
+  expect(r!.error!.codigo).toBe('DATOS_INVALIDOS');
 });

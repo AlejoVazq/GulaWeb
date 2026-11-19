@@ -140,13 +140,14 @@ export function crearServiciosCaja(d: Deps): ServiciosCaja {
       let sesionId: string | null = null;
       let pedidoId: string | null = null;
       let subtotal: number;
+      let pedidoIds: string[] = [];
       if ('sesionId' in destino) {
         sesionId = destino.sesionId;
         if (!leerSalon(d.base).mesas.some((m) => m.sesion?.id === sesionId))
           throw new ErrorGula('ESTADO_INVALIDO', 'La mesa ya está cerrada (¿ya se cobró?).');
-        subtotal = pedidosDeSesion(d.base, sesionId)
-          .filter((p) => p.estado === 'confirmado')
-          .reduce((s, p) => s + p.total, 0);
+        const confirmados = pedidosDeSesion(d.base, sesionId).filter((p) => p.estado === 'confirmado');
+        pedidoIds = confirmados.map((p) => p.id);
+        subtotal = confirmados.reduce((s, p) => s + p.total, 0);
       } else {
         const p = leerPedido(d.base, destino.pedidoId);
         if (!p || p.sesionId || p.estado !== 'confirmado') throw new ErrorGula('ESTADO_INVALIDO', 'Ese pedido ya se cobró o se anuló.');
@@ -181,7 +182,7 @@ export function crearServiciosCaja(d: Deps): ServiciosCaja {
           tipo: 'cuenta.cobrar',
           usuarioId,
           datos: {
-            cobroId, turnoId: t.id, sesionId, pedidoId, subtotal,
+            cobroId, turnoId: t.id, sesionId, pedidoId, subtotal, ...(sesionId ? { pedidoIds } : {}),
             descuento: desc ? { monto: desc, motivo: motivoDescuento } : null,
             pagos: conIds,
           },
