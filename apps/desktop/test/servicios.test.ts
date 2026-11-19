@@ -1,4 +1,5 @@
-import { expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import type { Rol } from '@gula/shared';
 import { abrirBase, type BaseLocal } from '../src/main/db/base';
 import { aplicarCambiosCarta, leerCarta } from '../src/main/db/carta';
 import { pendientes } from '../src/main/db/outbox';
@@ -17,15 +18,19 @@ let base: BaseLocal;
 let n = 0;
 const local = { id: 'l1', nombre: 'Bar', slug: 'bar' };
 
-function armar(pedir: (metodo: string, ruta: string, cuerpo?: unknown) => unknown, rol: 'dueno' | 'mesero' = 'dueno') {
+function armar(pedir: (metodo: string, ruta: string, cuerpo?: unknown) => unknown, rol: Rol = 'dueno', red = { hay: true }) {
   base = abrirBase(tmp.ruta(`s${n++}.db`));
   aplicarCambiosCarta(base, pullDePrueba());
   const sesion = crearSesion(base, identidad);
   sesion.guardar({ accessToken: 'a', refreshToken: 'r', usuario: { id: 'u1', nombre: 'Ale', rol }, local, dispositivoId: 'd1' });
-  const motor = { sincronizarAhora: vi.fn(async () => {}), reconectar: vi.fn(), iniciar: vi.fn(), detener: vi.fn(), estado: () => ({ conexion: 'en-linea' as const, pendientes: 0, rechazadas: 0, ultimaSync: null }) };
+  const motor = { sincronizarAhora: vi.fn(async () => {}), reconectar: vi.fn(), iniciar: vi.fn(), detener: vi.fn(), estado: () => ({ conexion: red.hay ? ('en-linea' as const) : ('sin-conexion' as const), pendientes: 0, rechazadas: 0, ultimaSync: null }) };
   const cliente = {
-    pedir: vi.fn(async (m: string, r: string, c?: unknown) => pedir(m, r, c)),
+    pedir: vi.fn(async (m: string, r: string, c?: unknown) => {
+      if (!red.hay) throw new SinConexion();
+      return pedir(m, r, c);
+    }),
     pin: vi.fn(async (usuarioId: string, p: string) => {
+      if (!red.hay) throw new SinConexion();
       if (p !== '4321') throw new ErrorApiCliente(401, 'PIN_INCORRECTO', 'PIN incorrecto.');
       const usuario = { id: usuarioId, nombre: 'Ana', rol };
       sesion.fijarTokens({ accessToken: 'b', usuario });
@@ -35,7 +40,7 @@ function armar(pedir: (metodo: string, ruta: string, cuerpo?: unknown) => unknow
   };
   const servicios = crearServicios({ base, sesion, cliente: cliente as never, motor, emitir: vi.fn(), elegirArchivo: async () => null });
   const entrar = () => servicios['sesion:elegirUsuario']({ usuarioId: 'u2', pin: '4321' });
-  return { servicios, cliente, motor, entrar };
+  return { servicios, cliente, motor, entrar, sesion };
 }
 
 it('estando bloqueada no se puede operar', async () => {
@@ -115,4 +120,82 @@ it('volver a vincular al mismo local conserva los datos', async () => {
   });
   await servicios['sesion:login']({ email: 'a@a.com', password: 'secreto123', nombrePc: 'PC' });
   expect(leerCarta(base).categorias).toHaveLength(1);
+});
+
+describe('PIN sin conexión', () => {
+  const usuarios = [
+    { id: 'u2', nombre: 'Ana', rol: 'encargado' },
+    { id: 'u3', nombre: 'Moza', rol: 'mesero' },
+  ];
+  const conRed = () => {
+    const red = { hay: true };
+    const a = armar((m, r) => (r === '/auth/usuarios' ? usuarios : {}), 'encargado', red);
+    return { ...a, red };
+  };
+
+  it('tras entrar con red, sin red se bloquea y se vuelve a entrar con el mismo PIN', async () => {
+    const { servicios, entrar, red } = conRed();
+    await servicios['sesion:usuarios']();
+    await entrar();
+    red.hay = false;
+    servicios.bloquearPorInactividad();
+    expect(await servicios['sesion:estado']()).toMatchObject({ tipo: 'bloqueada' });
+    expect((await servicios['sesion:usuarios']()).map((u) => u.id)).toEqual(['u2']);
+    await expect(servicios['sesion:elegirUsuario']({ usuarioId: 'u2', pin: '0000' })).rejects.toMatchObject({ codigo: 'PIN_INCORRECTO' });
+    const e = await servicios['sesion:elegirUsuario']({ usuarioId: 'u2', pin: '4321' });
+    expect(e).toMatchObject({ tipo: 'activa', usuario: { id: 'u2', nombre: 'Ana', rol: 'encargado' } });
+  });
+
+  it('un usuario que nunca entró en esta PC con red no puede entrar sin red', async () => {
+    const { servicios, entrar, red } = conRed();
+    await servicios['sesion:usuarios']();
+    await entrar();
+    red.hay = false;
+    await expect(servicios['sesion:elegirUsuario']({ usuarioId: 'u3', pin: '4321' })).rejects.toMatchObject({
+      codigo: 'SIN_CONEXION',
+      mensaje: 'Ese usuario todavía no entró en esta PC con conexión.',
+    });
+  });
+
+  it('un PIN rechazado con red borra el verificador local', async () => {
+    const { servicios, entrar, red } = conRed();
+    await servicios['sesion:usuarios']();
+    await entrar();
+    await expect(servicios['sesion:elegirUsuario']({ usuarioId: 'u2', pin: '0000' })).rejects.toMatchObject({ codigo: 'PIN_INCORRECTO' });
+    red.hay = false;
+    await expect(servicios['sesion:elegirUsuario']({ usuarioId: 'u2', pin: '4321' })).rejects.toMatchObject({ codigo: 'SIN_CONEXION' });
+  });
+
+  it('cinco PIN equivocados sin red bloquean al usuario en la PC', async () => {
+    const { servicios, entrar, red } = conRed();
+    await servicios['sesion:usuarios']();
+    await entrar();
+    red.hay = false;
+    for (let i = 0; i < 4; i++)
+      await expect(servicios['sesion:elegirUsuario']({ usuarioId: 'u2', pin: '0000' })).rejects.toMatchObject({ codigo: 'PIN_INCORRECTO' });
+    await expect(servicios['sesion:elegirUsuario']({ usuarioId: 'u2', pin: '0000' })).rejects.toMatchObject({
+      codigo: 'PIN_BLOQUEADO',
+      mensaje: 'Demasiados intentos. Esperá 5 minutos.',
+    });
+    await expect(servicios['sesion:elegirUsuario']({ usuarioId: 'u2', pin: '4321' })).rejects.toMatchObject({ codigo: 'PIN_BLOQUEADO' });
+  });
+
+  it('operar sin red como otro usuario encola con su usuarioId y su rol', async () => {
+    const red = { hay: true };
+    const { servicios, cliente, sesion } = armar((m, r) => (r === '/auth/usuarios' ? usuarios : {}), 'encargado', red);
+    await servicios['sesion:usuarios']();
+    await servicios['sesion:elegirUsuario']({ usuarioId: 'u3', pin: '4321' }); // la moza
+    cliente.pin.mockImplementationOnce(async (usuarioId: string) => {
+      const usuario = { id: usuarioId, nombre: 'Ana', rol: 'encargado' as Rol };
+      sesion.fijarTokens({ accessToken: 'c', usuario });
+      return { accessToken: 'c', usuario };
+    });
+    await servicios['sesion:elegirUsuario']({ usuarioId: 'u2', pin: '4321' }); // el encargado
+    red.hay = false;
+    await servicios['sesion:bloquear']();
+    const e = await servicios['sesion:elegirUsuario']({ usuarioId: 'u3', pin: '4321' });
+    expect(e).toMatchObject({ tipo: 'activa', usuario: { id: 'u3', rol: 'mesero' } });
+    await servicios['carta:disponibilidad']({ productoId: 'p1', disponible: false });
+    expect(pendientes(base).at(-1)).toMatchObject({ usuarioId: 'u3' });
+  });
 });

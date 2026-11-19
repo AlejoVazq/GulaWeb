@@ -65,7 +65,8 @@ void app.whenReady().then(() => {
   if (!unicaInstancia) return;
   const base = abrirBase(join(app.getPath('userData'), 'gula.db'));
   const servidor = () => process.env.GULA_SERVIDOR ?? leerKv(base, 'servidor') ?? SERVIDOR_POR_DEFECTO;
-  const sesion = crearSesion(base, cifrador());
+  const cifradorSistema = cifrador();
+  const sesion = crearSesion(base, cifradorSistema);
   const cliente = crearCliente({ urlBase: servidor, sesion });
 
   let emitir: (e: EventoGula, d: unknown) => void = () => {};
@@ -81,6 +82,7 @@ void app.whenReady().then(() => {
   let ventana: BrowserWindow | null = null;
   const servicios = crearServicios({
     base,
+    cifrador: cifradorSistema,
     listarImpresoras: async () => (ventana ? (await ventana.webContents.getPrintersAsync()).map((p) => p.name) : []),
     sesion,
     cliente,

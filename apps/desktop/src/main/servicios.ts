@@ -9,7 +9,8 @@ import { vaciarSalonLocal } from './db/salon';
 import { vaciarCajaLocal } from './db/caja';
 import { crearServiciosSalon } from './servicios.salon';
 import { borrarKv, escribirKv, leerKv } from './db/kv';
-import type { Sesion } from './api/sesion';
+import type { Cifrador, Sesion, UsuarioSesion } from './api/sesion';
+import { crearPinLocal } from './pinLocal';
 import { ErrorApiCliente, SinConexion, type Cliente } from './api/cliente';
 import { crearServiciosCaja } from './servicios.caja';
 import { crearServiciosDelivery } from './servicios.delivery';
@@ -35,7 +36,11 @@ type Deps = {
   /** Exportar reportes: diálogo "Guardar como" (false si se cancela) y HTML → PDF. */
   guardarArchivo?: (nombreSugerido: string, datos: Uint8Array | string) => Promise<boolean>;
   htmlAPdf?: (html: string) => Promise<Uint8Array>;
+  /** Cifra los verificadores de PIN locales (el mismo cifrador del refresh token). */
+  cifrador?: Cifrador;
 };
+
+const SIN_VERIFICADOR = 'Ese usuario todavía no entró en esta PC con conexión.';
 
 const TIPOS_IMAGEN: Record<string, string> = { '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.webp': 'image/webp' };
 
@@ -61,28 +66,37 @@ function aRest(e: EdicionCarta): [metodo: 'POST' | 'PATCH' | 'PUT' | 'DELETE', r
 
 export function crearServicios(d: Deps): ServiciosGula & { bloquearPorInactividad(): void; recuperarImpresion(): void } {
   let desbloqueada = false;
+  /** Usuario elegido sin conexión (el token sigue siendo del último que entró con red). */
+  let usuarioOffline: UsuarioSesion | null = null;
+  const pinLocal = crearPinLocal(d.base, d.cifrador ?? { cifrar: (t) => t, descifrar: (t) => t });
+
+  const usuarioActivo = (): UsuarioSesion | null => usuarioOffline ?? d.sesion.actual()?.usuario ?? null;
+  const usuariosGuardados = () => JSON.parse(leerKv(d.base, 'usuarios') ?? '[]') as UsuarioPublico[];
 
   const estadoSesion = (): EstadoSesion => {
     const s = d.sesion.actual();
     if (!s) return { tipo: 'sin-dispositivo', servidor: d.servidor?.() ?? '' };
     if (!desbloqueada) return { tipo: 'bloqueada', local: s.local };
-    return { tipo: 'activa', local: s.local, usuario: s.usuario };
+    return { tipo: 'activa', local: s.local, usuario: usuarioActivo()! };
   };
   const avisarSesion = () => {
     const e = estadoSesion();
     d.emitir('sesion:cambio', e);
     return e;
   };
+  const activoOFalla = (): UsuarioSesion => {
+    const u = usuarioActivo();
+    if (!u || !d.sesion.actual() || !desbloqueada) throw new ErrorGula('SESION_BLOQUEADA', 'Elegí tu usuario para continuar.');
+    return u;
+  };
   const exigir = (accion: Accion): string => {
-    const s = d.sesion.actual();
-    if (!s || !desbloqueada) throw new ErrorGula('SESION_BLOQUEADA', 'Elegí tu usuario para continuar.');
-    if (puede(s.usuario.rol, accion) !== 'si') throw new ErrorGula('SIN_PERMISO', 'No tenés permiso para hacer esto.');
-    return s.usuario.id;
+    const u = activoOFalla();
+    if (puede(u.rol, accion) !== 'si') throw new ErrorGula('SIN_PERMISO', 'No tenés permiso para hacer esto.');
+    return u.id;
   };
   const permiso = (accion: Accion) => {
-    const s = d.sesion.actual();
-    if (!s || !desbloqueada) throw new ErrorGula('SESION_BLOQUEADA', 'Elegí tu usuario para continuar.');
-    return { usuarioId: s.usuario.id, permiso: puede(s.usuario.rol, accion) };
+    const u = activoOFalla();
+    return { usuarioId: u.id, permiso: puede(u.rol, accion) };
   };
   const autorizar = async (a: { usuarioId: string; pin: string }, accion: Accion) => {
     try {
@@ -116,7 +130,7 @@ export function crearServicios(d: Deps): ServiciosGula & { bloquearPorInactivida
     exigir,
     quien: () => {
       const s = d.sesion.actual();
-      return { local: s?.local.nombre ?? '', usuario: s?.usuario.nombre ?? '' };
+      return { local: s?.local.nombre ?? '', usuario: usuarioActivo()?.nombre ?? '' };
     },
     listarImpresoras: d.listarImpresoras ?? (async () => []),
   });
@@ -179,17 +193,43 @@ export function crearServicios(d: Deps): ServiciosGula & { bloquearPorInactivida
       }
       if (localNuevo) escribirKv(d.base, 'ultimo-local', localNuevo);
       if (servidor) d.fijarServidor?.(servidor);
+      usuarioOffline = null;
       desbloqueada = true;
       d.motor.iniciar();
       d.motor.reconectar();
       return avisarSesion();
     },
 
-    'sesion:usuarios': async () =>
-      online(() => d.cliente.pedir<UsuarioPublico[]>('GET', '/auth/usuarios'), 'Sin conexión no se puede cambiar de usuario.'),
+    'sesion:usuarios': async () => {
+      try {
+        const lista = await d.cliente.pedir<UsuarioPublico[]>('GET', '/auth/usuarios');
+        escribirKv(d.base, 'usuarios', JSON.stringify(lista));
+        pinLocal.conservarSolo(lista.map((u) => u.id));
+        return lista;
+      } catch (e) {
+        if (!(e instanceof SinConexion)) throw e;
+        // Sin conexión: la última lista, solo con quienes ya entraron en esta PC.
+        return usuariosGuardados().filter((u) => pinLocal.tiene(u.id));
+      }
+    },
 
     'sesion:elegirUsuario': async ({ usuarioId, pin }) => {
-      await online(() => d.cliente.pin(usuarioId, pin), 'Sin conexión no se puede cambiar de usuario.');
+      try {
+        await d.cliente.pin(usuarioId, pin);
+        pinLocal.recordar(usuarioId, pin);
+        usuarioOffline = null;
+      } catch (e) {
+        if (e instanceof ErrorApiCliente && e.codigo === 'PIN_INCORRECTO') pinLocal.olvidar(usuarioId);
+        if (!(e instanceof SinConexion)) throw e;
+        const r = pinLocal.verificar(usuarioId, pin);
+        if (r === 'sin_verificador') throw sinConexion(SIN_VERIFICADOR);
+        if (r === 'incorrecto') throw new ErrorGula('PIN_INCORRECTO', 'PIN incorrecto.');
+        if (r === 'bloqueado') throw new ErrorGula('PIN_BLOQUEADO', 'Demasiados intentos. Esperá 5 minutos.');
+        const actual = d.sesion.actual()?.usuario;
+        const u = actual?.id === usuarioId ? actual : usuariosGuardados().find((x) => x.id === usuarioId);
+        if (!u) throw sinConexion(SIN_VERIFICADOR);
+        usuarioOffline = actual?.id === usuarioId ? null : { id: u.id, nombre: u.nombre, rol: u.rol };
+      }
       desbloqueada = true;
       d.motor.reconectar();
       return avisarSesion();
@@ -204,6 +244,7 @@ export function crearServicios(d: Deps): ServiciosGula & { bloquearPorInactivida
       await d.cliente.pedir('POST', '/auth/logout').catch(() => undefined);
       d.motor.detener();
       d.sesion.borrar();
+      usuarioOffline = null;
       desbloqueada = false;
       return avisarSesion();
     },
@@ -224,7 +265,7 @@ export function crearServicios(d: Deps): ServiciosGula & { bloquearPorInactivida
       if (!c.productoId === !c.opcionId) throw new ErrorGula('DATOS_INVALIDOS', 'Indicá un producto o una opción.');
       d.base.transaccion(() => {
         fijarDisponibilidadLocal(d.base, c);
-        const usuarioId = d.sesion.actual()?.usuario.id;
+        const usuarioId = usuarioActivo()?.id;
         encolar(
           d.base,
           c.productoId
@@ -261,9 +302,11 @@ export function crearServicios(d: Deps): ServiciosGula & { bloquearPorInactivida
       d.emitir('sync:estado', d.motor.estado());
     },
 
-    /** Bloqueo automático por inactividad; sin conexión no se bloquea (no se podría volver a entrar). */
+    /** Bloqueo automático por inactividad; sin conexión solo si se puede volver a entrar con el PIN local. */
     bloquearPorInactividad() {
-      if (!desbloqueada || d.motor.estado().conexion === 'sin-conexion') return;
+      if (!desbloqueada) return;
+      const u = usuarioActivo();
+      if (d.motor.estado().conexion === 'sin-conexion' && !(u && pinLocal.tiene(u.id))) return;
       desbloqueada = false;
       avisarSesion();
     },
