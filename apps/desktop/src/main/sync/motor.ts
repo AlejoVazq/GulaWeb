@@ -201,7 +201,7 @@ export function crearMotor(opts: {
           // Sin red: 'sin-conexion'. Error de la API (servidor respondió): sigue en línea y se reintenta.
           emitir({ conexion: e instanceof SinConexion ? 'sin-conexion' : 'en-linea' });
           programarReintento();
-          repetir = false;
+          // Si alguien pidió sincronizar durante este intento (por ejemplo, porque volvió la red), se reintenta ya.
         }
       } while (repetir);
     })().finally(() => {
