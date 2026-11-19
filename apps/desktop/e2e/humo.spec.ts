@@ -137,6 +137,15 @@ test('pedido QR: la PC abre la mesa, el cliente pide, suena la alerta, se confir
     await expect(tarjeta).toBeHidden();
     await expect(v.getByText('Hay pedidos o avisos sin atender')).toBeHidden();
 
+    // Sin impresora configurada, la comanda sale en la vista previa.
+    const previa = v.getByRole('complementary', { name: 'Vista previa de impresión' });
+    const comanda = previa.getByRole('figure', { name: /^Comanda .* · Pedido 1$/ });
+    await expect(comanda).toBeVisible();
+    await expect(comanda).toContainText('Mesa 3');
+    await expect(comanda).toContainText(`2x ${producto.nombre}`);
+    await v.getByRole('button', { name: 'Imprimir cuenta' }).click();
+    await expect(previa.getByRole('figure', { name: 'Cuenta Mesa 3' })).toContainText('Documento no válido como factura');
+
     await expect
       .poll(async () => ((await (await fetch(`${SERVIDOR}/publico/pedidos/${pedidoId}?token=${token}`)).json()) as { estado: string }).estado, {
         timeout: 20_000,
