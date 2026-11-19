@@ -14,6 +14,8 @@ export default defineConfig({
   test: {
     exclude: ['e2e/**', 'node_modules/**'],
     fileParallelism: false,
+    // Los de integración usan la API y Postgres reales: con la PC cargada pasan los 5 s por defecto.
+    testTimeout: 15_000,
     environmentMatchGlobs: [['src/renderer/**', 'jsdom']],
     setupFiles: ['./test/setup.ts'],
     globalSetup: ['./test/globalSetup.ts'],
