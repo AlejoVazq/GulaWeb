@@ -1,12 +1,25 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { formatearPrecio } from '@gula/shared';
 import { useDialogo } from './useDialogo';
 import { totalCarrito, unidadesCarrito, type AccionCarrito, type ItemCarrito } from '../carrito';
 
-type Props = { items: ItemCarrito[]; despachar: (a: AccionCarrito) => void };
+/** Envío desde la mesa (sin token, la carta es de solo lectura). */
+export type Envio = {
+  habilitado: boolean;
+  /** Texto del botón cuando no se puede enviar. */
+  motivo: string;
+  enviando: boolean;
+  error: string | null;
+  onEnviar: () => void;
+};
 
-export function Carrito({ items, despachar }: Props) {
+type Props = { items: ItemCarrito[]; despachar: (a: AccionCarrito) => void; envio?: Envio };
+
+export function Carrito({ items, despachar, envio }: Props) {
   const [abierto, setAbierto] = useState(false);
+  useEffect(() => {
+    if (!items.length) setAbierto(false);
+  }, [items.length]);
   if (!items.length) return null;
   const total = formatearPrecio(totalCarrito(items));
 
@@ -21,6 +34,7 @@ export function Carrito({ items, despachar }: Props) {
     <HojaPedido
       items={items}
       despachar={despachar}
+      envio={envio}
       total={total}
       onCerrar={() => setAbierto(false)}
     />
@@ -30,6 +44,7 @@ export function Carrito({ items, despachar }: Props) {
 function HojaPedido({
   items,
   despachar,
+  envio,
   total,
   onCerrar,
 }: Props & { total: string; onCerrar: () => void }) {
@@ -85,10 +100,30 @@ function HojaPedido({
           ))}
         </ul>
         <p className="lista-pedido__total">Total: {total}</p>
-        {/* El envío del pedido llega en la fase 4 (mesa abierta por el personal). */}
-        <button type="button" className="boton-principal" disabled>
-          Pedí al mozo que habilite la mesa
-        </button>
+        {envio?.error && (
+          <p className="hoja__error" role="alert">
+            {envio.error}
+          </p>
+        )}
+        {!envio ? (
+          <button type="button" className="boton-principal" disabled>
+            Pedí al mozo que habilite la mesa
+          </button>
+        ) : envio.habilitado ? (
+          <button
+            type="button"
+            className="boton-principal"
+            disabled={envio.enviando}
+            aria-busy={envio.enviando}
+            onClick={envio.onEnviar}
+          >
+            {envio.enviando ? 'Enviando…' : `Enviar pedido · ${total}`}
+          </button>
+        ) : (
+          <button type="button" className="boton-principal" disabled>
+            {envio.motivo}
+          </button>
+        )}
       </div>
     </div>
   );
