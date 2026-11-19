@@ -31,6 +31,9 @@ export type FilaPedido = Base & {
   confirmadoPor: string | null;
   confirmadoEn: string | null;
   rechazadoEn: string | null;
+  anuladoPor?: string | null;
+  motivoAnulacion?: string | null;
+  anuladoEn?: string | null;
   creadoEn: string;
 };
 export type FilaItem = Base & {
@@ -44,6 +47,9 @@ export type FilaItem = Base & {
   nota: string;
   sectorId: string | null;
   anulado: boolean;
+  anuladoPor?: string | null;
+  motivoAnulacion?: string | null;
+  anuladoEn?: string | null;
   creadoEn: string;
 };
 export type FilaAviso = Base & {

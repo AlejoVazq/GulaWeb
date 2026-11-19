@@ -51,11 +51,11 @@ export function aplicarCambiosSalon(base: BaseLocal, c: RespuestaPullSalon): num
   ]);
   const ped = upsert(base, 'pedidos', [
     'origen', 'estado', 'sesion_id', 'mesa_id', 'numero', 'dia', 'notas', 'motivo_rechazo', 'creado_por',
-    'confirmado_por', 'confirmado_en', 'rechazado_en', 'creado_en',
+    'confirmado_por', 'confirmado_en', 'rechazado_en', 'creado_en', 'anulado_por', 'motivo_anulacion', 'anulado_en',
   ]);
   const ite = upsert(base, 'items', [
     'pedido_id', 'producto_id', 'nombre', 'precio_unitario', 'cantidad', 'seleccion', 'resumen_opciones', 'nota',
-    'sector_id', 'anulado', 'creado_en',
+    'sector_id', 'anulado', 'creado_en', 'anulado_por', 'motivo_anulacion', 'anulado_en',
   ]);
   const avi = upsert(base, 'avisos', ['sesion_id', 'tipo', 'atendido_por', 'atendido_en', 'creado_en']);
   return base.transaccion(() => {
@@ -80,13 +80,15 @@ export function aplicarCambiosSalon(base: BaseLocal, c: RespuestaPullSalon): num
     for (const p of c.pedidos) {
       ped.run(
         p.id, p.origen, p.estado, p.sesionId, p.mesaId, p.numero, p.dia, p.notas, p.motivoRechazo, p.creadoPor,
-        p.confirmadoPor, p.confirmadoEn, p.rechazadoEn, p.creadoEn, p.actualizadoEn, p.eliminadoEn,
+        p.confirmadoPor, p.confirmadoEn, p.rechazadoEn, p.creadoEn, p.anuladoPor ?? null, p.motivoAnulacion ?? null,
+        p.anuladoEn ?? null, p.actualizadoEn, p.eliminadoEn,
       );
     }
     for (const i of c.items) {
       ite.run(
         i.id, i.pedidoId, i.productoId, i.nombre, i.precioUnitario, i.cantidad, JSON.stringify(i.seleccion),
-        i.resumenOpciones, i.nota, i.sectorId, b(i.anulado), i.creadoEn, i.actualizadoEn, i.eliminadoEn,
+        i.resumenOpciones, i.nota, i.sectorId, b(i.anulado), i.creadoEn, i.anuladoPor ?? null, i.motivoAnulacion ?? null,
+        i.anuladoEn ?? null, i.actualizadoEn, i.eliminadoEn,
       );
     }
     for (const a of c.avisos) {
@@ -96,7 +98,7 @@ export function aplicarCambiosSalon(base: BaseLocal, c: RespuestaPullSalon): num
   });
 }
 
-type F = Record<string, unknown>;
+export type F = Record<string, unknown>;
 const txt = (v: unknown) => (v as string | null) ?? null;
 const num = (v: unknown) => (v as number | null) ?? null;
 
@@ -141,7 +143,7 @@ const aAviso = (a: F): Aviso => ({
   creadoEn: a.creado_en as string,
 });
 
-function conItems(base: BaseLocal, filas: F[]): Pedido[] {
+export function conItems(base: BaseLocal, filas: F[]): Pedido[] {
   if (!filas.length) return [];
   const ids = filas.map((p) => p.id as string);
   const items = (
@@ -168,6 +170,9 @@ function conItems(base: BaseLocal, filas: F[]): Pedido[] {
       confirmadoPor: txt(p.confirmado_por),
       confirmadoEn: txt(p.confirmado_en),
       rechazadoEn: txt(p.rechazado_en),
+      anuladoPor: txt(p.anulado_por),
+      motivoAnulacion: txt(p.motivo_anulacion),
+      anuladoEn: txt(p.anulado_en),
       creadoEn: p.creado_en as string,
       items: propios,
       total: propios.reduce((t, i) => t + i.precioUnitario * i.cantidad, 0),

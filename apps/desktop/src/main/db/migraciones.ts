@@ -81,4 +81,35 @@ export const MIGRACIONES: string[] = [
   );
   CREATE INDEX impresiones_estado ON impresiones(estado);
   `,
+  // v5: la caja (espejo de /sync/caja), anulaciones y la autorización de las operaciones.
+  `
+  CREATE TABLE turnos (
+    id TEXT PRIMARY KEY, abierto_por TEXT NOT NULL, abierto_en TEXT NOT NULL, fondo INTEGER NOT NULL,
+    cerrado_por TEXT, cerrado_en TEXT, contado INTEGER, esperado INTEGER, diferencia INTEGER, notas TEXT,
+    actualizado_en TEXT NOT NULL, eliminado_en TEXT
+  );
+  CREATE TABLE cobros (
+    id TEXT PRIMARY KEY, turno_id TEXT NOT NULL, sesion_id TEXT, pedido_id TEXT, subtotal INTEGER NOT NULL,
+    descuento INTEGER NOT NULL, motivo_descuento TEXT, total INTEGER NOT NULL, cobrado_por TEXT NOT NULL,
+    cobrado_en TEXT NOT NULL, actualizado_en TEXT NOT NULL, eliminado_en TEXT
+  );
+  CREATE INDEX cobros_turno ON cobros(turno_id);
+  CREATE TABLE pagos (
+    id TEXT PRIMARY KEY, cobro_id TEXT NOT NULL, turno_id TEXT NOT NULL, metodo TEXT NOT NULL, monto INTEGER NOT NULL,
+    propina INTEGER NOT NULL, actualizado_en TEXT NOT NULL, eliminado_en TEXT
+  );
+  CREATE INDEX pagos_turno ON pagos(turno_id);
+  CREATE TABLE movimientos (
+    id TEXT PRIMARY KEY, turno_id TEXT NOT NULL, tipo TEXT NOT NULL, categoria TEXT NOT NULL, monto INTEGER NOT NULL,
+    motivo TEXT NOT NULL, usuario_id TEXT NOT NULL, hecho_en TEXT NOT NULL, actualizado_en TEXT NOT NULL, eliminado_en TEXT
+  );
+  CREATE INDEX movimientos_turno ON movimientos(turno_id);
+  ALTER TABLE pedidos ADD COLUMN anulado_por TEXT;
+  ALTER TABLE pedidos ADD COLUMN motivo_anulacion TEXT;
+  ALTER TABLE pedidos ADD COLUMN anulado_en TEXT;
+  ALTER TABLE items ADD COLUMN anulado_por TEXT;
+  ALTER TABLE items ADD COLUMN motivo_anulacion TEXT;
+  ALTER TABLE items ADD COLUMN anulado_en TEXT;
+  ALTER TABLE outbox ADD COLUMN autorizacion TEXT;
+  `,
 ];
