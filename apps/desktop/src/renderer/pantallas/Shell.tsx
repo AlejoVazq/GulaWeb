@@ -15,11 +15,12 @@ import { puede } from '@gula/shared';
 import { Impresion } from './Impresion';
 import { Caja } from './Caja';
 import { Delivery } from './Delivery';
+import { Reportes } from './Reportes';
 import { AvisoImpresion } from '../componentes/AvisoImpresion';
 import { VistaPrevia } from '../componentes/VistaPrevia';
 
 type Activa = Extract<EstadoSesion, { tipo: 'activa' }>;
-type Seccion = 'mesas' | 'delivery' | 'caja' | 'carta' | 'impresion';
+type Seccion = 'mesas' | 'delivery' | 'caja' | 'reportes' | 'carta' | 'impresion';
 type Vista = { tipo: 'seccion' } | { tipo: 'mesa'; mesaId: string } | { tipo: 'mostrador' };
 
 export function Shell({ sesion, sync, salon }: { sesion: Activa; sync: EstadoSync; salon: Salon }) {
@@ -35,6 +36,7 @@ export function Shell({ sesion, sync, salon }: { sesion: Activa; sync: EstadoSyn
     ['mesas', 'Mesas'],
     ...(puede(sesion.usuario.rol, 'delivery.gestionar') === 'si' ? [['delivery', 'Delivery'] as [Seccion, string]] : []),
     ...(puede(sesion.usuario.rol, 'caja.operar') === 'si' ? [['caja', 'Caja'] as [Seccion, string]] : []),
+    ...(puede(sesion.usuario.rol, 'reportes.ver') === 'si' ? [['reportes', 'Reportes'] as [Seccion, string]] : []),
     ['carta', 'Carta'],
     ...(puede(sesion.usuario.rol, 'impresion.configurar') === 'si' ? [['impresion', 'Impresión'] as [Seccion, string]] : []),
   ];
@@ -102,6 +104,7 @@ export function Shell({ sesion, sync, salon }: { sesion: Activa; sync: EstadoSyn
         {seccion === 'impresion' && <Impresion />}
         {seccion === 'caja' && <Caja />}
         {seccion === 'delivery' && <Delivery rol={sesion.usuario.rol} />}
+        {seccion === 'reportes' && <Reportes />}
       </section>
       {cobrandoMostrador && (
         <Cobrar
