@@ -101,7 +101,7 @@ void app.whenReady().then(() => {
     guardarArchivo: async (nombre, datos) => {
       const ext = nombre.slice(nombre.lastIndexOf('.') + 1);
       const r = await dialog.showSaveDialog({
-        title: 'Guardar reporte',
+        title: 'Guardar archivo',
         defaultPath: join(app.getPath('documents'), nombre),
         filters: [{ name: ext.toUpperCase(), extensions: [ext] }],
       });

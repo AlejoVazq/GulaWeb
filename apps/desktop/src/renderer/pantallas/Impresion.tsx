@@ -92,6 +92,23 @@ export function Impresion() {
         >
           Imprimir prueba
         </button>
+        <button
+          type="button"
+          className="boton"
+          onClick={() =>
+            void llamar('mesas:hojaQr')
+              .then((guardado) => {
+                setError(null);
+                setOk(guardado ? 'Hoja de QR guardada. Imprimila en A4 y recortá cada tarjeta.' : null);
+              })
+              .catch((e: unknown) => {
+                setOk(null);
+                setError(mensajeDe(e));
+              })
+          }
+        >
+          QR de las mesas (PDF)
+        </button>
       </div>
       {ok && (
         <p className="ok" role="status">

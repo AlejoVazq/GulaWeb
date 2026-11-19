@@ -118,6 +118,8 @@ export type ServiciosGula = {
   'delivery:guardarConfig': (a: { envio: number }) => Promise<void>;
   'reportes:obtener': (a: { tipo: TipoPeriodo; desde: string; hasta: string }) => Promise<RespuestaReporte>;
   'reportes:exportar': (a: { formato: 'csv' | 'pdf'; reporte: RespuestaReporte }) => Promise<boolean>;
+  /** Hoja A4 con el QR de cada mesa; false si se canceló el guardado. */
+  'mesas:hojaQr': () => Promise<boolean>;
   'sync:rechazadas': () => Promise<OperacionRechazada[]>;
   'sync:descartarRechazada': (a: { id: string }) => Promise<void>;
 };
@@ -183,6 +185,7 @@ export const CANALES: CanalServicio[] = [
   'delivery:guardarConfig',
   'reportes:obtener',
   'reportes:exportar',
+  'mesas:hojaQr',
   'sync:rechazadas',
   'sync:descartarRechazada',
 ];

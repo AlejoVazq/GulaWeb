@@ -64,3 +64,11 @@ it('exporta CSV y PDF con nombre sugerido', async () => {
   expect(htmlAPdf.mock.calls[0]![0]).toContain('Reporte · Bar Gula');
   expect(guardarArchivo).toHaveBeenLastCalledWith('reporte-2026-11-01-a-2026-11-30.pdf', new Uint8Array([37, 80, 68, 70]));
 });
+
+it('genera la hoja de QR de las mesas en PDF', async () => {
+  const { servicios, guardarArchivo, htmlAPdf } = await armar();
+  // Sin mesas: avisa en vez de guardar una hoja vacía.
+  await expect(servicios['mesas:hojaQr']()).rejects.toThrow(/no tiene mesas/);
+  expect(guardarArchivo).not.toHaveBeenCalled();
+  void htmlAPdf;
+});

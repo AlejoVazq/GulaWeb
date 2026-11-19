@@ -15,6 +15,7 @@ import { ErrorApiCliente, SinConexion, type Cliente } from './api/cliente';
 import { crearServiciosCaja } from './servicios.caja';
 import { crearServiciosDelivery } from './servicios.delivery';
 import { crearServiciosReportes } from './servicios.reportes';
+import { crearServiciosQr } from './servicios.qr';
 import type { Motor } from './sync/motor';
 import { ErrorGula, sinConexion } from './errores';
 import { crearColaImpresion, type ColaImpresion } from './impresion/cola';
@@ -236,6 +237,14 @@ export function crearServicios(d: Deps): ServiciosGula & { bloquearPorInactivida
         return d.cliente.pedir(metodo, ruta);
       },
       local: () => d.sesion.actual()?.local.nombre ?? '',
+      guardarArchivo: d.guardarArchivo ?? (async () => false),
+      htmlAPdf: d.htmlAPdf ?? (async () => new Uint8Array()),
+    }),
+    ...crearServiciosQr({
+      base: d.base,
+      exigir,
+      servidor: d.servidor ?? (() => ''),
+      local: () => d.sesion.actual()?.local ?? null,
       guardarArchivo: d.guardarArchivo ?? (async () => false),
       htmlAPdf: d.htmlAPdf ?? (async () => new Uint8Array()),
     }),
