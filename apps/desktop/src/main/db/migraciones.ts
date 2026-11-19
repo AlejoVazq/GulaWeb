@@ -112,4 +112,14 @@ export const MIGRACIONES: string[] = [
   ALTER TABLE items ADD COLUMN anulado_en TEXT;
   ALTER TABLE outbox ADD COLUMN autorizacion TEXT;
   `,
+  // v6: delivery (espejo de la tabla deliveries de /sync/salon; id = id del pedido).
+  `
+  CREATE TABLE deliveries (
+    id TEXT PRIMARY KEY, pedido_id TEXT NOT NULL, cliente_nombre TEXT NOT NULL, telefono TEXT NOT NULL,
+    direccion TEXT NOT NULL, referencias TEXT NOT NULL, costo_envio INTEGER NOT NULL, paga_con INTEGER,
+    repartidor TEXT, estado TEXT NOT NULL, en_camino_en TEXT, entregado_en TEXT,
+    actualizado_en TEXT NOT NULL, eliminado_en TEXT
+  );
+  CREATE INDEX deliveries_telefono ON deliveries(telefono);
+  `,
 ];

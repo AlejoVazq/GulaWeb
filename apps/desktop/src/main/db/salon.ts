@@ -58,9 +58,15 @@ export function aplicarCambiosSalon(base: BaseLocal, c: RespuestaPullSalon): num
     'sector_id', 'anulado', 'creado_en', 'anulado_por', 'motivo_anulacion', 'anulado_en',
   ]);
   const avi = upsert(base, 'avisos', ['sesion_id', 'tipo', 'atendido_por', 'atendido_en', 'creado_en']);
+  const del = upsert(base, 'deliveries', [
+    'pedido_id', 'cliente_nombre', 'telefono', 'direccion', 'referencias', 'costo_envio', 'paga_con', 'repartidor',
+    'estado', 'en_camino_en', 'entregado_en',
+  ]);
   return base.transaccion(() => {
     const prot = protegidas(base);
-    const total = c.sesiones.length + c.pedidos.length + c.items.length + c.avisos.length;
+    const delivs = c.deliveries ?? [];
+    const total = c.sesiones.length + c.pedidos.length + c.items.length + c.avisos.length + delivs.length;
+    const delivsLibres = delivs.filter((x) => !prot.item(x.pedidoId));
     // Ojo: un pedido protegido por su sesión no protege sus ítems (no cambian al cerrar la mesa).
     c = {
       ...c,
@@ -69,7 +75,8 @@ export function aplicarCambiosSalon(base: BaseLocal, c: RespuestaPullSalon): num
       items: c.items.filter((i) => !prot.item(i.pedidoId)),
       avisos: c.avisos.filter((a) => !prot.aviso(a)),
     };
-    const salteadas = total - (c.sesiones.length + c.pedidos.length + c.items.length + c.avisos.length);
+    const salteadas =
+      total - (c.sesiones.length + c.pedidos.length + c.items.length + c.avisos.length + delivsLibres.length);
     for (const m of c.mesas) mes.run(m.id, m.nombre, m.zona, m.capacidad, m.orden, m.token, m.actualizadoEn, m.eliminadoEn);
     for (const s of c.sesiones) {
       ses.run(
@@ -93,6 +100,12 @@ export function aplicarCambiosSalon(base: BaseLocal, c: RespuestaPullSalon): num
     }
     for (const a of c.avisos) {
       avi.run(a.id, a.sesionId, a.tipo, a.atendidoPor, a.atendidoEn, a.creadoEn, a.actualizadoEn, a.eliminadoEn);
+    }
+    for (const x of delivsLibres) {
+      del.run(
+        x.id, x.pedidoId, x.clienteNombre, x.telefono, x.direccion, x.referencias, x.costoEnvio, x.pagaCon, x.repartidor,
+        x.estado, x.enCaminoEn, x.entregadoEn, x.actualizadoEn, x.eliminadoEn,
+      );
     }
     return salteadas;
   });
@@ -296,7 +309,7 @@ export function crearPedidoLocal(
   base: BaseLocal,
   d: Quien & {
     pedidoId: string;
-    origen: 'manual' | 'mostrador';
+    origen: 'manual' | 'mostrador' | 'delivery';
     sesionId: string | null;
     numero: number;
     dia: string;
@@ -369,12 +382,13 @@ export function revertirOperacionLocal(base: BaseLocal, tipo: string, datos: unk
     if (tipo === 'mesa.abrir' && d.sesionId) {
       base.db.prepare('DELETE FROM sesiones WHERE id = ? AND actualizado_en = ?').run(d.sesionId, LOCAL);
     }
-    if (tipo === 'pedido.crear' && d.pedidoId) {
+    if ((tipo === 'pedido.crear' || tipo === 'delivery.crear') && d.pedidoId) {
       const p = base.db.prepare('SELECT actualizado_en FROM pedidos WHERE id = ?').get(d.pedidoId) as
         | { actualizado_en: string }
         | undefined;
       if (p?.actualizado_en === LOCAL) {
         base.db.prepare('DELETE FROM items WHERE pedido_id = ?').run(d.pedidoId);
+        base.db.prepare('DELETE FROM deliveries WHERE id = ?').run(d.pedidoId);
         base.db.prepare('DELETE FROM pedidos WHERE id = ?').run(d.pedidoId);
       }
     }
@@ -385,7 +399,7 @@ export function revertirOperacionLocal(base: BaseLocal, tipo: string, datos: unk
 export function vaciarSalonLocal(base: BaseLocal): void {
   base.transaccion(() =>
     base.db.exec(
-      "DELETE FROM items; DELETE FROM pedidos; DELETE FROM avisos; DELETE FROM sesiones; DELETE FROM mesas; DELETE FROM kv WHERE clave LIKE 'numero:%';",
+      "DELETE FROM deliveries; DELETE FROM items; DELETE FROM pedidos; DELETE FROM avisos; DELETE FROM sesiones; DELETE FROM mesas; DELETE FROM kv WHERE clave LIKE 'numero:%';",
     ),
   );
 }

@@ -109,7 +109,7 @@ export function leerCaja(base: BaseLocal): EstadoCaja {
   const cobros = (
     base.db
       .prepare(
-        `SELECT c.*, m.nombre AS mesa, p.numero AS numero FROM cobros c
+        `SELECT c.*, m.nombre AS mesa, p.numero AS numero, p.origen AS origen FROM cobros c
          LEFT JOIN sesiones s ON s.id = c.sesion_id LEFT JOIN mesas m ON m.id = s.mesa_id
          LEFT JOIN pedidos p ON p.id = c.pedido_id
          WHERE c.turno_id = ? AND c.eliminado_en IS NULL ORDER BY c.cobrado_en`,
@@ -128,7 +128,9 @@ export function leerCaja(base: BaseLocal): EstadoCaja {
       cobradoPor: c.cobrado_por as string,
       cobradoEn: c.cobrado_en as string,
       pagos: pagos.filter((p) => p.cobroId === c.id),
-      destino: c.sesion_id ? ((c.mesa as string | null) ?? 'Mesa') : `Mostrador · Pedido ${(c.numero as number | null) ?? '-'}`,
+      destino: c.sesion_id
+        ? ((c.mesa as string | null) ?? 'Mesa')
+        : `${c.origen === 'delivery' ? 'Delivery' : 'Mostrador'} · Pedido ${(c.numero as number | null) ?? '-'}`,
     }),
   );
   return { turno, resumen: resumenTurno({ fondo: turno.fondo, pagos, movimientos }), movimientos, cobros, ultimoCierre };

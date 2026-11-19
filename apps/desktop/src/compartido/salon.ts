@@ -1,3 +1,4 @@
+import type { FilaDelivery } from './delivery';
 import type { EstadoPedido, EstadoSesion, OrigenPedido, Seleccion, TipoAviso } from '@gula/shared';
 
 /** Filas tal como las devuelve GET /sync/salon (camelCase, fechas ISO). */
@@ -67,6 +68,8 @@ export type RespuestaPullSalon = {
   pedidos: FilaPedido[];
   items: FilaItem[];
   avisos: FilaAviso[];
+  /** Ausente en servidores anteriores a la fase 7. */
+  deliveries?: FilaDelivery[];
 };
 
 type SinMeta<T> = Omit<T, 'actualizadoEn' | 'eliminadoEn'>;
