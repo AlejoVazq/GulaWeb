@@ -127,3 +127,10 @@ input[type='checkbox'], input[type='radio'] { width: 18px; height: 18px; min-hei
 .caja__esperado { font-size: 1.25rem; }
 .ok-texto { color: var(--color-ok); }
 .error-texto { color: var(--color-alerta); }
+
+/* Delivery */
+.delivery { display: grid; gap: var(--espacio-4); }
+.delivery__tablero { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: var(--espacio-4); align-items: start; }
+.delivery__columna { display: grid; gap: var(--espacio-3); }
+.delivery__tarjeta { width: auto; padding: var(--espacio-4); }
+.delivery__tarjeta h3, .delivery__tarjeta p { margin: 0 0 var(--espacio-2); }
