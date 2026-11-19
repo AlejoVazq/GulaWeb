@@ -37,6 +37,12 @@ docker compose -f compose.prod.yml exec api node dist/admin/cli.js cargar-demo -
 
 La carta queda en `https://$DOMINIO/nombre-local`.
 
+### Marca del local (color y logo de la carta)
+
+```bash
+docker compose -f compose.prod.yml exec api node dist/admin/cli.js marca --slug nombre-local \n  --color '#1f6f43' --logo https://ejemplo.com/logo.png
+```
+
 ### Actualizar
 
 ```bash

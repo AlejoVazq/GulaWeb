@@ -8,7 +8,8 @@ import { cargarCartaDemo } from './seedDemo.js';
 
 const USO = `Uso:
   admin crear-local --nombre "<nombre>" --slug <slug> --dueno "<nombre>" --email <email> --password <password> --pin <pin>
-  admin cargar-demo --slug <slug>`;
+  admin cargar-demo --slug <slug>
+  admin marca --slug <slug> [--color '#b5431c'] [--logo /fotos/... | https://...]`;
 
 const [comando, ...resto] = process.argv.slice(2);
 
@@ -54,7 +55,25 @@ async function cargarDemoCli(dbs: Dbs): Promise<void> {
   console.log(`Carta demo cargada: ${r.categorias} categorías, ${r.productos} productos, ${r.mesas} mesas`);
 }
 
+async function marcaCli(dbs: Dbs): Promise<void> {
+  const { values } = parseArgs({ args: resto, options: { slug: { type: 'string' }, color: { type: 'string' }, logo: { type: 'string' } } });
+  const [local] = await dbs.dbAdmin.select().from(locales).where(eq(locales.slug, values.slug ?? ''));
+  if (!local) throw new ErrorApi(404, 'LOCAL_NO_ENCONTRADO', 'No existe un local con ese slug.');
+  const marca = { ...(local.marca as Record<string, unknown>) };
+  if (values.color !== undefined) {
+    if (!/^#[0-9a-f]{6}$/i.test(values.color)) throw new ErrorApi(400, 'DATOS_INVALIDOS', 'El color va como #rrggbb.');
+    marca.colorAcento = values.color;
+  }
+  if (values.logo !== undefined) {
+    if (!/^(/|https://)/.test(values.logo)) throw new ErrorApi(400, 'DATOS_INVALIDOS', 'El logo va como /fotos/... o https://...');
+    marca.logo = values.logo;
+  }
+  await dbs.dbAdmin.update(locales).set({ marca }).where(eq(locales.id, local.id));
+  console.log('Marca guardada:', JSON.stringify(marca));
+}
+
 const comandos: Record<string, (dbs: Dbs) => Promise<void>> = {
+  marca: marcaCli,
   'crear-local': crearLocalCli,
   'cargar-demo': cargarDemoCli,
 };
