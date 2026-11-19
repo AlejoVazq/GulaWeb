@@ -5,6 +5,8 @@ import type { EdicionCarta, EstadoSesion, EventoGula, ServiciosGula, UsuarioPubl
 import type { BaseLocal } from './db/base';
 import { fijarDisponibilidadLocal, leerCarta, vaciarCartaLocal } from './db/carta';
 import { encolar, vaciarOutbox } from './db/outbox';
+import { vaciarSalonLocal } from './db/salon';
+import { crearServiciosSalon } from './servicios.salon';
 import { borrarKv, escribirKv, leerKv } from './db/kv';
 import type { Sesion } from './api/sesion';
 import { SinConexion, type Cliente } from './api/cliente';
@@ -58,10 +60,11 @@ export function crearServicios(d: Deps): ServiciosGula & { bloquearPorInactivida
     d.emitir('sesion:cambio', e);
     return e;
   };
-  const exigir = (accion: Accion) => {
+  const exigir = (accion: Accion): string => {
     const s = d.sesion.actual();
     if (!s || !desbloqueada) throw new ErrorGula('SESION_BLOQUEADA', 'Elegí tu usuario para continuar.');
     if (puede(s.usuario.rol, accion) !== 'si') throw new ErrorGula('SIN_PERMISO', 'No tenés permiso para hacer esto.');
+    return s.usuario.id;
   };
   const online = async <T>(fn: () => Promise<T>, mensaje: string) => {
     try {
@@ -73,6 +76,13 @@ export function crearServicios(d: Deps): ServiciosGula & { bloquearPorInactivida
   };
 
   return {
+    ...crearServiciosSalon({
+      base: d.base,
+      exigir,
+      emitir: d.emitir,
+      sincronizar: () => void d.motor.sincronizarAhora(),
+    }),
+
     'sesion:estado': async () => estadoSesion(),
 
     'sesion:login': async ({ email, password, nombrePc, servidor }) => {
@@ -82,8 +92,10 @@ export function crearServicios(d: Deps): ServiciosGula & { bloquearPorInactivida
       // Otro local: nada de lo guardado (carta, cursor, operaciones) le pertenece.
       if (localAnterior && localNuevo && localAnterior !== localNuevo) {
         vaciarCartaLocal(d.base);
+        vaciarSalonLocal(d.base);
         vaciarOutbox(d.base);
         borrarKv(d.base, 'cursor:carta');
+        borrarKv(d.base, 'cursor:salon');
       }
       if (localNuevo) escribirKv(d.base, 'ultimo-local', localNuevo);
       if (servidor) d.fijarServidor?.(servidor);

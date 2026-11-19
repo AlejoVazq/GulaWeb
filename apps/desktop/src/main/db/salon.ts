@@ -305,6 +305,28 @@ export function atenderAvisoLocal(base: BaseLocal, d: Quien & { avisoId: string 
     .run(d.ahora.toISOString(), d.usuarioId, d.avisoId);
 }
 
+/**
+ * El servidor rechazó una operación: se borra lo que la PC creó por su cuenta (el servidor no lo tiene,
+ * así que el pull completo no lo pisaría). Los cambios sobre filas del servidor los revierte el pull.
+ */
+export function revertirOperacionLocal(base: BaseLocal, tipo: string, datos: unknown): void {
+  const d = (datos ?? {}) as { sesionId?: string; pedidoId?: string };
+  base.transaccion(() => {
+    if (tipo === 'mesa.abrir' && d.sesionId) {
+      base.db.prepare('DELETE FROM sesiones WHERE id = ? AND actualizado_en = ?').run(d.sesionId, LOCAL);
+    }
+    if (tipo === 'pedido.crear' && d.pedidoId) {
+      const p = base.db.prepare('SELECT actualizado_en FROM pedidos WHERE id = ?').get(d.pedidoId) as
+        | { actualizado_en: string }
+        | undefined;
+      if (p?.actualizado_en === LOCAL) {
+        base.db.prepare('DELETE FROM items WHERE pedido_id = ?').run(d.pedidoId);
+        base.db.prepare('DELETE FROM pedidos WHERE id = ?').run(d.pedidoId);
+      }
+    }
+  });
+}
+
 /** Borra el salón local (al vincular la PC a otro local). */
 export function vaciarSalonLocal(base: BaseLocal): void {
   base.transaccion(() =>

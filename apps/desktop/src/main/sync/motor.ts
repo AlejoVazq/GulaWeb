@@ -1,5 +1,7 @@
 import { io } from 'socket.io-client';
 import type { RespuestaPullCarta } from '../../compartido/tipos';
+import type { RespuestaPullSalon } from '../../compartido/salon';
+import { aplicarCambiosSalon, revertirOperacionLocal } from '../db/salon';
 import type { BaseLocal } from '../db/base';
 import { aplicarCambiosCarta } from '../db/carta';
 import { borrarKv, escribirKv, leerKv } from '../db/kv';
@@ -38,6 +40,7 @@ export type CrearSocket = (url: string, path: string, obtenerToken: () => string
 type Resultado = { id: string; estado: 'aplicada' | 'rechazada'; error?: { codigo: string; mensaje: string } };
 
 const CLAVE_CURSOR = 'cursor:carta';
+const CLAVE_CURSOR_SALON = 'cursor:salon';
 const PERIODO_MS = 60_000;
 const BACKOFF_MAX_MS = 60_000;
 
@@ -51,12 +54,15 @@ export const socketIo: CrearSocket = (url, path, obtenerToken) =>
 
 const hayFilas = (c: RespuestaPullCarta) =>
   c.sectores.length + c.categorias.length + c.productos.length + c.grupos.length + c.opciones.length > 0;
+const hayFilasSalon = (c: RespuestaPullSalon) =>
+  c.mesas.length + c.sesiones.length + c.pedidos.length + c.items.length + c.avisos.length > 0;
 
 export function crearMotor(opts: {
   base: BaseLocal;
   cliente: ClienteSync;
   crearSocket?: CrearSocket;
   alCambiarCarta?: () => void;
+  alCambiarSalon?: () => void;
 }) {
   const { base, cliente } = opts;
   const crearSocket = opts.crearSocket ?? socketIo;
@@ -97,9 +103,16 @@ export function crearMotor(opts: {
       }
       marcarAplicadas(base, resultados.filter((r) => r.estado === 'aplicada').map((r) => r.id));
       const rechazadas = resultados.filter((x) => x.estado === 'rechazada');
-      for (const r of rechazadas) marcarRechazada(base, r.id, r.error?.codigo ?? 'RECHAZADA');
+      for (const r of rechazadas) {
+        marcarRechazada(base, r.id, r.error?.codigo ?? 'RECHAZADA');
+        const o = lote.find((x) => x.id === r.id);
+        if (o) revertirOperacionLocal(base, o.tipo, o.datos);
+      }
       // Un rechazo deja un cambio optimista local que el servidor nunca hizo: pull completo para revertirlo.
-      if (rechazadas.length) borrarKv(base, CLAVE_CURSOR);
+      if (rechazadas.length) {
+        borrarKv(base, CLAVE_CURSOR);
+        borrarKv(base, CLAVE_CURSOR_SALON);
+      }
       if (resultados.length < lote.length) return; // respuesta parcial: lo que falta se reintenta después
     }
   }
@@ -111,6 +124,15 @@ export function crearMotor(opts: {
     aplicarCambiosCarta(base, cambios);
     escribirKv(base, CLAVE_CURSOR, cambios.cursor);
     if (hayFilas(cambios)) opts.alCambiarCarta?.();
+
+    const cursorSalon = leerKv(base, CLAVE_CURSOR_SALON);
+    const salon = await cliente.pedir<RespuestaPullSalon>(
+      'GET',
+      cursorSalon ? `/sync/salon?desde=${encodeURIComponent(cursorSalon)}` : '/sync/salon',
+    );
+    aplicarCambiosSalon(base, salon);
+    escribirKv(base, CLAVE_CURSOR_SALON, salon.cursor);
+    if (hayFilasSalon(salon)) opts.alCambiarSalon?.();
   }
 
   function programarReintento() {

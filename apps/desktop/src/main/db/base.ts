@@ -4,7 +4,7 @@ import { MIGRACIONES } from './migraciones';
 export type BaseLocal = {
   db: DatabaseSync;
   versionEsquema: number;
-  /** Ejecuta fn en una transacción (BEGIN IMMEDIATE … COMMIT/ROLLBACK). */
+  /** Ejecuta fn en una transacción (BEGIN IMMEDIATE … COMMIT/ROLLBACK); anidada, se suma a la de afuera. */
   transaccion<T>(fn: () => T): T;
   cerrar(): void;
 };
@@ -13,8 +13,12 @@ export function abrirBase(ruta: string): BaseLocal {
   const db = new DatabaseSync(ruta);
   db.exec('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 3000;');
 
+  // Reentrante: una transacción anidada corre dentro de la de afuera (todo o nada).
+  let profundidad = 0;
   const transaccion = <T>(fn: () => T): T => {
+    if (profundidad > 0) return fn();
     db.exec('BEGIN IMMEDIATE');
+    profundidad++;
     try {
       const r = fn();
       db.exec('COMMIT');
@@ -22,6 +26,8 @@ export function abrirBase(ruta: string): BaseLocal {
     } catch (e) {
       db.exec('ROLLBACK');
       throw e;
+    } finally {
+      profundidad--;
     }
   };
 

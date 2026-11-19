@@ -5,6 +5,7 @@ import { escribirKv } from '../src/main/db/kv';
 import { crearMotor, type EstadoSync } from '../src/main/sync/motor';
 import { SinConexion } from '../src/main/api/cliente';
 import { carpetaTemporal } from './tmp';
+import { abrirMesaLocal, crearPedidoLocal } from '../src/main/db/salon';
 import { pullDePrueba } from './fixtures';
 
 const tmp = carpetaTemporal();
@@ -15,9 +16,16 @@ beforeEach(() => {
 });
 
 type Respuesta = (ruta: string, cuerpo?: unknown) => unknown;
-function clienteFalso(responder: Respuesta) {
+const salonVacio = { cursor: '2026-11-18T10:00:00.000Z', mesas: [], sesiones: [], pedidos: [], items: [], avisos: [] };
+/** `salon` responde /sync/salon; si no se indica, el salón viene vacío (va después del pull de carta). */
+function clienteFalso(responder: Respuesta, salon?: Respuesta) {
   return {
-    pedir: async <T>(_m: string, ruta: string, cuerpo?: unknown) => responder(ruta, cuerpo) as T,
+    pedir: async <T>(_m: string, ruta: string, cuerpo?: unknown) => {
+      if (ruta.startsWith('/sync/salon')) {
+        return (salon ? salon(ruta, cuerpo) : salonVacio) as T;
+      }
+      return responder(ruta, cuerpo) as T;
+    },
     tokenActual: () => 'token' as string | null,
     refrescar: async () => true,
     url: (r: string) => `http://api${r}`,
@@ -195,4 +203,78 @@ it('una operación rechazada fuerza un pull completo (revierte lo optimista) y s
   await motor.sincronizarAhora();
   expect(rutas.filter((r) => r.startsWith('/sync/carta'))).toEqual(['/sync/carta']);
   expect(motor.estado().rechazadas).toBe(1);
+});
+
+const sesionLocal = (id: string) => ({
+  id, mesaId: 'm1', estado: 'abierta', comensales: null, abiertaPor: null, abiertaEn: '2026-11-18T10:00:00.000Z',
+  cerradaPor: null, cerradaEn: null, actualizadoEn: '2026-11-18T10:00:00.000Z', eliminadoEn: null,
+});
+
+it('trae el salón con su propio cursor y avisa salon:cambio solo si hubo filas', async () => {
+  const rutas: string[] = [];
+  const avisos: number[] = [];
+  let primera = true;
+  const motor = crearMotor({
+    base,
+    crearSocket: sinSocket,
+    alCambiarSalon: () => avisos.push(1),
+    cliente: clienteFalso(
+      () => pullDePrueba(),
+      (ruta) => {
+        rutas.push(ruta);
+        const r = primera ? { ...salonVacio, cursor: 'C1', sesiones: [sesionLocal('s1')] } : { ...salonVacio, cursor: 'C2' };
+        primera = false;
+        return r;
+      },
+    ),
+  });
+  await motor.sincronizarAhora();
+  await motor.sincronizarAhora();
+  expect(rutas).toEqual(['/sync/salon', '/sync/salon?desde=C1']);
+  expect(avisos).toHaveLength(1);
+});
+
+it('si el servidor rechaza mesa.abrir, la sesión optimista desaparece', async () => {
+  abrirMesaLocal(base, { sesionId: 's9', mesaId: 'm1', comensales: null, usuarioId: 'u1', ahora: new Date() });
+  const op = encolar(base, { tipo: 'mesa.abrir', datos: { sesionId: 's9', mesaId: 'm1' } });
+  const motor = crearMotor({
+    base,
+    crearSocket: sinSocket,
+    cliente: clienteFalso((ruta) =>
+      ruta === '/sync/operaciones'
+        ? { resultados: [{ id: op.id, estado: 'rechazada', error: { codigo: 'MESA_OCUPADA', mensaje: 'x' } }] }
+        : pullDePrueba(),
+    ),
+  });
+  await motor.sincronizarAhora();
+  expect(base.db.prepare("SELECT count(*) AS n FROM sesiones WHERE id = 's9'").get()).toEqual({ n: 0 });
+});
+
+it('si el servidor rechaza pedido.crear, el pedido optimista desaparece y se pide el salón completo', async () => {
+  escribirKv(base, 'cursor:salon', 'C1');
+  crearPedidoLocal(base, {
+    pedidoId: 'p9', origen: 'mostrador', sesionId: null, numero: 1, dia: '2026-11-18', notas: null, usuarioId: 'u1',
+    ahora: new Date(),
+    items: [{ itemId: 'i9', productoId: 'p1', nombre: 'Muzza', precioUnitario: 1, cantidad: 1, seleccion: {}, resumenOpciones: '', nota: '', sectorId: null }],
+  });
+  const op = encolar(base, { tipo: 'pedido.crear', datos: { pedidoId: 'p9' } });
+  const rutas: string[] = [];
+  const motor = crearMotor({
+    base,
+    crearSocket: sinSocket,
+    cliente: clienteFalso(
+      (ruta) =>
+        ruta === '/sync/operaciones'
+          ? { resultados: [{ id: op.id, estado: 'rechazada', error: { codigo: 'DATOS_INVALIDOS', mensaje: 'x' } }] }
+          : pullDePrueba(),
+      (ruta) => {
+        rutas.push(ruta);
+        return salonVacio;
+      },
+    ),
+  });
+  await motor.sincronizarAhora();
+  expect(base.db.prepare("SELECT count(*) AS n FROM pedidos WHERE id = 'p9'").get()).toEqual({ n: 0 });
+  expect(base.db.prepare("SELECT count(*) AS n FROM items WHERE pedido_id = 'p9'").get()).toEqual({ n: 0 });
+  expect(rutas).toEqual(['/sync/salon']);
 });

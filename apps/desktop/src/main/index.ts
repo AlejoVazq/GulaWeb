@@ -68,7 +68,12 @@ void app.whenReady().then(() => {
   const cliente = crearCliente({ urlBase: servidor, sesion });
 
   let emitir: (e: EventoGula, d: unknown) => void = () => {};
-  const motor = crearMotor({ base, cliente, alCambiarCarta: () => emitir('carta:cambio', null) });
+  const motor = crearMotor({
+    base,
+    cliente,
+    alCambiarCarta: () => emitir('carta:cambio', null),
+    alCambiarSalon: () => emitir('salon:cambio', null),
+  });
   motor.on('estado', (e) => emitir('sync:estado', e));
 
   const servicios = crearServicios({

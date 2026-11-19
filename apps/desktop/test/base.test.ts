@@ -27,3 +27,15 @@ it('reabrir no re-aplica migraciones y usa WAL', () => {
   expect(modo.journal_mode).toBe('wal');
   base.cerrar();
 });
+
+it('una transacción anidada se deshace junto con la de afuera', () => {
+  const b = abrirBase(tmp.ruta('anidada.db'));
+  expect(() =>
+    b.transaccion(() => {
+      b.transaccion(() => b.db.exec("INSERT INTO kv (clave, valor) VALUES ('x', '1')"));
+      throw new Error('falla afuera');
+    }),
+  ).toThrow('falla afuera');
+  expect(b.db.prepare("SELECT count(*) AS n FROM kv WHERE clave = 'x'").get()).toEqual({ n: 0 });
+  b.cerrar();
+});

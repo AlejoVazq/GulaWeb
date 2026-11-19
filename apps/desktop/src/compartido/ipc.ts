@@ -1,5 +1,7 @@
 import type { UsuarioPublico } from './usuarios';
+import type { Seleccion } from '@gula/shared';
 import type { CartaLocal } from './tipos';
+import type { Ajuste, DetalleMesa, Salon } from './salon';
 
 export type { UsuarioPublico };
 export type LocalInfo = { id: string; nombre: string; slug: string };
@@ -59,10 +61,26 @@ export type ServiciosGula = {
   'carta:disponibilidad': (c: CambioDisponibilidad) => Promise<void>;
   'carta:subirFoto': (a: { productoId: string }) => Promise<boolean>;
   'sync:estado': () => Promise<EstadoSync>;
+  'salon:leer': () => Promise<Salon>;
+  'salon:mesa': (mesaId: string) => Promise<DetalleMesa | null>;
+  'salon:abrirMesa': (a: { mesaId: string; comensales?: number | null }) => Promise<{ sesionId: string }>;
+  'salon:cerrarMesa': (a: { sesionId: string }) => Promise<void>;
+  'salon:crearPedido': (a: {
+    origen: 'manual' | 'mostrador';
+    sesionId?: string;
+    notas?: string;
+    items: ItemPedido[];
+  }) => Promise<{ pedidoId: string; numero: number }>;
+  'salon:confirmar': (a: { pedidoId: string; ajustes?: Ajuste[] }) => Promise<{ numero: number }>;
+  'salon:rechazar': (a: { pedidoId: string; motivo: string }) => Promise<void>;
+  'salon:atenderAviso': (a: { avisoId: string }) => Promise<void>;
 };
 
+/** Lo que elige la moza; precios y nombres los calcula main con la carta local. */
+export type ItemPedido = { productoId: string; seleccion: Seleccion; nota: string; cantidad: number };
+
 export type CanalServicio = keyof ServiciosGula;
-export type EventoGula = 'sync:estado' | 'carta:cambio' | 'sesion:cambio';
+export type EventoGula = 'sync:estado' | 'carta:cambio' | 'sesion:cambio' | 'salon:cambio';
 
 export const CANALES: CanalServicio[] = [
   'sesion:estado',
@@ -77,6 +95,14 @@ export const CANALES: CanalServicio[] = [
   'carta:disponibilidad',
   'carta:subirFoto',
   'sync:estado',
+  'salon:leer',
+  'salon:mesa',
+  'salon:abrirMesa',
+  'salon:cerrarMesa',
+  'salon:crearPedido',
+  'salon:confirmar',
+  'salon:rechazar',
+  'salon:atenderAviso',
 ];
 
 /** API expuesta en window.gula por el preload. */
