@@ -331,8 +331,15 @@ input[role='switch'] {
     'riel cartel cartel' auto
     'riel aviso aviso' auto
     'riel contenido bandeja' 1fr
-    / 184px 1fr minmax(280px, 300px);
+    / 184px 1fr minmax(300px, 320px);
   height: 100vh;
+}
+.shell--sin-bandeja {
+  grid-template:
+    'riel cartel' auto
+    'riel aviso' auto
+    'riel contenido' 1fr
+    / 184px 1fr;
 }
 .riel {
   grid-area: riel;
@@ -1010,8 +1017,16 @@ input[role='switch'] {
   min-width: 30px;
   padding: 0 8px;
 }
+.papel__pie .fila {
+  flex-wrap: nowrap;
+}
 .papel__pie .fila .boton {
   flex: 1;
+  padding: 0 10px;
+  white-space: nowrap;
+}
+.papel__pie .fila .boton--principal {
+  flex: 1.6;
 }
 .aviso-entrante {
   display: grid;

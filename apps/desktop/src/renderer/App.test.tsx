@@ -42,4 +42,8 @@ it('el riel marca la sección activa con aria-current y el cartel muestra su nom
   await userEvent.click(within(riel).getByRole('button', { name: 'Carta' }));
   expect(within(screen.getByRole('banner')).getByRole('heading', { name: 'Carta' })).toBeInTheDocument();
   expect(within(riel).getByText('Gula')).toBeInTheDocument();
+  // Fuera de Mesas y sin nada entrando, la columna se esconde.
+  expect(screen.queryByRole('heading', { name: /^Entrando/ })).not.toBeInTheDocument();
+  await userEvent.click(within(riel).getByRole('button', { name: 'Mesas' }));
+  expect(screen.getByRole('heading', { name: /^Entrando/ })).toBeInTheDocument();
 });

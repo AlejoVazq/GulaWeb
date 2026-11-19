@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { formatearPrecio } from '@gula/shared';
 import type { PedidoPendiente, Salon } from '../../compartido/salon';
 import { llamar, mensajeDe } from '../gula';
 import { hora } from '../formato';
+import { PapelComanda, type LineaPapel } from '@gula/ui';
 
 const SUGERENCIAS = ['Sin stock', 'Cocina cerrada'];
 const AVISOS = { llamar: 'Llamó a la moza', cuenta: 'Pidió la cuenta' } as const;
@@ -32,43 +32,44 @@ function TarjetaPendiente({ p }: { p: PedidoPendiente }) {
   const ajustar = (itemId: string, delta: number) =>
     setCantidades((c) => ({ ...c, [itemId]: Math.max(0, Math.min(50, (c[itemId] ?? 0) + delta)) }));
 
+  const lineas: LineaPapel[] = p.items.map((i) => ({
+    id: i.id,
+    cantidad: cantidades[i.id] ?? 0,
+    nombre: i.nombre,
+    importe: i.precioUnitario * (cantidades[i.id] ?? 0),
+    detalle: [i.resumenOpciones, i.nota && `“${i.nota}”`].filter(Boolean).join(' · ') || undefined,
+    quitada: (cantidades[i.id] ?? 0) === 0,
+  }));
   return (
-    <article className="bloque pendiente" aria-label={titulo}>
-      <strong>{titulo}</strong>
-      <ul className="lista">
-        {p.items.map((i) => {
-          const n = cantidades[i.id] ?? 0;
-          const detalle = [i.resumenOpciones, i.nota].filter(Boolean).join(' · ');
-          return (
-            <li key={i.id} className={n === 0 ? 'lista__item lista__item--quitado' : 'lista__item'}>
-              <div>
-                <div>{`${n}× ${i.nombre}`}</div>
-                {detalle && <div className="suave">{detalle}</div>}
-              </div>
-              <div className="fila">
-                <button
-                  type="button"
-                  className="boton boton--chico"
-                  aria-label={`Quitar uno de ${i.nombre}`}
-                  disabled={n === 0}
-                  onClick={() => ajustar(i.id, -1)}
-                >
-                  −
-                </button>
-                <button
-                  type="button"
-                  className="boton boton--chico"
-                  aria-label={`Sumar uno de ${i.nombre}`}
-                  onClick={() => ajustar(i.id, 1)}
-                >
-                  +
-                </button>
-              </div>
-            </li>
-          );
-        })}
-      </ul>
-      <p className="pedido__total">{formatearPrecio(total)}</p>
+    <PapelComanda
+      compacto
+      aria-label={titulo}
+      titulo={(p.mesa?.nombre ?? 'Sin mesa').toUpperCase()}
+      subtitulo={hora(p.creadoEn)}
+      lineas={lineas}
+      total={total}
+      accionesLinea={(l) => (
+        <>
+          <button
+            type="button"
+            className="boton boton--chico"
+            aria-label={`Quitar uno de ${l.nombre}`}
+            disabled={l.cantidad === 0}
+            onClick={() => ajustar(l.id, -1)}
+          >
+            −
+          </button>
+          <button
+            type="button"
+            className="boton boton--chico"
+            aria-label={`Sumar uno de ${l.nombre}`}
+            onClick={() => ajustar(l.id, 1)}
+          >
+            +
+          </button>
+        </>
+      )}
+    >
       {error && (
         <p className="error" role="alert">
           {error}
@@ -91,9 +92,13 @@ function TarjetaPendiente({ p }: { p: PedidoPendiente }) {
               )
             }
           >
-            Confirmar
+            Aceptar e imprimir
           </button>
-          <button type="button" className="boton boton--peligro" onClick={() => setRechazando(true)}>
+          <button
+            type="button"
+            className="boton boton--peligro"
+            onClick={() => setRechazando(true)}
+          >
             Rechazar
           </button>
         </div>
@@ -102,7 +107,8 @@ function TarjetaPendiente({ p }: { p: PedidoPendiente }) {
           className="formulario"
           onSubmit={(e) => {
             e.preventDefault();
-            if (motivo.trim()) void hacer(() => llamar('salon:rechazar', { pedidoId: p.id, motivo: motivo.trim() }));
+            if (motivo.trim())
+              void hacer(() => llamar('salon:rechazar', { pedidoId: p.id, motivo: motivo.trim() }));
           }}
         >
           <label>
@@ -111,13 +117,22 @@ function TarjetaPendiente({ p }: { p: PedidoPendiente }) {
           </label>
           <div className="fila">
             {SUGERENCIAS.map((s) => (
-              <button key={s} type="button" className="boton boton--chico" onClick={() => setMotivo(s)}>
+              <button
+                key={s}
+                type="button"
+                className="boton boton--chico"
+                onClick={() => setMotivo(s)}
+              >
                 {s}
               </button>
             ))}
           </div>
           <div className="fila">
-            <button type="submit" className="boton boton--peligro" disabled={!motivo.trim() || enviando}>
+            <button
+              type="submit"
+              className="boton boton--peligro"
+              disabled={!motivo.trim() || enviando}
+            >
               Rechazar pedido
             </button>
             <button type="button" className="boton" onClick={() => setRechazando(false)}>
@@ -126,7 +141,7 @@ function TarjetaPendiente({ p }: { p: PedidoPendiente }) {
           </div>
         </form>
       )}
-    </article>
+    </PapelComanda>
   );
 }
 
@@ -137,25 +152,37 @@ export function Pendientes({ salon }: { salon: Salon }) {
   return (
     <aside className="bandeja" aria-labelledby="bandeja-titulo">
       <h2 id="bandeja-titulo" className="bandeja__titulo">
-        Pendientes · {total}
+        Entrando
+        <span className="bandeja__contador" aria-label={`${total} sin atender`}>
+          {total}
+        </span>
       </h2>
-      {!total && <p className="suave">Nada pendiente.</p>}
+      {!total && <p className="bandeja__vacia">Nada entrando por ahora.</p>}
       {error && (
         <p className="error" role="alert">
           {error}
         </p>
       )}
       {salon.avisos.map((a) => (
-        <div key={a.id} className="bloque bloque--aviso">
-          <strong>{`${a.mesa.nombre} · ${AVISOS[a.tipo]}`}</strong>
-          <span className="suave">{hora(a.creadoEn)}</span>
+        <div
+          key={a.id}
+          className={
+            a.tipo === 'cuenta' ? 'aviso-entrante aviso-entrante--cuenta' : 'aviso-entrante'
+          }
+        >
+          <span className="aviso-entrante__texto">{`${a.mesa.nombre} · ${AVISOS[a.tipo]}`}</span>
           <button
             type="button"
-            className="boton boton--principal"
-            onClick={() => void llamar('salon:atenderAviso', { avisoId: a.id }).catch((e: unknown) => setError(mensajeDe(e)))}
+            className="boton boton--chico"
+            onClick={() =>
+              void llamar('salon:atenderAviso', { avisoId: a.id }).catch((e: unknown) =>
+                setError(mensajeDe(e)),
+              )
+            }
           >
             Atendido
           </button>
+          <span className="aviso-entrante__hora">{hora(a.creadoEn)}</span>
         </div>
       ))}
       {salon.pendientes.map((p) => (

@@ -54,7 +54,7 @@ export function Shell({ sesion, sync, salon }: { sesion: Activa; sync: EstadoSyn
     return { placa: SECCIONES[seccion].nombre[0]! };
   };
   return (
-    <div className="shell">
+    <div className={seccion === 'mesas' || sinAtender > 0 ? 'shell' : 'shell shell--sin-bandeja'}>
       <nav className="riel" aria-label="Secciones">
         <div className="riel__local">
           <span className="riel__nombre">{sesion.local.nombre}</span>
@@ -140,7 +140,7 @@ export function Shell({ sesion, sync, salon }: { sesion: Activa; sync: EstadoSyn
           }}
         />
       )}
-      <Pendientes salon={salon} />
+      {(seccion === 'mesas' || sinAtender > 0) && <Pendientes salon={salon} />}
       <VistaPrevia />
     </div>
   );

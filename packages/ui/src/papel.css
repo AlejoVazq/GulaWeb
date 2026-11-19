@@ -147,3 +147,11 @@
 .papel__sello--mal {
   color: var(--papel-sello-mal, #b3261e);
 }
+/* En el papel compacto los controles de cada línea van al final del renglón. */
+.papel--compacto .papel__linea {
+  grid-template-columns: 2.2em minmax(0, 1fr) auto auto;
+}
+.papel--compacto .papel__acciones {
+  grid-column: auto;
+  gap: 4px;
+}

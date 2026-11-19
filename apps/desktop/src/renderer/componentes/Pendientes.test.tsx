@@ -74,18 +74,18 @@ it('un pedido nuevo mientras está silenciado vuelve a sonar', () => {
 it('la bandeja muestra mesa, ítems y confirma con las cantidades ajustadas', async () => {
   const p = puenteFalso({ 'salon:confirmar': () => ({ numero: 7 }) });
   render(<Pendientes salon={conPendiente} />);
-  expect(screen.getByRole('heading', { name: /Pendientes · 1/ })).toBeInTheDocument();
+  expect(screen.getByRole('heading', { name: /^Entrando/ })).toHaveTextContent('1');
   const tarjeta = screen.getByRole('article', { name: /Mesa 3/ });
   expect(within(tarjeta).getByText('Doble')).toBeInTheDocument();
   await userEvent.click(within(tarjeta).getByRole('button', { name: 'Quitar uno de Gaseosa' }));
-  await userEvent.click(within(tarjeta).getByRole('button', { name: 'Confirmar' }));
+  await userEvent.click(within(tarjeta).getByRole('button', { name: 'Aceptar e imprimir' }));
   expect(p.invocar).toHaveBeenCalledWith('salon:confirmar', { pedidoId: 'q1', ajustes: [{ itemId: 'i2', cantidad: 0 }] });
 });
 
 it('confirmar sin cambios no manda ajustes', async () => {
   const p = puenteFalso({ 'salon:confirmar': () => ({ numero: 7 }) });
   render(<Pendientes salon={conPendiente} />);
-  await userEvent.click(screen.getByRole('button', { name: 'Confirmar' }));
+  await userEvent.click(screen.getByRole('button', { name: 'Aceptar e imprimir' }));
   expect(p.invocar).toHaveBeenCalledWith('salon:confirmar', { pedidoId: 'q1', ajustes: [] });
 });
 
@@ -109,8 +109,17 @@ it('los avisos se atienden desde la bandeja', async () => {
   expect(p.invocar).toHaveBeenCalledWith('salon:atenderAviso', { avisoId: 'a1' });
 });
 
-it('sin nada pendiente lo dice', () => {
+it('sin nada entrando lo dice', () => {
   puenteFalso({});
   render(<Pendientes salon={{ mesas: [], pendientes: [], avisos: [] }} />);
-  expect(screen.getByText('Nada pendiente.')).toBeInTheDocument();
+  expect(screen.getByText('Nada entrando por ahora.')).toBeInTheDocument();
+});
+
+it('un pedido pendiente aparece como papel de comanda con su mesa y sus líneas', () => {
+  puenteFalso({});
+  render(<Pendientes salon={conPendiente} />);
+  const papel = screen.getByRole('article', { name: /Mesa 3/ });
+  expect(papel).toHaveClass('papel');
+  expect(within(papel).getByText('MESA 3')).toBeInTheDocument();
+  expect(papel.querySelectorAll('.papel__linea').length).toBeGreaterThan(0);
 });
