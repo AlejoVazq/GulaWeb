@@ -3,12 +3,17 @@ import type { EstadoSesion, EstadoSync } from '../../compartido/ipc';
 import { llamar } from '../gula';
 import { Conexion } from '../componentes/Conexion';
 import { Carta } from './Carta';
+import { Mesas } from './Mesas';
+import { useSalon } from '../useSalon';
 
 type Activa = Extract<EstadoSesion, { tipo: 'activa' }>;
 type Seccion = 'mesas' | 'carta';
+type Vista = { tipo: 'seccion' } | { tipo: 'mesa'; mesaId: string } | { tipo: 'mostrador' };
 
 export function Shell({ sesion, sync }: { sesion: Activa; sync: EstadoSync }) {
-  const [seccion, setSeccion] = useState<Seccion>('carta');
+  const [seccion, setSeccion] = useState<Seccion>('mesas');
+  const [vista, setVista] = useState<Vista>({ tipo: 'seccion' });
+  const { salon } = useSalon();
   return (
     <div className="shell">
       <header className="barra">
@@ -31,14 +36,23 @@ export function Shell({ sesion, sync }: { sesion: Activa; sync: EstadoSync }) {
             type="button"
             className={seccion === id ? 'menu__item menu__item--activo' : 'menu__item'}
             aria-current={seccion === id ? 'page' : undefined}
-            onClick={() => setSeccion(id)}
+            onClick={() => {
+              setSeccion(id);
+              setVista({ tipo: 'seccion' });
+            }}
           >
             {nombre}
           </button>
         ))}
       </nav>
       <section className="contenido">
-        {seccion === 'mesas' && <p className="suave">Las mesas llegan en la fase 4.</p>}
+        {seccion === 'mesas' && vista.tipo === 'seccion' && (
+          <Mesas
+            salon={salon}
+            onVerMesa={(mesaId) => setVista({ tipo: 'mesa', mesaId })}
+            onMostrador={() => setVista({ tipo: 'mostrador' })}
+          />
+        )}
         {seccion === 'carta' && <Carta usuario={sesion.usuario} conexion={sync.conexion} />}
       </section>
     </div>

@@ -63,3 +63,22 @@ input[role='switch'] { width: 20px; height: 20px; min-height: 0; }
 .foto { object-fit: cover; border-radius: 8px; }
 input[type='checkbox'], input[type='radio'] { width: 18px; height: 18px; min-height: 0; padding: 0; }
 .formulario label.fila { display: flex; }
+
+/* Salón (fase 4) */
+.titulo { margin: 0; font-size: 1.3rem; }
+.fila--entre { justify-content: space-between; }
+.velo { position: fixed; inset: 0; background: rgb(0 0 0 / 0.45); display: grid; place-items: center; z-index: 20; }
+.dialogo { background: var(--color-superficie); border-radius: var(--radio); padding: var(--espacio-6); width: min(560px, 92vw); max-height: 90vh; overflow: auto; display: grid; gap: var(--espacio-3); }
+.dialogo__titulo { margin: 0; font-size: 1.15rem; }
+.mesas, .detalle { display: grid; gap: var(--espacio-4); }
+.zona { display: grid; gap: var(--espacio-2); }
+.zona__titulo { margin: 0; font-size: 1rem; color: var(--color-suave); }
+.grilla-mesas { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: var(--espacio-3); }
+.mesa { display: grid; gap: var(--espacio-1); align-content: start; min-height: 104px; padding: var(--espacio-3); border-radius: var(--radio); border: 2px solid var(--color-borde); background: var(--color-superficie); text-align: left; cursor: pointer; }
+.mesa__nombre { font-weight: 700; font-size: 1.05rem; }
+.mesa__detalle { color: var(--color-suave); font-size: 0.85rem; }
+.mesa--abierta { border-color: var(--color-ok); }
+.mesa--pendiente, .mesa--aviso, .mesa--cuenta { border-color: var(--color-acento); }
+.etiqueta { justify-self: start; padding: 2px 8px; border-radius: 999px; font-size: 0.8rem; font-weight: 600; background: var(--color-borde); }
+.etiqueta--abierta { background: color-mix(in srgb, var(--color-ok) 18%, transparent); }
+.etiqueta--pendiente, .etiqueta--aviso, .etiqueta--cuenta { background: var(--color-acento); color: #fff; }
