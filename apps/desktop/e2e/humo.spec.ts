@@ -35,14 +35,26 @@ let datos: string;
 const tsx = (args: string[]) =>
   execFileSync(process.execPath, [join(API, 'node_modules/tsx/dist/cli.mjs'), ...args], { cwd: API, env: ENV_API, encoding: 'utf8' });
 
+const lanzarApi = async () => {
+  api = spawn(process.execPath, [join(API, 'node_modules/tsx/dist/cli.mjs'), 'src/server.ts'], { cwd: API, env: ENV_API, stdio: 'ignore' });
+  await expect.poll(async () => (await fetch(`${SERVIDOR}/salud`).catch(() => null))?.ok ?? false, { timeout: 30_000 }).toBe(true);
+};
+const matarApi = async () => {
+  const fin = new Promise((ok) => api.once('exit', ok));
+  api.kill();
+  await fin;
+};
+const lanzarApp = async () => {
+  app = await electron.launch({ args: [resolve(AQUI, '..')], env: { ...process.env, GULA_SERVIDOR: SERVIDOR, GULA_DATOS: datos } });
+};
+
 test.beforeAll(async () => {
   tsx(['src/db/migrar-cli.ts']);
   tsx(['src/admin/cli.ts', 'crear-local', '--nombre', 'Bar E2E', '--slug', SLUG, '--dueno', 'Dueña E2E', '--email', EMAIL, '--password', 'secreto123', '--pin', '1234']);
   tsx(['src/admin/cli.ts', 'cargar-demo', '--slug', SLUG]);
-  api = spawn(process.execPath, [join(API, 'node_modules/tsx/dist/cli.mjs'), 'src/server.ts'], { cwd: API, env: ENV_API, stdio: 'ignore' });
-  await expect.poll(async () => (await fetch(`${SERVIDOR}/salud`).catch(() => null))?.ok ?? false, { timeout: 30_000 }).toBe(true);
+  await lanzarApi();
   datos = mkdtempSync(join(tmpdir(), 'gula-e2e-datos-'));
-  app = await electron.launch({ args: [resolve(AQUI, '..')], env: { ...process.env, GULA_SERVIDOR: SERVIDOR, GULA_DATOS: datos } });
+  await lanzarApp();
 });
 
 test.afterAll(async () => {
@@ -279,4 +291,60 @@ test('reportes: el mes muestra lo cobrado en salón y delivery', async () => {
   await expect(origen).toContainText('Salón');
   await expect(origen).toContainText('Delivery');
   await expect(v.getByRole('group', { name: 'Resultado' })).toBeVisible();
+});
+
+test('sin conexión y con la PC reiniciada: se cobra la Mesa 5, se entra con PIN y al volver la API todo llega', async () => {
+  test.setTimeout(240_000);
+  let v = await app.firstWindow();
+  const previa = v.getByRole('complementary', { name: 'Vista previa de impresión' });
+  if (await previa.isVisible()) await previa.getByRole('button', { name: 'Cerrar' }).click();
+
+  await matarApi();
+  await expect(v.getByRole('status').filter({ hasText: /Sin conexión/ })).toBeVisible({ timeout: 90_000 });
+
+  // La caja quedó abierta en la prueba de delivery: se abre la mesa, se pide y se cobra sin red.
+  const menu = v.getByRole('navigation', { name: 'Secciones' });
+  await menu.getByRole('button', { name: 'Mesas' }).click();
+  await v.getByRole('button', { name: /^Mesa 5 / }).click();
+  await v.getByRole('dialog', { name: 'Abrir Mesa 5' }).getByRole('button', { name: 'Abrir mesa' }).click();
+  await v.getByRole('button', { name: 'Nuevo pedido' }).click();
+  await v.getByLabel('Buscar producto').fill('Tostado');
+  await v.getByRole('button', { name: /Tostado de jamón y queso/ }).click();
+  await v.getByRole('dialog', { name: 'Tostado de jamón y queso' }).getByRole('button', { name: /Agregar/ }).click();
+  await v.getByRole('button', { name: 'Enviar a cocina' }).click();
+  await v.getByRole('button', { name: 'Cobrar', exact: true }).click();
+  const cobro = v.getByRole('dialog', { name: 'Cobrar Mesa 5' });
+  await cobro.getByRole('button', { name: 'Cobrar', exact: true }).click();
+  await expect(cobro).toBeHidden();
+  await expect(v.getByRole('button', { name: /^Mesa 5 / })).toContainText('Libre');
+
+  // Se corta la luz: Electron se cierra y vuelve a abrir sin API.
+  await app.close();
+  await lanzarApp();
+  v = await app.firstWindow();
+  await v.getByRole('button', { name: /Dueña E2E/ }).click({ timeout: 30_000 });
+  for (const d of ['1', '2', '3', '4']) await v.getByRole('button', { name: d, exact: true }).click();
+  await v.getByRole('button', { name: 'Entrar' }).click();
+  await expect(v.getByRole('status').filter({ hasText: /cambios? pendientes?/ })).toBeVisible({ timeout: 30_000 });
+  await expect(v.getByRole('button', { name: /^Mesa 5 / })).toContainText('Libre');
+
+  // Vuelve la API: la PC sincroniza sola.
+  await lanzarApi();
+  await expect(v.getByRole('status').filter({ hasText: /En línea/ })).toBeVisible({ timeout: 120_000 });
+  const sql = await base();
+  try {
+    await expect
+      .poll(
+        async () =>
+          (
+            await sql`select p.estado from pedidos p join sesiones_mesa s on s.id = p.sesion_id join mesas m on m.id = s.mesa_id
+                      join locales l on l.id = p.local_id
+                      where l.slug = ${SLUG} and m.nombre = 'Mesa 5'`
+          ).map((f) => f.estado),
+        { timeout: 30_000 },
+      )
+      .toEqual(['cobrado']);
+  } finally {
+    await sql.end();
+  }
 });
