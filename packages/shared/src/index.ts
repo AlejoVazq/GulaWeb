@@ -6,3 +6,4 @@ export * from './carta.js';
 export * from './salon.js';
 export * from './caja.js';
 export * from './delivery.js';
+export * from './reportes.js';
