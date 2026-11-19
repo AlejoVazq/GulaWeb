@@ -73,6 +73,16 @@ export function ElegirUsuario({ local }: { local: LocalInfo }) {
               </button>
             ))}
           </div>
+          {usuarios?.length === 0 && (
+            <p className="suave">No hay usuarios guardados para este local. Ingresá de nuevo con el email del dueño.</p>
+          )}
+          <button
+            type="button"
+            className="enlace"
+            onClick={() => llamar('sesion:cerrar').catch((e: unknown) => setError(mensajeDe(e)))}
+          >
+            Cambiar de local o de servidor
+          </button>
         </div>
       </main>
     );
