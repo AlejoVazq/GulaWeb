@@ -13,7 +13,7 @@ const ESTADOS: Record<Pedido['estado'], string> = {
 };
 const AVISOS = { llamar: 'Llamó a la moza', cuenta: 'Pidió la cuenta' } as const;
 
-function TarjetaPedido({ p }: { p: Pedido }) {
+function TarjetaPedido({ p, onReimprimir }: { p: Pedido; onReimprimir: () => void }) {
   const titulo = p.numero ? `Pedido ${p.numero}` : 'Pedido sin número';
   return (
     <article className={`bloque pedido pedido--${p.estado}`} aria-label={titulo}>
@@ -39,7 +39,16 @@ function TarjetaPedido({ p }: { p: Pedido }) {
         })}
       </ul>
       {p.motivoRechazo && <p className="suave">Motivo: {p.motivoRechazo}</p>}
-      <p className="pedido__total">{formatearPrecio(p.total)}</p>
+      <div className="fila fila--entre">
+        {p.estado === 'confirmado' ? (
+          <button type="button" className="boton" onClick={onReimprimir}>
+            Reimprimir
+          </button>
+        ) : (
+          <span />
+        )}
+        <p className="pedido__total">{formatearPrecio(p.total)}</p>
+      </div>
     </article>
   );
 }
@@ -147,6 +156,18 @@ export function DetalleMesa({ mesaId, onVolver }: { mesaId: string; onVolver: ()
         <button type="button" className="boton boton--principal" onClick={() => setTomando(true)}>
           Nuevo pedido
         </button>
+        <button
+          type="button"
+          className="boton"
+          disabled={!vigentes.length}
+          onClick={() =>
+            void intentar(() => llamar('impresion:cuenta', { sesionId: sesion.id })).then(
+              (ok) => ok && setAviso('Enviado a imprimir.'),
+            )
+          }
+        >
+          Imprimir cuenta
+        </button>
         {!confirmandoCierre && (
           <button type="button" className="boton" onClick={() => setConfirmandoCierre(true)}>
             Cerrar mesa
@@ -173,7 +194,15 @@ export function DetalleMesa({ mesaId, onVolver }: { mesaId: string; onVolver: ()
 
       {!d.pedidos.length && <p className="suave">Todavía no hay pedidos en esta mesa.</p>}
       {d.pedidos.map((p) => (
-        <TarjetaPedido key={p.id} p={p} />
+        <TarjetaPedido
+          key={p.id}
+          p={p}
+          onReimprimir={() =>
+            void intentar(() => llamar('impresion:reimprimir', { pedidoId: p.id })).then(
+              (ok) => ok && setAviso('Enviado a imprimir.'),
+            )
+          }
+        />
       ))}
       <p>
         <strong>Total de la mesa {formatearPrecio(total)}</strong>

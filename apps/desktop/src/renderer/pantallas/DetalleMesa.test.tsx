@@ -73,3 +73,14 @@ it('"Nuevo pedido" toma el pedido y lo crea en la mesa', async () => {
   });
   expect(await screen.findByText('Pedido 5 enviado.')).toBeInTheDocument();
 });
+
+it('"Imprimir cuenta" y "Reimprimir" mandan a imprimir', async () => {
+  const p = puenteFalso({ 'salon:mesa': () => detalle });
+  render(<DetalleMesa mesaId="m1" onVolver={vi.fn()} />);
+  await userEvent.click(await screen.findByRole('button', { name: 'Imprimir cuenta' }));
+  expect(p.invocar).toHaveBeenCalledWith('impresion:cuenta', { sesionId: 's1' });
+  const pedido = screen.getByRole('article', { name: 'Pedido 4' });
+  await userEvent.click(within(pedido).getByRole('button', { name: 'Reimprimir' }));
+  expect(p.invocar).toHaveBeenCalledWith('impresion:reimprimir', { pedidoId: 'p1' });
+  expect(await screen.findByRole('status')).toHaveTextContent('Enviado a imprimir.');
+});

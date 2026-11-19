@@ -9,9 +9,13 @@ import { TomarPedido } from '../componentes/TomarPedido';
 import { Alerta } from '../componentes/Alerta';
 import { Pendientes } from '../componentes/Pendientes';
 import type { Salon } from '../../compartido/salon';
+import { puede } from '@gula/shared';
+import { Impresion } from './Impresion';
+import { AvisoImpresion } from '../componentes/AvisoImpresion';
+import { VistaPrevia } from '../componentes/VistaPrevia';
 
 type Activa = Extract<EstadoSesion, { tipo: 'activa' }>;
-type Seccion = 'mesas' | 'carta';
+type Seccion = 'mesas' | 'carta' | 'impresion';
 type Vista = { tipo: 'seccion' } | { tipo: 'mesa'; mesaId: string } | { tipo: 'mostrador' };
 
 export function Shell({ sesion, sync, salon }: { sesion: Activa; sync: EstadoSync; salon: Salon }) {
@@ -20,6 +24,11 @@ export function Shell({ sesion, sync, salon }: { sesion: Activa; sync: EstadoSyn
   const [aviso, setAviso] = useState<string | null>(null);
   const volver = () => setVista({ tipo: 'seccion' });
   const sinAtender = salon.pendientes.length + salon.avisos.length;
+  const secciones: [Seccion, string][] = [
+    ['mesas', 'Mesas'],
+    ['carta', 'Carta'],
+    ...(puede(sesion.usuario.rol, 'impresion.configurar') === 'si' ? [['impresion', 'Impresión'] as [Seccion, string]] : []),
+  ];
   return (
     <div className="shell">
       <header className={sinAtender ? 'barra barra--alerta' : 'barra'}>
@@ -32,12 +41,7 @@ export function Shell({ sesion, sync, salon }: { sesion: Activa; sync: EstadoSyn
         </button>
       </header>
       <nav className="menu" aria-label="Secciones">
-        {(
-          [
-            ['mesas', 'Mesas'],
-            ['carta', 'Carta'],
-          ] as const
-        ).map(([id, nombre]) => (
+        {secciones.map(([id, nombre]) => (
           <button
             key={id}
             type="button"
@@ -52,6 +56,7 @@ export function Shell({ sesion, sync, salon }: { sesion: Activa; sync: EstadoSyn
           </button>
         ))}
       </nav>
+      <AvisoImpresion />
       <section className="contenido">
         {aviso && seccion === 'mesas' && vista.tipo === 'seccion' && (
           <p className="ok" role="status">
@@ -81,8 +86,10 @@ export function Shell({ sesion, sync, salon }: { sesion: Activa; sync: EstadoSyn
           />
         )}
         {seccion === 'carta' && <Carta usuario={sesion.usuario} conexion={sync.conexion} />}
+        {seccion === 'impresion' && <Impresion />}
       </section>
       <Pendientes salon={salon} />
+      <VistaPrevia />
     </div>
   );
 }
