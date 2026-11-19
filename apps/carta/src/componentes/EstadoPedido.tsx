@@ -1,18 +1,19 @@
 import { useEffect, useState } from 'react';
-import { formatearPrecio, type PedidoPublico } from '@gula/shared';
+import type { PedidoPublico } from '@gula/shared';
+import { PapelComanda, selloDeEstado } from '@gula/ui';
 import { consultarPedido } from '../api';
 
 export const CONSULTA_MS = 5_000;
 
 const final = (p: PedidoPublico) => p.estado !== 'pendiente';
 
-function texto(p: PedidoPublico): string {
+function ayuda(p: PedidoPublico): string | null {
   switch (p.estado) {
     case 'pendiente':
-      return 'Enviado — esperando confirmación';
+      return 'Esperando que lo confirmen en la barra.';
     case 'confirmado':
     case 'cobrado':
-      return '¡Pedido confirmado!';
+      return 'Ya lo estamos preparando.';
     case 'rechazado':
       return `No pudimos tomar tu pedido: ${p.motivoRechazo ?? 'consultá con la moza'}`;
     case 'anulado':
@@ -42,22 +43,22 @@ export function EstadoPedido({ token, pedido: inicial }: { token: string; pedido
   }, [p, token]);
 
   return (
-    <section className={`estado-pedido estado-pedido--${p.estado}`} aria-live="polite">
-      <p className="estado-pedido__texto">{texto(p)}</p>
-      {p.estado === 'confirmado' && (
-        <p className="estado-pedido__ayuda">Ya lo estamos preparando.</p>
-      )}
-      {p.items.length > 0 && (
-        <ul className="estado-pedido__items">
-          {p.items.map((i, n) => (
-            <li key={n}>
-              {i.cantidad}× {i.nombre}
-              {i.resumenOpciones && ` (${i.resumenOpciones})`}
-            </li>
-          ))}
-        </ul>
-      )}
-      {p.total > 0 && <p className="estado-pedido__total">{formatearPrecio(p.total)}</p>}
+    <section className="talon" aria-live="polite">
+      <PapelComanda
+        compacto
+        titulo="PEDIDO"
+        lineas={p.items.map((i, n) => ({
+          id: String(n),
+          cantidad: i.cantidad,
+          nombre: i.nombre,
+          importe: i.subtotal,
+          detalle: i.resumenOpciones || undefined,
+        }))}
+        total={p.total > 0 ? p.total : undefined}
+        sello={selloDeEstado(p.estado)}
+      >
+        <p className="talon__ayuda">{ayuda(p)}</p>
+      </PapelComanda>
     </section>
   );
 }

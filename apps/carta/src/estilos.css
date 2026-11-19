@@ -568,6 +568,25 @@ p {
   font-family: var(--cifras);
   font-weight: 600;
 }
+.boton-agregar {
+  display: grid;
+  justify-items: center;
+  line-height: 1.15;
+  padding-block: 8px;
+}
+.boton-agregar__precio {
+  font-family: var(--cifras);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.sr-solo {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
 .detalle__pie {
   position: sticky;
   bottom: calc(-18px - env(safe-area-inset-bottom));
@@ -647,6 +666,7 @@ p {
   pointer-events: auto;
 }
 .papel-boton {
+  filter: drop-shadow(0 1px 1px rgb(0 0 0 / 0.14)) drop-shadow(0 -2px 14px rgb(0 0 0 / 0.14));
   display: block;
   width: 100%;
   padding: 0;
@@ -656,6 +676,7 @@ p {
   cursor: pointer;
 }
 .papel-boton .papel {
+  display: block;
   padding-block: 18px 16px;
 }
 .papel-resumen {
@@ -727,6 +748,12 @@ p {
   min-height: 0;
   flex: 1;
 }
+.comanda-abierta .papel-sombra {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  max-height: 100%;
+}
 .comanda-abierta .papel {
   display: flex;
   flex-direction: column;
@@ -743,7 +770,13 @@ p {
 .comanda-abierta .papel__pie {
   flex: none;
 }
-.comanda-abierta .papel__acciones .cantidad button {
+.cantidad .enlace {
+  width: auto;
+  height: 44px;
+  border: 0;
+  padding: 0 6px;
+}
+.comanda-abierta .papel__acciones .cantidad button:not(.enlace) {
   width: 36px;
   height: 36px;
   border-width: 1.5px;
@@ -758,23 +791,33 @@ p {
   font-weight: 600;
 }
 
-/* El corte por la perforación al mandar a la barra. */
+/* El corte por la perforación al mandar a la barra: un tirón corto hacia abajo
+   (se arranca del talonario) y el papel sale hacia arriba, rumbo a la barra. */
 .papel--cortando {
-  animation: papel-corte var(--ui-dur-firma) var(--ui-curva-salida) forwards;
+  animation: papel-corte var(--ui-dur-firma) linear forwards;
+  pointer-events: none;
 }
 @keyframes papel-corte {
   0% {
-    transform: translateY(0);
-    clip-path: inset(0 0 0 0);
+    animation-timing-function: cubic-bezier(0.23, 1, 0.32, 1);
   }
-  35% {
-    transform: translateY(6px) rotate(-0.6deg);
-    clip-path: inset(0 0 0 0);
+  18% {
+    transform: translateY(8px);
+    animation-timing-function: cubic-bezier(0.32, 0.72, 0, 1);
   }
   100% {
-    transform: translateY(-110%) rotate(-2deg);
-    clip-path: inset(0 0 0 0);
+    transform: translateY(-48%) rotate(-1.5deg);
     opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .papel--cortando {
+    animation-name: papel-se-va;
+  }
+  @keyframes papel-se-va {
+    to {
+      opacity: 0;
+    }
   }
 }
 
@@ -786,4 +829,14 @@ p {
 }
 .talon__ayuda {
   font-size: 0.82rem;
+  color: #3d3c39;
+}
+.talon .papel {
+  animation: talon-entra var(--ui-dur-media) var(--ui-curva-salida);
+}
+@keyframes talon-entra {
+  from {
+    transform: translateY(-8px);
+    opacity: 0;
+  }
 }

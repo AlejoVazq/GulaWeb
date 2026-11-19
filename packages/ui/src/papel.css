@@ -17,7 +17,9 @@
     radial-gradient(circle at 50% 0, transparent 3.5px, #000 4px) top / var(--_perfo) var(--_perfo) repeat-x,
     radial-gradient(circle at 50% 100%, transparent 3.5px, #000 4px) bottom / var(--_perfo) var(--_perfo) repeat-x,
     linear-gradient(#000, #000) center / 100% calc(100% - 2 * var(--_perfo) + 2px) no-repeat;
-  filter: drop-shadow(0 6px 10px rgb(0 0 0 / 0.18));
+}
+.papel-sombra {
+  filter: drop-shadow(0 1px 1px rgb(0 0 0 / 0.14)) drop-shadow(0 6px 12px rgb(0 0 0 / 0.12));
 }
 .papel--compacto {
   font-size: 13px;

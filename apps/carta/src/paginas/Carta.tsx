@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useParams } from 'react-router';
 import type { ProductoPublico } from '@gula/shared';
 import { useCarta } from '../useCarta';
@@ -29,6 +29,12 @@ export function Carta() {
   const { items, despachar } = useCarrito(slug);
   const { estado: mesa, recargar: recargarMesa } = useMesa(token);
   const envio = useEnvioPedidos(token);
+  // Al mandar, el papel sale hacia arriba: cuando termina el corte, la vista lo acompaña hasta el talón.
+  const talones = useRef<HTMLDivElement>(null);
+  const irAlTalon = () => {
+    const suave = !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    talones.current?.scrollIntoView?.({ behavior: suave ? 'smooth' : 'auto', block: 'start' });
+  };
   const activa = useCategoriaActiva(estado.tipo === 'lista' ? estado.carta.categorias.map((c) => c.id) : []);
 
   if (estado.tipo === 'cargando') return <p className="aviso">Cargando la carta…</p>;
@@ -56,7 +62,7 @@ export function Carta() {
           ? e.message
           : 'No pudimos enviar tu pedido. Revisá tu conexión y probá de nuevo.',
       onEnviar: () =>
-        void envio
+        envio
           .enviar(
             items.map((i) => ({
               productoId: i.productoId,
@@ -66,9 +72,13 @@ export function Carta() {
             })),
           )
           .then((ok) => {
-            if (ok) despachar({ tipo: 'vaciar' });
-            else recargarMesa();
+            if (!ok) recargarMesa();
+            return ok;
           }),
+      onEnviado: () => {
+        despachar({ tipo: 'vaciar' });
+        requestAnimationFrame(irAlTalon);
+      },
     };
   }
 
@@ -81,14 +91,11 @@ export function Carta() {
           <p className="aviso">Este QR ya no es válido. Pedile a la moza el de tu mesa.</p>
         )}
         {token && envio.pedidos.length > 0 && (
-          <div className="pedidos-enviados">
+          <div className="pedidos-enviados" ref={talones}>
             {envio.pedidos.map((p) => (
               <EstadoPedido key={p.id} token={token} pedido={p} />
             ))}
           </div>
-        )}
-        {token && infoMesa && infoMesa.motivo === null && (
-          <AvisosMesa token={token} onError={recargarMesa} />
         )}
         <Categorias categorias={carta.categorias} activa={activa} />
         <main>
@@ -147,7 +154,16 @@ export function Carta() {
           }}
         />
       )}
-      {!elegido && <Carrito items={items} despachar={despachar} envio={datosEnvio} />}
+      {!elegido && (
+        <Carrito
+          items={items}
+          despachar={despachar}
+          envio={datosEnvio}
+          mesa={infoMesa?.mesa.nombre}
+          local={carta.local.nombre}
+          encima={token && infoMesa && infoMesa.motivo === null ? <AvisosMesa token={token} onError={recargarMesa} /> : undefined}
+        />
+      )}
     </div>
   );
 }

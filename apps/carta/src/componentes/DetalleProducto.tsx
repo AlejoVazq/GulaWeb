@@ -138,7 +138,7 @@ export function DetalleProducto({ producto: p, onAgregar, onCerrar }: Props) {
           </div>
           <button
             type="button"
-            className="boton-principal"
+            className="boton-principal boton-agregar"
             disabled={!validacion.ok}
             onClick={() =>
               onAgregar({
@@ -153,7 +153,9 @@ export function DetalleProducto({ producto: p, onAgregar, onCerrar }: Props) {
               })
             }
           >
-            Agregar a la comanda · {formatearPrecio(unitario * cantidad)}
+            <span>Agregar a la comanda</span>
+            <span className="sr-solo"> · </span>
+            <span className="boton-agregar__precio">{formatearPrecio(unitario * cantidad)}</span>
           </button>
         </div>
       </div>

@@ -21,10 +21,12 @@ const mesaAbierta: MesaPublica = {
 type Llamada = { url: string; metodo: string; cuerpo: unknown };
 let llamadas: Llamada[];
 let fallarPost: number;
+let rechazarPost: boolean;
 
 function servidor(mesa: MesaPublica) {
   llamadas = [];
   fallarPost = 0;
+  rechazarPost = false;
   vi.stubGlobal(
     'fetch',
     vi.fn((url: string, init?: RequestInit) => {
@@ -34,6 +36,8 @@ function servidor(mesa: MesaPublica) {
       if (url.endsWith('/carta')) return json(200, cartaDePrueba);
       if (url === '/api/publico/mesas/TOKEN' && metodo === 'GET') return json(200, mesa);
       if (url === '/api/publico/mesas/TOKEN/pedidos') {
+        if (rechazarPost)
+          return json(409, { error: { codigo: 'MESA_CERRADA', mensaje: 'La mesa se cerró. Pedile a la moza que la abra.' } });
         if (fallarPost > 0) {
           fallarPost--;
           return Promise.reject(new TypeError('Failed to fetch'));
@@ -76,7 +80,7 @@ async function agregarHamburguesa() {
   await userEvent.click(await screen.findByRole('button', { name: /^Hamburguesa clásica/ }));
   await userEvent.click(screen.getByLabelText(/Grande/));
   await userEvent.click(screen.getByRole('button', { name: 'Agregar a la comanda · $ 6.500' }));
-  await userEvent.click(screen.getByRole('button', { name: /Ver pedido/ }));
+  await userEvent.click(screen.getByRole('button', { name: /^Ver mi pedido/ }));
 }
 
 beforeEach(() => sessionStorage.clear());
@@ -87,7 +91,7 @@ it('con la mesa abierta envía los ítems sin precios y muestra que espera confi
   montar();
   expect(await screen.findByLabelText('Mesa 3')).toBeInTheDocument();
   await agregarHamburguesa();
-  await userEvent.click(screen.getByRole('button', { name: 'Enviar pedido · $ 6.500' }));
+  await userEvent.click(screen.getByRole('button', { name: 'Mandar a la barra' }));
 
   const post = llamadas.find((l) => l.metodo === 'POST' && l.url.endsWith('/pedidos'))!;
   expect(post.cuerpo).toEqual({
@@ -95,8 +99,8 @@ it('con la mesa abierta envía los ítems sin precios y muestra que espera confi
     items: [{ productoId: 'p1', seleccion: { tamano: ['grande'] }, nota: '', cantidad: 1 }],
   });
   expect(JSON.stringify(post.cuerpo)).not.toMatch(/precio/i);
-  expect(await screen.findByText('Enviado — esperando confirmación')).toBeInTheDocument();
-  expect(screen.queryByRole('button', { name: /Ver pedido/ })).not.toBeInTheDocument();
+  expect(await screen.findByText('Esperando que lo confirmen en la barra.')).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: /^Ver mi pedido/ })).not.toBeInTheDocument();
 });
 
 it('con la mesa cerrada el botón lo explica y está deshabilitado', async () => {
@@ -122,9 +126,9 @@ it('un fallo de red reintenta con el mismo id', async () => {
   montar();
   await agregarHamburguesa();
   fallarPost = 1;
-  await userEvent.click(screen.getByRole('button', { name: 'Enviar pedido · $ 6.500' }));
+  await userEvent.click(screen.getByRole('button', { name: 'Mandar a la barra' }));
   expect(
-    await screen.findByText('Enviado — esperando confirmación', {}, { timeout: 4000 }),
+    await screen.findByText('Esperando que lo confirmen en la barra.', {}, { timeout: 4000 }),
   ).toBeInTheDocument();
   const posts = llamadas.filter((l) => l.metodo === 'POST' && l.url.endsWith('/pedidos'));
   expect(posts).toHaveLength(2);
@@ -148,4 +152,69 @@ it('entrando por QR muestra el sello MESA con el nombre de la mesa', async () =>
   const sello = await screen.findByLabelText('Mesa 3');
   expect(sello).toHaveTextContent('MESA');
   expect(sello).toHaveTextContent('3');
+});
+
+it('el papel fijo muestra la mesa, la cantidad de ítems y el total, y abre la comanda', async () => {
+  servidor(mesaAbierta);
+  montar();
+  await agregarHamburguesa();
+  await userEvent.click(screen.getByRole('button', { name: 'Cerrar' }));
+  const papel = screen.getByRole('button', { name: 'Ver mi pedido: 1 ítem, $ 6.500' });
+  expect(papel).toHaveTextContent('Mesa 3');
+  await userEvent.click(papel);
+  const hoja = screen.getByRole('dialog', { name: 'Tu comanda' });
+  expect(within(hoja).getByText('MESA 3')).toBeInTheDocument();
+  expect(within(hoja).getByText('Lo que mandes sale impreso en la barra.')).toBeInTheDocument();
+});
+
+it('"Mandar a la barra" envía una sola vez aunque se toque dos veces', async () => {
+  servidor(mesaAbierta);
+  montar();
+  await agregarHamburguesa();
+  const boton = screen.getByRole('button', { name: 'Mandar a la barra' });
+  await userEvent.dblClick(boton);
+  await screen.findByText('Esperando que lo confirmen en la barra.');
+  expect(llamadas.filter((l) => l.metodo === 'POST' && l.url.endsWith('/pedidos'))).toHaveLength(1);
+});
+
+it('si el envío falla, muestra el error y "Reintentar" y la comanda queda igual', async () => {
+  servidor(mesaAbierta);
+  montar();
+  await agregarHamburguesa();
+  rechazarPost = true;
+  await userEvent.click(screen.getByRole('button', { name: 'Mandar a la barra' }));
+  expect(await screen.findByRole('alert')).toHaveTextContent('La mesa se cerró. Pedile a la moza que la abra.');
+  expect(screen.getByRole('button', { name: 'Reintentar' })).toBeEnabled();
+  expect(screen.getByRole('dialog', { name: 'Tu comanda' })).toHaveTextContent('Hamburguesa clásica');
+});
+
+it('tras un envío aceptado se vacía la comanda y aparece el talón ENVIADO', async () => {
+  servidor(mesaAbierta);
+  montar();
+  await agregarHamburguesa();
+  await userEvent.click(screen.getByRole('button', { name: 'Mandar a la barra' }));
+  await screen.findByText('Esperando que lo confirmen en la barra.');
+  expect(screen.getAllByRole('status').some((e) => e.textContent === 'ENVIADO')).toBe(true);
+  expect(screen.queryByRole('dialog', { name: 'Tu comanda' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: /^Ver mi pedido/ })).not.toBeInTheDocument();
+});
+
+it('con 25 líneas el botón "Mandar a la barra" queda fuera del área con scroll', async () => {
+  const items = Array.from({ length: 25 }, (_, n) => ({
+    clave: `p3##nota ${n}`,
+    productoId: 'p3',
+    nombre: 'Café con leche',
+    seleccion: {},
+    resumenOpciones: '',
+    nota: `nota ${n}`,
+    cantidad: 1,
+    precioUnitario: 300000,
+  }));
+  sessionStorage.setItem('gula:carrito:la-gula', JSON.stringify(items));
+  servidor(mesaAbierta);
+  montar();
+  await userEvent.click(await screen.findByRole('button', { name: /^Ver mi pedido: 25 ítems/ }));
+  const boton = screen.getByRole('button', { name: 'Mandar a la barra' });
+  expect(boton.closest('.papel__lineas')).toBeNull();
+  expect(screen.getByRole('dialog', { name: 'Tu comanda' }).querySelectorAll('.papel__linea')).toHaveLength(25);
 });

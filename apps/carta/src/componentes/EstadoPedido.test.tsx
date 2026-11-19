@@ -32,18 +32,19 @@ async function avanzar(ms: number) {
   });
 }
 
-it('pendiente dice "Enviado — esperando confirmación" y al confirmarse "¡Pedido confirmado!"', async () => {
+it('pendiente lleva el sello ENVIADO y al confirmarse CONFIRMADO', async () => {
   let estado: PedidoPublico['estado'] = 'pendiente';
   const f = vi.fn(() => json({ ...base, estado }));
   vi.stubGlobal('fetch', f);
   render(<EstadoPedido token="TOKEN" pedido={base} />);
-  expect(screen.getByText('Enviado — esperando confirmación')).toBeInTheDocument();
+  expect(screen.getByRole('status')).toHaveTextContent('ENVIADO');
+  expect(screen.getByText('Esperando que lo confirmen en la barra.')).toBeInTheDocument();
   await avanzar(5_000);
   expect(f).toHaveBeenCalledWith(`/api/publico/pedidos/${base.id}?token=TOKEN`, expect.anything());
-  expect(screen.getByText('Enviado — esperando confirmación')).toBeInTheDocument();
+  expect(screen.getByRole('status')).toHaveTextContent('ENVIADO');
   estado = 'confirmado';
   await avanzar(5_000);
-  expect(screen.getByText('¡Pedido confirmado!')).toBeInTheDocument();
+  expect(screen.getByRole('status')).toHaveTextContent('CONFIRMADO');
   const llamadas = f.mock.calls.length;
   await avanzar(30_000);
   expect(f.mock.calls.length).toBe(llamadas); // ya no consulta más
@@ -68,4 +69,17 @@ it('al volver a la pestaña consulta enseguida', async () => {
     await vi.advanceTimersByTimeAsync(0);
   });
   expect(f).toHaveBeenCalledTimes(1);
+});
+
+it.each([
+  ['pendiente', 'ENVIADO'],
+  ['confirmado', 'CONFIRMADO'],
+  ['rechazado', 'RECHAZADO'],
+  ['anulado', 'ANULADO'],
+] as const)('talón %s lleva el sello %s y sus líneas', (estado, sello) => {
+  vi.stubGlobal('fetch', vi.fn(() => json({ ...base, estado })));
+  render(<EstadoPedido token="TOKEN" pedido={{ ...base, estado }} />);
+  expect(screen.getByRole('status')).toHaveTextContent(sello);
+  expect(screen.getByText('Hamburguesa clásica')).toBeInTheDocument();
+  expect(screen.getByText('Grande')).toBeInTheDocument();
 });

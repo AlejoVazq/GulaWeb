@@ -66,13 +66,13 @@ it('agregar un producto muestra la barra del pedido y el envío queda deshabilit
   await userEvent.click(await screen.findByRole('button', { name: /^Hamburguesa clásica/ }));
   await userEvent.click(screen.getByLabelText(/Grande/));
   await userEvent.click(screen.getByRole('button', { name: 'Agregar a la comanda · $ 6.500' }));
-  const barra = screen.getByRole('button', { name: 'Ver pedido (1) · $ 6.500' });
+  const barra = screen.getByRole('button', { name: 'Ver mi pedido: 1 ítem, $ 6.500' });
   await userEvent.click(barra);
   expect(screen.getByText('Grande')).toBeInTheDocument();
   const enviar = screen.getByRole('button', { name: 'Pedí al mozo que habilite la mesa' });
   expect(enviar).toBeDisabled();
   await userEvent.click(screen.getByRole('button', { name: 'Quitar Hamburguesa clásica' }));
-  expect(screen.queryByRole('button', { name: /Ver pedido/ })).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: /^Ver mi pedido/ })).not.toBeInTheDocument();
 });
 
 it('al cerrar el detalle el foco vuelve a la tarjeta del producto', async () => {
