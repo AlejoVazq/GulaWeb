@@ -12,6 +12,7 @@ import { ErrorApi } from '../api';
 import { EstadoPedido } from '../componentes/EstadoPedido';
 import { AvisosMesa } from '../componentes/AvisosMesa';
 import type { Envio } from '../componentes/Carrito';
+import { estiloMarca, leerMarca } from '../marca';
 
 const MOTIVOS = {
   mesa_cerrada: 'Pedile a la moza que habilite la mesa',
@@ -67,9 +68,11 @@ export function Carta() {
     };
   }
 
+  const marca = leerMarca(carta.local.marca);
   return (
-    <div className="carta">
+    <div className="carta" style={estiloMarca(marca)}>
       <header className="carta__encabezado">
+        {marca.logo && <img className="carta__logo" src={marca.logo} alt="" />}
         <h1>{carta.local.nombre}</h1>
         {infoMesa && <p className="carta__mesa">{infoMesa.mesa.nombre}</p>}
       </header>
