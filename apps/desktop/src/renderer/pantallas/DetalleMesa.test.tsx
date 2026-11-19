@@ -43,8 +43,8 @@ it('"Atendido" atiende el aviso', async () => {
   expect(p.invocar).toHaveBeenCalledWith('salon:atenderAviso', { avisoId: 'a1' });
 });
 
-it('"Cerrar mesa" pide confirmación antes de cerrar', async () => {
-  const p = puenteFalso({ 'salon:mesa': () => detalle });
+it('"Cerrar mesa" (sin nada que cobrar) pide confirmación antes de cerrar', async () => {
+  const p = puenteFalso({ 'salon:mesa': () => ({ ...detalle, pedidos: [] }) });
   const onVolver = vi.fn();
   render(<DetalleMesa mesaId="m1" onVolver={onVolver} />);
   await userEvent.click(await screen.findByRole('button', { name: 'Cerrar mesa' }));
@@ -83,4 +83,43 @@ it('"Imprimir cuenta" y "Reimprimir" mandan a imprimir', async () => {
   await userEvent.click(within(pedido).getByRole('button', { name: 'Reimprimir' }));
   expect(p.invocar).toHaveBeenCalledWith('impresion:reimprimir', { pedidoId: 'p1' });
   expect(await screen.findByRole('status')).toHaveTextContent('Enviado a imprimir.');
+});
+
+it('con pedidos sin cobrar no se puede cerrar la mesa', async () => {
+  puenteFalso({ 'salon:mesa': () => detalle });
+  render(<DetalleMesa mesaId="m1" onVolver={vi.fn()} />);
+  expect(await screen.findByRole('button', { name: 'Cerrar mesa' })).toBeDisabled();
+  expect(screen.getByText('Cobrá la mesa para cerrarla.')).toBeInTheDocument();
+});
+
+it('"Cobrar" solo aparece para quien puede cobrar y abre el cobro con el total', async () => {
+  puenteFalso({ 'salon:mesa': () => detalle });
+  const { unmount } = render(<DetalleMesa mesaId="m1" onVolver={vi.fn()} rol="mesero" />);
+  await screen.findByRole('heading', { name: 'Mesa 3' });
+  expect(screen.queryByRole('button', { name: 'Cobrar' })).toBeNull();
+  unmount();
+  render(<DetalleMesa mesaId="m1" onVolver={vi.fn()} rol="encargado" />);
+  await userEvent.click(await screen.findByRole('button', { name: 'Cobrar' }));
+  const dialogo = screen.getByRole('dialog', { name: 'Cobrar Mesa 3' });
+  expect(within(dialogo).getByText(/Total a cobrar/)).toHaveTextContent('$ 13.000');
+});
+
+it('una moza anula un ítem con el PIN de un encargado', async () => {
+  const p = puenteFalso({
+    'salon:mesa': () => detalle,
+    'sesion:autorizantes': () => [{ id: 'enc', nombre: 'Laura', rol: 'encargado' }],
+  });
+  render(<DetalleMesa mesaId="m1" onVolver={vi.fn()} rol="mesero" />);
+  const pedido = await screen.findByRole('article', { name: 'Pedido 4' });
+  await userEvent.click(within(pedido).getByRole('button', { name: 'Anular 2× Clásica' }));
+  const dialogo = screen.getByRole('dialog', { name: 'Anular 2× Clásica' });
+  await userEvent.type(within(dialogo).getByLabelText('Motivo'), 'Error de carga');
+  await userEvent.selectOptions(await within(dialogo).findByLabelText('Autoriza'), 'enc');
+  await userEvent.type(within(dialogo).getByLabelText('PIN'), '5555');
+  await userEvent.click(within(dialogo).getByRole('button', { name: 'Anular' }));
+  expect(p.invocar).toHaveBeenCalledWith('salon:anularItem', {
+    itemId: 'i1',
+    motivo: 'Error de carga',
+    autorizacion: { usuarioId: 'enc', pin: '5555' },
+  });
 });

@@ -1,9 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
-import { formatearPrecio } from '@gula/shared';
+import { formatearPrecio, puede, type Rol } from '@gula/shared';
 import type { DetalleMesa as Detalle, Pedido } from '../../compartido/salon';
 import { escuchar, llamar, mensajeDe } from '../gula';
 import { TomarPedido } from '../componentes/TomarPedido';
 import { hora } from '../formato';
+import { Cobrar } from '../componentes/Cobrar';
+import { Anular } from '../componentes/Anular';
+
+type Anulando = { tipo: 'item'; id: string; titulo: string } | { tipo: 'pedido'; id: string; titulo: string };
 
 const ESTADOS: Record<Pedido['estado'], string> = {
   pendiente: 'Pendiente de confirmar',
@@ -14,7 +18,7 @@ const ESTADOS: Record<Pedido['estado'], string> = {
 };
 const AVISOS = { llamar: 'Llamó a la moza', cuenta: 'Pidió la cuenta' } as const;
 
-function TarjetaPedido({ p, onReimprimir }: { p: Pedido; onReimprimir: () => void }) {
+function TarjetaPedido({ p, onReimprimir, onAnular }: { p: Pedido; onReimprimir: () => void; onAnular: (a: Anulando) => void }) {
   const titulo = p.numero ? `Pedido ${p.numero}` : 'Pedido sin número';
   return (
     <article className={`bloque pedido pedido--${p.estado}`} aria-label={titulo}>
@@ -35,16 +39,32 @@ function TarjetaPedido({ p, onReimprimir }: { p: Pedido; onReimprimir: () => voi
                 {detalle && <div className="suave">{detalle}</div>}
               </div>
               <span>{formatearPrecio(i.precioUnitario * i.cantidad)}</span>
+              {p.estado === 'confirmado' && (
+                <button
+                  type="button"
+                  className="boton boton--chico"
+                  aria-label={`Anular ${i.cantidad}× ${i.nombre}`}
+                  onClick={() => onAnular({ tipo: 'item', id: i.id, titulo: `Anular ${i.cantidad}× ${i.nombre}` })}
+                >
+                  Anular
+                </button>
+              )}
             </li>
           );
         })}
       </ul>
       {p.motivoRechazo && <p className="suave">Motivo: {p.motivoRechazo}</p>}
+      {p.motivoAnulacion && <p className="suave">Anulado: {p.motivoAnulacion}</p>}
       <div className="fila fila--entre">
         {p.estado === 'confirmado' ? (
-          <button type="button" className="boton" onClick={onReimprimir}>
-            Reimprimir
-          </button>
+          <span className="fila">
+            <button type="button" className="boton" onClick={onReimprimir}>
+              Reimprimir
+            </button>
+            <button type="button" className="boton" onClick={() => onAnular({ tipo: 'pedido', id: p.id, titulo: `Anular ${titulo}` })}>
+              Anular pedido
+            </button>
+          </span>
         ) : (
           <span />
         )}
@@ -54,7 +74,9 @@ function TarjetaPedido({ p, onReimprimir }: { p: Pedido; onReimprimir: () => voi
   );
 }
 
-export function DetalleMesa({ mesaId, onVolver }: { mesaId: string; onVolver: () => void }) {
+export function DetalleMesa({ mesaId, onVolver, rol = 'mesero' }: { mesaId: string; onVolver: () => void; rol?: Rol }) {
+  const [cobrando, setCobrando] = useState(false);
+  const [anulando, setAnulando] = useState<Anulando | null>(null);
   const [d, setD] = useState<Detalle | null>(null);
   const [tomando, setTomando] = useState(false);
   const [confirmandoCierre, setConfirmandoCierre] = useState(false);
@@ -169,12 +191,43 @@ export function DetalleMesa({ mesaId, onVolver }: { mesaId: string; onVolver: ()
         >
           Imprimir cuenta
         </button>
+        {puede(rol, 'cobro.registrar') === 'si' && (
+          <button type="button" className="boton boton--principal" disabled={!vigentes.length} onClick={() => setCobrando(true)}>
+            Cobrar
+          </button>
+        )}
         {!confirmandoCierre && (
-          <button type="button" className="boton" onClick={() => setConfirmandoCierre(true)}>
+          <button type="button" className="boton" disabled={vigentes.length > 0} onClick={() => setConfirmandoCierre(true)}>
             Cerrar mesa
           </button>
         )}
+        {vigentes.length > 0 && <span className="suave">Cobrá la mesa para cerrarla.</span>}
       </div>
+      {cobrando && (
+        <Cobrar
+          titulo={mesa.nombre}
+          subtotal={total}
+          destino={{ sesionId: sesion.id }}
+          onCancelar={() => setCobrando(false)}
+          onListo={() => {
+            setCobrando(false);
+            onVolver();
+          }}
+        />
+      )}
+      {anulando && (
+        <Anular
+          titulo={anulando.titulo}
+          necesitaPin={puede(rol, 'pedido.anular') === 'con_autorizacion'}
+          onCancelar={() => setAnulando(null)}
+          onConfirmar={async (motivo, autorizacion) => {
+            if (anulando.tipo === 'item') await llamar('salon:anularItem', { itemId: anulando.id, motivo, autorizacion });
+            else await llamar('salon:anularPedido', { pedidoId: anulando.id, motivo, autorizacion });
+            setAnulando(null);
+            setAviso('Anulado. Se avisó a cocina.');
+          }}
+        />
+      )}
       {confirmandoCierre && (
         <div className="bloque fila" role="group" aria-label="Confirmar cierre">
           <span>¿Cerrar {mesa.nombre}? Se libera para los próximos clientes.</span>
@@ -198,6 +251,7 @@ export function DetalleMesa({ mesaId, onVolver }: { mesaId: string; onVolver: ()
         <TarjetaPedido
           key={p.id}
           p={p}
+          onAnular={setAnulando}
           onReimprimir={() =>
             void intentar(() => llamar('impresion:reimprimir', { pedidoId: p.id })).then(
               (ok) => ok && setAviso('Enviado a imprimir.'),

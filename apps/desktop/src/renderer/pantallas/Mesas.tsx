@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import type { MesaSalon, Salon } from '../../compartido/salon';
+import { formatearPrecio } from '@gula/shared';
+import type { MesaSalon, Pedido, Salon } from '../../compartido/salon';
 import { llamar, mensajeDe } from '../gula';
 import { Dialogo } from '../componentes/Dialogo';
 
@@ -7,6 +8,9 @@ type Props = {
   salon: Salon;
   onVerMesa: (mesaId: string) => void;
   onMostrador: () => void;
+  /** Pedidos de mostrador confirmados sin cobrar (solo para quien puede cobrar). */
+  porCobrar?: Pedido[];
+  onCobrar?: (p: Pedido) => void;
   /** Para los minutos abiertos (tests). */
   ahora?: Date;
 };
@@ -82,7 +86,7 @@ function AbrirMesa({ mesa, onCerrar, onAbierta }: { mesa: MesaSalon; onCerrar: (
   );
 }
 
-export function Mesas({ salon, onVerMesa, onMostrador, ahora = new Date() }: Props) {
+export function Mesas({ salon, onVerMesa, onMostrador, porCobrar = [], onCobrar, ahora = new Date() }: Props) {
   const [abriendo, setAbriendo] = useState<MesaSalon | null>(null);
   const zonas = new Map<string, MesaSalon[]>();
   for (const m of salon.mesas) {
@@ -99,6 +103,22 @@ export function Mesas({ salon, onVerMesa, onMostrador, ahora = new Date() }: Pro
           Pedido de mostrador
         </button>
       </div>
+      {onCobrar && porCobrar.length > 0 && (
+        <section className="bloque" aria-label="Mostrador por cobrar">
+          <h2 className="mesas__zona">Mostrador por cobrar</h2>
+          <ul className="lista">
+            {porCobrar.map((p) => (
+              <li key={p.id} className="lista__item">
+                <span>Pedido {p.numero ?? '-'}</span>
+                <span>{formatearPrecio(p.total)}</span>
+                <button type="button" className="boton boton--principal" aria-label={`Cobrar pedido ${p.numero ?? ''}`.trim()} onClick={() => onCobrar(p)}>
+                  Cobrar
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
       {!salon.mesas.length && (
         <p className="suave">Todavía no hay mesas. El dueño las carga desde Configuración (o con la carga de demo).</p>
       )}

@@ -8,7 +8,9 @@ import { DetalleMesa } from './DetalleMesa';
 import { TomarPedido } from '../componentes/TomarPedido';
 import { Alerta } from '../componentes/Alerta';
 import { Pendientes } from '../componentes/Pendientes';
-import type { Salon } from '../../compartido/salon';
+import type { Pedido, Salon } from '../../compartido/salon';
+import { useCaja } from '../useCaja';
+import { Cobrar } from '../componentes/Cobrar';
 import { puede } from '@gula/shared';
 import { Impresion } from './Impresion';
 import { Caja } from './Caja';
@@ -25,6 +27,9 @@ export function Shell({ sesion, sync, salon }: { sesion: Activa; sync: EstadoSyn
   const [aviso, setAviso] = useState<string | null>(null);
   const volver = () => setVista({ tipo: 'seccion' });
   const sinAtender = salon.pendientes.length + salon.avisos.length;
+  const puedeCobrar = puede(sesion.usuario.rol, 'cobro.registrar') === 'si';
+  const { caja } = useCaja();
+  const [cobrandoMostrador, setCobrandoMostrador] = useState<Pedido | null>(null);
   const secciones: [Seccion, string][] = [
     ['mesas', 'Mesas'],
     ...(puede(sesion.usuario.rol, 'caja.operar') === 'si' ? [['caja', 'Caja'] as [Seccion, string]] : []),
@@ -65,7 +70,9 @@ export function Shell({ sesion, sync, salon }: { sesion: Activa; sync: EstadoSyn
             {aviso}
           </p>
         )}
-        {seccion === 'mesas' && vista.tipo === 'mesa' && <DetalleMesa mesaId={vista.mesaId} onVolver={volver} />}
+        {seccion === 'mesas' && vista.tipo === 'mesa' && (
+          <DetalleMesa mesaId={vista.mesaId} onVolver={volver} rol={sesion.usuario.rol} />
+        )}
         {seccion === 'mesas' && vista.tipo === 'mostrador' && (
           <TomarPedido
             titulo="Mostrador"
@@ -85,12 +92,26 @@ export function Shell({ sesion, sync, salon }: { sesion: Activa; sync: EstadoSyn
               setVista({ tipo: 'mesa', mesaId });
             }}
             onMostrador={() => setVista({ tipo: 'mostrador' })}
+            porCobrar={caja?.porCobrar ?? []}
+            onCobrar={puedeCobrar ? setCobrandoMostrador : undefined}
           />
         )}
         {seccion === 'carta' && <Carta usuario={sesion.usuario} conexion={sync.conexion} />}
         {seccion === 'impresion' && <Impresion />}
         {seccion === 'caja' && <Caja />}
       </section>
+      {cobrandoMostrador && (
+        <Cobrar
+          titulo={`pedido ${cobrandoMostrador.numero ?? ''}`.trim()}
+          subtotal={cobrandoMostrador.total}
+          destino={{ pedidoId: cobrandoMostrador.id }}
+          onCancelar={() => setCobrandoMostrador(null)}
+          onListo={() => {
+            setAviso(`Pedido ${cobrandoMostrador.numero ?? ''} cobrado.`);
+            setCobrandoMostrador(null);
+          }}
+        />
+      )}
       <Pendientes salon={salon} />
       <VistaPrevia />
     </div>

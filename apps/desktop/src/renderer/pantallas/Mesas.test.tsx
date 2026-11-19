@@ -100,3 +100,19 @@ it('sin mesas explica cómo cargarlas', () => {
   render(<Mesas salon={{ mesas: [], pendientes: [], avisos: [] }} ahora={AHORA} onVerMesa={vi.fn()} onMostrador={vi.fn()} />);
   expect(screen.getByText(/Todavía no hay mesas/)).toBeInTheDocument();
 });
+
+it('los pedidos de mostrador sin cobrar se listan con su total y "Cobrar"', async () => {
+  puenteFalso({});
+  const onCobrar = vi.fn();
+  const pedido = {
+    id: 'pm', origen: 'mostrador' as const, estado: 'confirmado' as const, sesionId: null, mesaId: null, numero: 7, dia: '2026-11-18',
+    notas: null, motivoRechazo: null, creadoPor: 'u', confirmadoPor: 'u', confirmadoEn: '2026-11-18T21:00:00.000Z', rechazadoEn: null,
+    creadoEn: '2026-11-18T21:00:00.000Z', items: [], total: 450000,
+  };
+  render(<Mesas salon={salon} ahora={AHORA} onVerMesa={vi.fn()} onMostrador={vi.fn()} porCobrar={[pedido]} onCobrar={onCobrar} />);
+  const bloque = screen.getByRole('region', { name: 'Mostrador por cobrar' });
+  expect(within(bloque).getByText(/Pedido 7/)).toBeInTheDocument();
+  expect(within(bloque).getByText('$ 4.500')).toBeInTheDocument();
+  await userEvent.click(within(bloque).getByRole('button', { name: 'Cobrar pedido 7' }));
+  expect(onCobrar).toHaveBeenCalledWith(pedido);
+});
