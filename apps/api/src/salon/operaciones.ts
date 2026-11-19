@@ -1,6 +1,6 @@
 import { and, eq, inArray, isNull, ne } from 'drizzle-orm';
 import { z } from 'zod';
-import { CANTIDAD_MAXIMA, ITEMS_MAXIMOS, NOTA_MAXIMA } from '@gula/shared';
+import { CANTIDAD_MAXIMA, ITEMS_MAXIMOS, NOTA_MAXIMA, sinControl } from '@gula/shared';
 import { PRECIO_MAXIMO } from '../carta/productos.rutas.js';
 import type { Tx } from '../db/cliente.js';
 import {
@@ -92,12 +92,12 @@ registrarTipoOperacion('mesa.cerrar', {
 const itemCreado = z.object({
   itemId: z.uuid(),
   productoId: z.uuid(),
-  nombre: z.string().trim().min(1).max(120),
+  nombre: z.string().max(120).transform(sinControl).pipe(z.string().min(1)),
   precioUnitario: z.number().int().min(0).max(PRECIO_MAXIMO),
   cantidad: z.number().int().min(1).max(CANTIDAD_MAXIMA),
   seleccion: seleccion.default({}),
-  resumenOpciones: z.string().max(500).default(''),
-  nota: z.string().max(NOTA_MAXIMA).default(''),
+  resumenOpciones: z.string().max(500).default('').transform(sinControl),
+  nota: z.string().max(NOTA_MAXIMA).default('').transform(sinControl),
   sectorId: z.uuid().nullable().default(null),
 });
 
@@ -111,7 +111,7 @@ registrarTipoOperacion('pedido.crear', {
       sesionId: z.uuid().nullish(),
       numero,
       dia,
-      notas: z.string().trim().max(NOTA_MAXIMA).nullish(),
+      notas: z.string().max(NOTA_MAXIMA).transform(sinControl).nullish(),
       items: z.array(itemCreado).min(1).max(ITEMS_MAXIMOS),
     })
     .refine(

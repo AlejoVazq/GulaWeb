@@ -6,6 +6,7 @@ import {
   ITEMS_MAXIMOS,
   NOTA_MAXIMA,
   nuevoId,
+  sinControl,
   type MesaPublica,
   type PedidoPublico,
 } from '@gula/shared';
@@ -33,7 +34,7 @@ const cuerpoPedido = z.object({
       z.object({
         productoId: z.uuid(),
         seleccion: z.record(z.uuid(), z.array(z.uuid()).max(30)).default({}),
-        nota: z.string().trim().max(NOTA_MAXIMA).default(''),
+        nota: z.string().max(NOTA_MAXIMA).default('').transform(sinControl),
         cantidad: z.number().int().min(1).max(CANTIDAD_MAXIMA),
       }),
     )

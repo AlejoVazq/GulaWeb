@@ -143,6 +143,22 @@ describe('POST /publico/mesas/:token/pedidos', () => {
     expect(it).toMatchObject({ precioUnitario: 650000, cantidad: 2, nota: 'sin cebolla', sectorId: c.cocina });
   });
 
+
+  it('los caracteres de control de la nota no se guardan (llegarían crudos a la impresora)', async () => {
+    const m = await mesaDePrueba(e.localId);
+    await conectarPc();
+    const id = nuevoId();
+    const r = await publico('POST', `/publico/mesas/${m.token}/pedidos`, {
+      id,
+      items: [{ ...hamburguesaGrande(1), nota: 'sin\u001bp\u0000\u0019 sal\r' }],
+    });
+    expect(r.statusCode).toBe(201);
+    const [it] = await conLocal(dbs.dbApp, e.localId, (tx) =>
+      tx.select().from(itemsPedido).where(eq(itemsPedido.pedidoId, id)),
+    );
+    expect(it!.nota).not.toMatch(/[\u0000-\u001f\u007f-\u009f]/);
+    expect(it!.nota).toContain('sal');
+  });
   it('producto sin stock → 400 con su nombre', async () => {
     const m = await mesaDePrueba(e.localId);
     await conectarPc();

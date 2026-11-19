@@ -73,3 +73,13 @@ describe('ESC/POS', () => {
     expect(hex).toContain(Buffer.from('Hola\n').toString('hex'));
   });
 });
+
+describe('texto peligroso', () => {
+  it('ningún carácter de control llega a la impresora', () => {
+    const b = [...aCp850('a\u001bp\u0000\u0019b\r\u009b')];
+    expect(b.every((x) => x >= 0x20)).toBe(true);
+  });
+  it('un acento descompuesto se imprime como la letra acentuada', () => {
+    expect([...aCp850('e\u0301')]).toEqual([0x82]);
+  });
+});

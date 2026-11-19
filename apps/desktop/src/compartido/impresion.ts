@@ -48,9 +48,11 @@ const EQUIVALENTES: Record<string, string> = {
 /** Texto que la impresora puede mostrar tal cual: lo que no está en CP850 se translitera o pasa a `?`. */
 export function imprimible(texto: string): string {
   let r = '';
-  for (const c of texto.replace(/\r?\n/g, ' ')) {
+  // NFC primero (una "e" + tilde combinable es "é"); los controles nunca pasan: serían comandos ESC/POS.
+  for (const c of texto.normalize('NFC')) {
     const cp = c.codePointAt(0)!;
-    if ((cp >= 0x20 && cp < 0x7f) || c in CP850) r += c;
+    if (cp < 0x20 || (cp >= 0x7f && cp <= 0x9f)) r += ' ';
+    else if (cp < 0x7f || c in CP850) r += c;
     else if (c in EQUIVALENTES) r += EQUIVALENTES[c];
     else {
       const base = c.normalize('NFD').replace(/[̀-ͯ]/g, '');

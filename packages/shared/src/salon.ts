@@ -52,3 +52,9 @@ export function resumirOpciones(producto: ProductoPublico, sel: Seleccion): stri
   }
   return nombres.join(', ');
 }
+
+/** Quita caracteres de control (ESC, GS, CR…): un texto con ellos llegaría crudo a la impresora. */
+export function sinControl(texto: string): string {
+  // eslint-disable-next-line no-control-regex
+  return texto.replace(/[\u0000-\u001f\u007f-\u009f]/g, ' ').replace(/ {2,}/g, ' ').trim();
+}
