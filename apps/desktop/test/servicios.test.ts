@@ -199,3 +199,49 @@ describe('PIN sin conexión', () => {
     expect(pendientes(base).at(-1)).toMatchObject({ usuarioId: 'u3' });
   });
 });
+
+describe('al volver la red, el usuario que entró sin conexión obtiene su propio token', () => {
+  const usuarios = [
+    { id: 'u2', nombre: 'Dueña', rol: 'dueno' },
+    { id: 'u3', nombre: 'Enc', rol: 'encargado' },
+  ];
+  async function encargadoOffline() {
+    const red = { hay: true };
+    const a = armar((m, r) => (r === '/auth/usuarios' ? usuarios : { ok: true }), 'dueno', red);
+    await a.servicios['sesion:usuarios']();
+    await a.servicios['sesion:elegirUsuario']({ usuarioId: 'u3', pin: '4321' }); // deja el verificador del encargado
+    await a.servicios['sesion:elegirUsuario']({ usuarioId: 'u2', pin: '4321' }); // el token queda de la dueña
+    red.hay = false;
+    await a.servicios['sesion:bloquear']();
+    await a.servicios['sesion:elegirUsuario']({ usuarioId: 'u3', pin: '4321' });
+    red.hay = true;
+    a.cliente.pin.mockClear();
+    a.cliente.pedir.mockClear();
+    return a;
+  }
+
+  it('antes de pedir un reporte se renueva el token con el PIN del encargado', async () => {
+    const { servicios, cliente } = await encargadoOffline();
+    await servicios['reportes:obtener']({ tipo: 'mes', desde: '2026-11-01', hasta: '2026-11-30' } as never).catch(() => undefined);
+    expect(cliente.pin).toHaveBeenCalledWith('u3', '4321');
+    expect(cliente.pin.mock.invocationCallOrder[0]!).toBeLessThan(cliente.pedir.mock.invocationCallOrder[0]!);
+    expect(await servicios['sesion:estado']()).toMatchObject({ tipo: 'activa', usuario: { id: 'u3' } });
+  });
+
+  it('si el PIN cambió en el servidor, la PC se bloquea y no se pide nada con el token ajeno', async () => {
+    const { servicios, cliente } = await encargadoOffline();
+    cliente.pin.mockRejectedValueOnce(new ErrorApiCliente(401, 'PIN_INCORRECTO', 'PIN incorrecto.'));
+    await expect(servicios['carta:editar']({ tipo: 'borrarProducto', id: 'p1' })).rejects.toMatchObject({ codigo: 'SESION_BLOQUEADA' });
+    expect(cliente.pedir).not.toHaveBeenCalled();
+    expect(await servicios['sesion:estado']()).toMatchObject({ tipo: 'bloqueada' });
+  });
+
+  it('sin red sigue diciendo que hace falta conexión', async () => {
+    const { servicios, cliente } = await encargadoOffline();
+    cliente.pin.mockRejectedValueOnce(new SinConexion());
+    await expect(servicios['carta:editar']({ tipo: 'borrarProducto', id: 'p1' })).rejects.toMatchObject({
+      codigo: 'SIN_CONEXION',
+      mensaje: 'Necesitás conexión para editar la carta.',
+    });
+  });
+});

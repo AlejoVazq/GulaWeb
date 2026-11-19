@@ -90,6 +90,12 @@ export function crearServicios(d: Deps): ServiciosGula & { bloquearPorInactivida
   let desbloqueada = false;
   /** Usuario elegido sin conexión (el token sigue siendo del último que entró con red). */
   let usuarioOffline: UsuarioSesion | null = null;
+  /** PIN de `usuarioOffline`, solo en memoria: al volver la red se canjea por su propio token. */
+  let pinOffline: string | null = null;
+  const fijarOffline = (u: UsuarioSesion | null, pin: string | null) => {
+    usuarioOffline = u;
+    pinOffline = u ? pin : null;
+  };
   const pinLocal = crearPinLocal(d.base, d.cifrador ?? { cifrar: (t) => t, descifrar: (t) => t });
 
   const usuarioActivo = (): UsuarioSesion | null => usuarioOffline ?? d.sesion.actual()?.usuario ?? null;
@@ -139,8 +145,34 @@ export function crearServicios(d: Deps): ServiciosGula & { bloquearPorInactivida
       throw e;
     }
   };
+  /**
+   * Quien entró sin conexión opera con el token del último que entró con red. Antes de cualquier
+   * llamada que solo anda con conexión se canjea su PIN por su propio token (si no, el servidor
+   * respondería con los permisos de otro).
+   */
+  const asegurarToken = async () => {
+    if (!usuarioOffline || !pinOffline) return;
+    const u = usuarioOffline;
+    const pin = pinOffline;
+    try {
+      await d.cliente.pin(u.id, pin);
+    } catch (e) {
+      if (e instanceof ErrorApiCliente) {
+        if (e.codigo === 'PIN_INCORRECTO') pinLocal.olvidar(u.id);
+        fijarOffline(null, null);
+        desbloqueada = false;
+        avisarSesion();
+        throw new ErrorGula('SESION_BLOQUEADA', 'Volvé a elegir tu usuario y tu PIN.');
+      }
+      throw e;
+    }
+    pinLocal.recordar(u.id, pin);
+    fijarOffline(null, null);
+    d.motor.reconectar();
+  };
   const online = async <T>(fn: () => Promise<T>, mensaje: string) => {
     try {
+      await asegurarToken();
       return await fn();
     } catch (e) {
       if (e instanceof SinConexion) throw sinConexion(mensaje);
@@ -199,7 +231,10 @@ export function crearServicios(d: Deps): ServiciosGula & { bloquearPorInactivida
     }),
     ...crearServiciosReportes({
       exigir,
-      pedir: (metodo, ruta) => d.cliente.pedir(metodo, ruta),
+      pedir: async (metodo, ruta) => {
+        await asegurarToken();
+        return d.cliente.pedir(metodo, ruta);
+      },
       local: () => d.sesion.actual()?.local.nombre ?? '',
       guardarArchivo: d.guardarArchivo ?? (async () => false),
       htmlAPdf: d.htmlAPdf ?? (async () => new Uint8Array()),
@@ -225,7 +260,7 @@ export function crearServicios(d: Deps): ServiciosGula & { bloquearPorInactivida
       }
       if (localNuevo) escribirKv(d.base, 'ultimo-local', localNuevo);
       if (servidor) d.fijarServidor?.(servidor);
-      usuarioOffline = null;
+      fijarOffline(null, null);
       desbloqueada = true;
       d.motor.iniciar();
       d.motor.reconectar();
@@ -249,7 +284,7 @@ export function crearServicios(d: Deps): ServiciosGula & { bloquearPorInactivida
       try {
         await d.cliente.pin(usuarioId, pin);
         pinLocal.recordar(usuarioId, pin);
-        usuarioOffline = null;
+        fijarOffline(null, null);
       } catch (e) {
         if (e instanceof ErrorApiCliente && e.codigo === 'PIN_INCORRECTO') pinLocal.olvidar(usuarioId);
         if (!(e instanceof SinConexion)) throw e;
@@ -260,7 +295,7 @@ export function crearServicios(d: Deps): ServiciosGula & { bloquearPorInactivida
         const actual = d.sesion.actual()?.usuario;
         const u = actual?.id === usuarioId ? actual : usuariosGuardados().find((x) => x.id === usuarioId);
         if (!u) throw sinConexion(SIN_VERIFICADOR);
-        usuarioOffline = actual?.id === usuarioId ? null : { id: u.id, nombre: u.nombre, rol: u.rol };
+        fijarOffline(actual?.id === usuarioId ? null : { id: u.id, nombre: u.nombre, rol: u.rol }, pin);
       }
       desbloqueada = true;
       d.motor.reconectar();
@@ -269,6 +304,7 @@ export function crearServicios(d: Deps): ServiciosGula & { bloquearPorInactivida
 
     'sesion:bloquear': async () => {
       desbloqueada = false;
+      fijarOffline(null, null);
       return avisarSesion();
     },
 
@@ -276,7 +312,7 @@ export function crearServicios(d: Deps): ServiciosGula & { bloquearPorInactivida
       await d.cliente.pedir('POST', '/auth/logout').catch(() => undefined);
       d.motor.detener();
       d.sesion.borrar();
-      usuarioOffline = null;
+      fijarOffline(null, null);
       desbloqueada = false;
       return avisarSesion();
     },
@@ -340,6 +376,7 @@ export function crearServicios(d: Deps): ServiciosGula & { bloquearPorInactivida
       const u = usuarioActivo();
       if (d.motor.estado().conexion === 'sin-conexion' && !(u && pinLocal.tiene(u.id))) return;
       desbloqueada = false;
+      fijarOffline(null, null);
       avisarSesion();
     },
   };
