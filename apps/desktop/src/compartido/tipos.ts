@@ -55,4 +55,5 @@ export type Operacion = {
   ultimoError: string | null;
   estado: 'pendiente' | 'rechazada';
   usuarioId: string | null;
+  autorizacion: { usuarioId: string; pin: string } | null;
 };

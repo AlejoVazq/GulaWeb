@@ -73,6 +73,7 @@ void app.whenReady().then(() => {
     cliente,
     alCambiarCarta: () => emitir('carta:cambio', null),
     alCambiarSalon: () => emitir('salon:cambio', null),
+    alCambiarCaja: () => emitir('caja:cambio', null),
   });
   motor.on('estado', (e) => emitir('sync:estado', e));
 

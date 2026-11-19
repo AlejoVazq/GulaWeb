@@ -18,9 +18,11 @@ beforeEach(() => {
 type Respuesta = (ruta: string, cuerpo?: unknown) => unknown;
 const salonVacio = { cursor: '2026-11-18T10:00:00.000Z', mesas: [], sesiones: [], pedidos: [], items: [], avisos: [] };
 /** `salon` responde /sync/salon; si no se indica, el salón viene vacío (va después del pull de carta). */
-function clienteFalso(responder: Respuesta, salon?: Respuesta) {
+const cajaVacia = { cursor: '2026-11-18T10:00:00.000Z', turnos: [], cobros: [], pagos: [], movimientos: [] };
+function clienteFalso(responder: Respuesta, salon?: Respuesta, caja?: Respuesta) {
   return {
     pedir: async <T>(_m: string, ruta: string, cuerpo?: unknown) => {
+      if (ruta.startsWith('/sync/caja')) return (caja ? caja(ruta, cuerpo) : cajaVacia) as T;
       if (ruta.startsWith('/sync/salon')) {
         return (salon ? salon(ruta, cuerpo) : salonVacio) as T;
       }
@@ -295,4 +297,76 @@ it('si el pull tuvo que saltear filas con cambios en vuelo, no avanza el cursor'
   });
   await motor.sincronizarAhora();
   expect(leerKv(base, 'cursor:salon')).toBe('C0');
+});
+
+it('una operación con autorización viaja con ella y al aplicarse no queda guardada', async () => {
+  const op = encolar(base, { tipo: 'item.anular', datos: { itemId: 'i', pedidoId: 'p', motivo: 'x' }, autorizacion: { usuarioId: 'enc', pin: '5555' } });
+  let enviado: unknown;
+  const motor = crearMotor({
+    base,
+    crearSocket: sinSocket,
+    cliente: clienteFalso((ruta, cuerpo) => {
+      if (ruta === '/sync/operaciones') {
+        enviado = cuerpo;
+        return { resultados: [{ id: op.id, estado: 'aplicada' }] };
+      }
+      return pullDePrueba();
+    }),
+  });
+  await motor.sincronizarAhora();
+  expect((enviado as { operaciones: { autorizacion: unknown }[] }).operaciones[0]!.autorizacion).toEqual({ usuarioId: 'enc', pin: '5555' });
+  expect(base.db.prepare('SELECT count(*) AS n FROM outbox').get()).toEqual({ n: 0 });
+});
+
+it('trae la caja con su cursor y avisa caja:cambio si hubo filas', async () => {
+  let cambios = 0;
+  const T = '2026-11-18T10:00:00.000Z';
+  const turno = {
+    id: 't1', abiertoPor: 'u', abiertoEn: T, fondo: 100, cerradoPor: null, cerradoEn: null, contado: null, esperado: null,
+    diferencia: null, notas: null, actualizadoEn: T, eliminadoEn: null,
+  };
+  const rutas: string[] = [];
+  const motor = crearMotor({
+    base,
+    crearSocket: sinSocket,
+    alCambiarCaja: () => cambios++,
+    cliente: clienteFalso(
+      () => pullDePrueba(),
+      undefined,
+      (ruta) => {
+        rutas.push(ruta);
+        return { ...cajaVacia, cursor: '2026-11-18T11:00:00.000Z', turnos: rutas.length === 1 ? [turno] : [] };
+      },
+    ),
+  });
+  await motor.sincronizarAhora();
+  await motor.sincronizarAhora();
+  expect(rutas).toEqual(['/sync/caja', `/sync/caja?desde=${encodeURIComponent('2026-11-18T11:00:00.000Z')}`]);
+  expect(cambios).toBe(1);
+  expect(leerKv(base, 'cursor:caja')).toBe('2026-11-18T11:00:00.000Z');
+});
+
+it('si el servidor rechaza caja.abrir, la caja optimista desaparece y se pide la caja completa', async () => {
+  base.db.prepare("INSERT INTO turnos (id, abierto_por, abierto_en, fondo, actualizado_en) VALUES ('t9', 'u', 'x', 0, '')").run();
+  escribirKv(base, 'cursor:caja', '2026-11-18T09:00:00.000Z');
+  const op = encolar(base, { tipo: 'caja.abrir', datos: { turnoId: 't9', fondo: 0 } });
+  const rutas: string[] = [];
+  const motor = crearMotor({
+    base,
+    crearSocket: sinSocket,
+    cliente: clienteFalso(
+      (ruta) =>
+        ruta === '/sync/operaciones'
+          ? { resultados: [{ id: op.id, estado: 'rechazada', error: { codigo: 'CAJA_ABIERTA', mensaje: 'x' } }] }
+          : pullDePrueba(),
+      undefined,
+      (ruta) => {
+        rutas.push(ruta);
+        return cajaVacia;
+      },
+    ),
+  });
+  await motor.sincronizarAhora();
+  expect(base.db.prepare("SELECT count(*) AS n FROM turnos").get()).toEqual({ n: 0 });
+  expect(rutas[0]).toBe('/sync/caja');
 });

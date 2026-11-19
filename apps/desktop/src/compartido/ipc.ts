@@ -92,7 +92,7 @@ export type VistaImpresion = { documento: Documento; columnas: number };
 export type ItemPedido = { productoId: string; seleccion: Seleccion; nota: string; cantidad: number };
 
 export type CanalServicio = keyof ServiciosGula;
-export type EventoGula = 'sync:estado' | 'carta:cambio' | 'sesion:cambio' | 'salon:cambio' | 'impresion:cambio' | 'impresion:vista';
+export type EventoGula = 'sync:estado' | 'carta:cambio' | 'sesion:cambio' | 'salon:cambio' | 'impresion:cambio' | 'impresion:vista' | 'caja:cambio';
 
 export const CANALES: CanalServicio[] = [
   'sesion:estado',

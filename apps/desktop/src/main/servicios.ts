@@ -6,6 +6,7 @@ import type { BaseLocal } from './db/base';
 import { fijarDisponibilidadLocal, leerCarta, vaciarCartaLocal } from './db/carta';
 import { encolar, vaciarOutbox } from './db/outbox';
 import { vaciarSalonLocal } from './db/salon';
+import { vaciarCajaLocal } from './db/caja';
 import { crearServiciosSalon } from './servicios.salon';
 import { borrarKv, escribirKv, leerKv } from './db/kv';
 import type { Sesion } from './api/sesion';
@@ -122,9 +123,11 @@ export function crearServicios(d: Deps): ServiciosGula & { bloquearPorInactivida
       if (localAnterior && localNuevo && localAnterior !== localNuevo) {
         vaciarCartaLocal(d.base);
         vaciarSalonLocal(d.base);
+        vaciarCajaLocal(d.base);
         vaciarOutbox(d.base);
         borrarKv(d.base, 'cursor:carta');
         borrarKv(d.base, 'cursor:salon');
+        borrarKv(d.base, 'cursor:caja');
       }
       if (localNuevo) escribirKv(d.base, 'ultimo-local', localNuevo);
       if (servidor) d.fijarServidor?.(servidor);

@@ -2,6 +2,8 @@ import { io } from 'socket.io-client';
 import type { RespuestaPullCarta } from '../../compartido/tipos';
 import type { RespuestaPullSalon } from '../../compartido/salon';
 import { aplicarCambiosSalon, revertirOperacionLocal } from '../db/salon';
+import { aplicarCambiosCaja, revertirOperacionCaja } from '../db/caja';
+import type { RespuestaPullCaja } from '../../compartido/caja';
 import type { BaseLocal } from '../db/base';
 import { aplicarCambiosCarta } from '../db/carta';
 import { borrarKv, escribirKv, leerKv } from '../db/kv';
@@ -41,6 +43,7 @@ type Resultado = { id: string; estado: 'aplicada' | 'rechazada'; error?: { codig
 
 const CLAVE_CURSOR = 'cursor:carta';
 const CLAVE_CURSOR_SALON = 'cursor:salon';
+const CLAVE_CURSOR_CAJA = 'cursor:caja';
 const PERIODO_MS = 60_000;
 const BACKOFF_MAX_MS = 60_000;
 
@@ -63,6 +66,7 @@ export function crearMotor(opts: {
   crearSocket?: CrearSocket;
   alCambiarCarta?: () => void;
   alCambiarSalon?: () => void;
+  alCambiarCaja?: () => void;
 }) {
   const { base, cliente } = opts;
   const crearSocket = opts.crearSocket ?? socketIo;
@@ -95,6 +99,7 @@ export function crearMotor(opts: {
             datos: o.datos,
             creadaEn: o.creadaEn,
             usuarioId: o.usuarioId ?? undefined,
+            autorizacion: o.autorizacion ?? undefined,
           })),
         }));
       } catch (e) {
@@ -106,12 +111,16 @@ export function crearMotor(opts: {
       for (const r of rechazadas) {
         marcarRechazada(base, r.id, r.error?.codigo ?? 'RECHAZADA');
         const o = lote.find((x) => x.id === r.id);
-        if (o) revertirOperacionLocal(base, o.tipo, o.datos);
+        if (o) {
+          revertirOperacionLocal(base, o.tipo, o.datos);
+          revertirOperacionCaja(base, o.tipo, o.datos);
+        }
       }
       // Un rechazo deja un cambio optimista local que el servidor nunca hizo: pull completo para revertirlo.
       if (rechazadas.length) {
         borrarKv(base, CLAVE_CURSOR);
         borrarKv(base, CLAVE_CURSOR_SALON);
+        borrarKv(base, CLAVE_CURSOR_CAJA);
       }
       if (resultados.length < lote.length) return; // respuesta parcial: lo que falta se reintenta después
     }
@@ -133,6 +142,14 @@ export function crearMotor(opts: {
     // Si hubo que saltear filas con cambios en vuelo, el próximo pull las vuelve a pedir.
     if (aplicarCambiosSalon(base, salon) === 0) escribirKv(base, CLAVE_CURSOR_SALON, salon.cursor);
     if (hayFilasSalon(salon)) opts.alCambiarSalon?.();
+
+    const cursorCaja = leerKv(base, CLAVE_CURSOR_CAJA);
+    const caja = await cliente.pedir<RespuestaPullCaja>(
+      'GET',
+      cursorCaja ? `/sync/caja?desde=${encodeURIComponent(cursorCaja)}` : '/sync/caja',
+    );
+    if (aplicarCambiosCaja(base, caja) === 0) escribirKv(base, CLAVE_CURSOR_CAJA, caja.cursor);
+    if (caja.turnos.length + caja.cobros.length + caja.pagos.length + caja.movimientos.length) opts.alCambiarCaja?.();
   }
 
   function programarReintento() {
