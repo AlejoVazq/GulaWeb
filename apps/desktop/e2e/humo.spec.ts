@@ -157,3 +157,49 @@ test('pedido QR: la PC abre la mesa, el cliente pide, suena la alerta, se confir
     await sql.end();
   }
 });
+
+test('caja: se abre, se cobra la Mesa 3 en efectivo y se cierra contando lo esperado', async () => {
+  const v = await app.firstWindow();
+  const previa = v.getByRole('complementary', { name: 'Vista previa de impresión' });
+  if (await previa.isVisible()) await previa.getByRole('button', { name: 'Cerrar' }).click();
+  const menu = v.getByRole('navigation', { name: 'Secciones' });
+
+  await menu.getByRole('button', { name: 'Caja' }).click();
+  await v.getByLabel('Fondo de cambio').fill('10.000');
+  await v.getByRole('button', { name: 'Abrir caja' }).click();
+  await expect(v.getByText(/Efectivo esperado \$ 10\.000/)).toBeVisible();
+
+  await menu.getByRole('button', { name: 'Mesas' }).click();
+  await v.getByRole('button', { name: /^Mesa 3 / }).click();
+  await v.getByRole('button', { name: 'Cobrar', exact: true }).click();
+  const cobro = v.getByRole('dialog', { name: 'Cobrar Mesa 3' });
+  await cobro.getByRole('button', { name: 'Cobrar', exact: true }).click();
+  await expect(cobro).toBeHidden();
+  await expect(v.getByRole('button', { name: /^Mesa 3 / })).toContainText('Libre');
+
+  await menu.getByRole('button', { name: 'Caja' }).click();
+  const esperado = (await v.getByText(/Efectivo esperado/).textContent())!.replace(/.*\$\s*/, '').trim();
+  await v.getByRole('button', { name: 'Cerrar caja' }).click();
+  await v.getByLabel('Efectivo contado').fill(esperado);
+  await expect(v.getByText('Da justo')).toBeVisible();
+  await v.getByRole('button', { name: 'Confirmar cierre' }).click();
+  await expect(v.getByRole('button', { name: 'Abrir caja' })).toBeVisible();
+  await expect(previa.getByRole('figure', { name: /^Cierre de caja/ })).toContainText('Efectivo contado');
+
+  const sql = await base();
+  try {
+    await expect
+      .poll(
+        async () =>
+          (
+            await sql`select t.diferencia, t.cerrado_en is not null as cerrada from turnos_caja t join locales l on l.id = t.local_id where l.slug = ${SLUG}`
+          ).map((f) => `${f.diferencia}:${f.cerrada}`),
+        { timeout: 20_000 },
+      )
+      .toEqual(['0:true']);
+    const estados = await sql`select p.estado from pedidos p join locales l on l.id = p.local_id where l.slug = ${SLUG}`;
+    expect(estados.map((f) => f.estado)).toEqual(['cobrado']);
+  } finally {
+    await sql.end();
+  }
+});
