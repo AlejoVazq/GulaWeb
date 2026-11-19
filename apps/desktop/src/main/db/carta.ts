@@ -16,7 +16,7 @@ import type { BaseLocal } from './base';
 const b = (v: boolean) => (v ? 1 : 0);
 
 /** INSERT … ON CONFLICT que solo actualiza si lo entrante es igual o más nuevo. */
-function upsert(base: BaseLocal, tabla: string, columnas: string[]) {
+export function upsert(base: BaseLocal, tabla: string, columnas: string[]) {
   const lista = ['id', ...columnas, 'actualizado_en', 'eliminado_en'];
   const sets = lista.filter((c) => c !== 'id').map((c) => `${c} = excluded.${c}`).join(', ');
   return base.db.prepare(

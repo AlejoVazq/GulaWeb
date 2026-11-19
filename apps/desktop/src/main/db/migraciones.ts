@@ -37,4 +37,37 @@ export const MIGRACIONES: string[] = [
   `,
   // v2: quién hizo cada operación (se envía al servidor como actor).
   `ALTER TABLE outbox ADD COLUMN usuario_id TEXT;`,
+  // v3: el salón (espejo de /sync/salon). Las filas creadas en la PC nacen con actualizado_en = ''
+  // para que la versión del servidor siempre las pise.
+  `
+  CREATE TABLE mesas (
+    id TEXT PRIMARY KEY, nombre TEXT NOT NULL, zona TEXT, capacidad INTEGER, orden INTEGER NOT NULL,
+    token TEXT NOT NULL, actualizado_en TEXT NOT NULL, eliminado_en TEXT
+  );
+  CREATE TABLE sesiones (
+    id TEXT PRIMARY KEY, mesa_id TEXT NOT NULL, estado TEXT NOT NULL, comensales INTEGER,
+    abierta_por TEXT, abierta_en TEXT NOT NULL, cerrada_por TEXT, cerrada_en TEXT,
+    actualizado_en TEXT NOT NULL, eliminado_en TEXT
+  );
+  CREATE INDEX sesiones_mesa ON sesiones(mesa_id);
+  CREATE TABLE pedidos (
+    id TEXT PRIMARY KEY, origen TEXT NOT NULL, estado TEXT NOT NULL, sesion_id TEXT, mesa_id TEXT,
+    numero INTEGER, dia TEXT, notas TEXT, motivo_rechazo TEXT, creado_por TEXT, confirmado_por TEXT,
+    confirmado_en TEXT, rechazado_en TEXT, creado_en TEXT NOT NULL, actualizado_en TEXT NOT NULL, eliminado_en TEXT
+  );
+  CREATE INDEX pedidos_sesion ON pedidos(sesion_id);
+  CREATE INDEX pedidos_estado ON pedidos(estado);
+  CREATE TABLE items (
+    id TEXT PRIMARY KEY, pedido_id TEXT NOT NULL, producto_id TEXT NOT NULL, nombre TEXT NOT NULL,
+    precio_unitario INTEGER NOT NULL, cantidad INTEGER NOT NULL, seleccion TEXT NOT NULL,
+    resumen_opciones TEXT NOT NULL, nota TEXT NOT NULL, sector_id TEXT, anulado INTEGER NOT NULL,
+    creado_en TEXT NOT NULL, actualizado_en TEXT NOT NULL, eliminado_en TEXT
+  );
+  CREATE INDEX items_pedido ON items(pedido_id);
+  CREATE TABLE avisos (
+    id TEXT PRIMARY KEY, sesion_id TEXT NOT NULL, tipo TEXT NOT NULL, atendido_por TEXT, atendido_en TEXT,
+    creado_en TEXT NOT NULL, actualizado_en TEXT NOT NULL, eliminado_en TEXT
+  );
+  CREATE INDEX avisos_sesion ON avisos(sesion_id);
+  `,
 ];
