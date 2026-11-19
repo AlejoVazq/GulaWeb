@@ -40,6 +40,28 @@ type Deps = {
   cifrador?: Cifrador;
 };
 
+/** La mesa a la que se refiere una operación ("Mesa 4"), buscándola por mesa, sesión, pedido o ítem. */
+function lugarDe(base: BaseLocal, datos: unknown): string | null {
+  const x = (datos ?? {}) as Record<string, unknown>;
+  const uno = (sql: string, id: unknown) =>
+    typeof id === 'string' ? ((base.db.prepare(sql).get(id) as { n: string | null } | undefined)?.n ?? null) : null;
+  const porSesion = (id: unknown) =>
+    uno('SELECT m.nombre AS n FROM sesiones s JOIN mesas m ON m.id = s.mesa_id WHERE s.id = ?', id);
+  const porPedido = (id: unknown) =>
+    uno(
+      `SELECT m.nombre AS n FROM pedidos p
+         LEFT JOIN sesiones s ON s.id = p.sesion_id
+         JOIN mesas m ON m.id = COALESCE(p.mesa_id, s.mesa_id) WHERE p.id = ?`,
+      id,
+    );
+  return (
+    uno('SELECT nombre AS n FROM mesas WHERE id = ?', x.mesaId) ??
+    porSesion(x.sesionId) ??
+    porPedido(x.pedidoId) ??
+    porPedido(uno('SELECT pedido_id AS n FROM items WHERE id = ?', x.itemId))
+  );
+}
+
 const SIN_VERIFICADOR = 'Ese usuario todavía no entró en esta PC con conexión.';
 
 const TIPOS_IMAGEN: Record<string, string> = { '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.webp': 'image/webp' };
@@ -303,7 +325,7 @@ export function crearServicios(d: Deps): ServiciosGula & { bloquearPorInactivida
 
     'sync:estado': async () => d.motor.estado(),
 
-    'sync:rechazadas': async () => leerRechazadas(d.base),
+    'sync:rechazadas': async () => leerRechazadas(d.base).map((o) => ({ ...o, lugar: lugarDe(d.base, o.datos) })),
 
     'sync:descartarRechazada': async ({ id }) => {
       exigir('pedido.ver');

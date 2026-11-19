@@ -79,19 +79,3 @@ it('un doble clic en "Registrar" registra un solo movimiento', async () => {
   expect(p.invocar.mock.calls.filter((c) => c[0] === 'caja:movimiento')).toHaveLength(1);
 });
 
-it('muestra lo que el servidor rechazó de la caja y se puede marcar como visto', async () => {
-  const p = puenteFalso({
-    'caja:leer': () => conCaja,
-    'sync:rechazadas': () => [
-      { id: 'op1', tipo: 'cuenta.cobrar', datos: { subtotal: 500000, descuento: null }, error: 'CAJA_CERRADA', creadaEn: '2026-11-18T21:00:00.000Z' },
-      { id: 'op2', tipo: 'producto.disponibilidad', datos: {}, error: 'X', creadaEn: '2026-11-18T21:00:00.000Z' },
-    ],
-  });
-  render(<Caja />);
-  const bloque = await screen.findByRole('region', { name: 'Rechazado por el servidor' });
-  expect(bloque).toHaveTextContent('Cobro de $ 5.000');
-  expect(bloque).toHaveTextContent('la caja ya estaba cerrada');
-  expect(bloque).not.toHaveTextContent('producto');
-  await userEvent.click(within(bloque).getByRole('button', { name: 'Visto' }));
-  expect(p.invocar).toHaveBeenCalledWith('sync:descartarRechazada', { id: 'op1' });
-});

@@ -22,6 +22,8 @@ export type EstadoSync = {
   conexion: 'en-linea' | 'sin-conexion' | 'sincronizando';
   pendientes: number;
   rechazadas: number;
+  /** Hora del servidor menos hora de la PC (ms); null si todavía no se midió. */
+  desfaseReloj?: number | null;
   ultimaSync: string | null;
 };
 
@@ -120,7 +122,8 @@ export type ServiciosGula = {
   'sync:descartarRechazada': (a: { id: string }) => Promise<void>;
 };
 
-export type OperacionRechazada = { id: string; tipo: string; datos: unknown; error: string | null; creadaEn: string };
+/** `lugar`: la mesa a la que se refería ("Mesa 4"), si se pudo averiguar. */
+export type OperacionRechazada = { id: string; tipo: string; datos: unknown; error: string | null; creadaEn: string; lugar?: string | null };
 
 /** Usuario y PIN de quien autoriza (encargado o dueño). */
 export type Autorizacion = { usuarioId: string; pin: string };

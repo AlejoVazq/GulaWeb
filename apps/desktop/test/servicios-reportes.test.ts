@@ -22,7 +22,7 @@ async function armar(rol: 'dueno' | 'mesero' = 'dueno', pedir: (...a: unknown[])
   const base = abrirBase(tmp.ruta(`sr${n++}.db`));
   const sesion = crearSesion(base, identidad);
   sesion.guardar({ accessToken: 'a', refreshToken: 'r', usuario: { id: 'u1', nombre: 'Ana', rol }, local: { id: 'l1', nombre: 'Bar Gula', slug: 'bar' }, dispositivoId: 'd1' });
-  const motor = { sincronizarAhora: vi.fn(async () => {}), reconectar: vi.fn(), iniciar: vi.fn(), detener: vi.fn(), estado: () => ({ conexion: 'en-linea' as const, pendientes: 0, rechazadas: 0, ultimaSync: null }) };
+  const motor = { sincronizarAhora: vi.fn(async () => {}), reconectar: vi.fn(), iniciar: vi.fn(), detener: vi.fn(), estado: () => ({ conexion: 'en-linea' as const, pendientes: 0, rechazadas: 0, ultimaSync: null, desfaseReloj: null }) };
   const cliente = { pedir: vi.fn(pedir), pin: vi.fn(async () => ({ accessToken: 'b', usuario: { id: 'u1', nombre: 'Ana', rol } })), login: vi.fn() };
   const cola = crearColaImpresion({ base, transporte: { imprimir: vi.fn() }, alVistaPrevia: vi.fn(), alCambiar: vi.fn() });
   const guardarArchivo = vi.fn(async (_nombre: string, _datos: Uint8Array | string) => true);

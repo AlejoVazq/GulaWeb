@@ -1,5 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
-import type { OperacionRechazada } from '../../compartido/ipc';
+import { useRef, useState } from 'react';
 import {
   CATEGORIAS_MOVIMIENTO,
   METODOS_PAGO,
@@ -9,66 +8,10 @@ import {
   type CategoriaMovimiento,
   type TipoMovimiento,
 } from '@gula/shared';
-import { escuchar, llamar, mensajeDe } from '../gula';
+import { llamar, mensajeDe } from '../gula';
 import { parsearPesos } from '../pesos';
 import { hora } from '../formato';
 import { useCaja } from '../useCaja';
-
-const MOTIVOS: Record<string, string> = {
-  CAJA_CERRADA: 'la caja ya estaba cerrada',
-  CAJA_ABIERTA: 'ya había una caja abierta',
-  REQUIERE_AUTORIZACION: 'el PIN de autorización no era válido',
-  ESTADO_INVALIDO: 'ya se había cobrado, cerrado o anulado',
-  DATOS_INVALIDOS: 'los datos no eran válidos',
-};
-const QUE: Record<string, (d: Record<string, unknown>) => string> = {
-  'cuenta.cobrar': (d) => `Cobro de ${formatearPrecio(Number(d.subtotal ?? 0) - Number((d.descuento as { monto?: number } | null)?.monto ?? 0))}`,
-  'caja.abrir': (d) => `Apertura de caja (fondo ${formatearPrecio(Number(d.fondo ?? 0))})`,
-  'caja.movimiento': (d) => `${d.tipo === 'ingreso' ? 'Ingreso' : 'Egreso'} de ${formatearPrecio(Number(d.monto ?? 0))} (${String(d.motivo ?? '')})`,
-  'caja.cerrar': (d) => `Cierre de caja (contado ${formatearPrecio(Number(d.contado ?? 0))})`,
-  'item.anular': () => 'Anulación de un ítem',
-  'pedido.anular': () => 'Anulación de un pedido',
-};
-
-/** Operaciones de caja y anulaciones que el servidor rechazó: lo que la cajera creyó hecho y no quedó. */
-function Rechazadas() {
-  const [lista, setLista] = useState<OperacionRechazada[]>([]);
-  useEffect(() => {
-    const cargar = () =>
-      void llamar('sync:rechazadas')
-        .then((l) => setLista((l ?? []).filter((o) => o.tipo in QUE)))
-        .catch(() => undefined);
-    cargar();
-    const a = escuchar('caja:cambio', cargar);
-    const b = escuchar('sync:estado', cargar);
-    return () => {
-      a();
-      b();
-    };
-  }, []);
-  if (!lista.length) return null;
-  return (
-    <section className="bloque bloque--aviso" aria-label="Rechazado por el servidor">
-      <strong>El servidor no aceptó esto (revisá el cajón y cargalo de nuevo si corresponde):</strong>
-      <ul className="lista">
-        {lista.map((o) => (
-          <li key={o.id} className="lista__item">
-            <span>
-              {hora(o.creadaEn)} · {QUE[o.tipo]!((o.datos ?? {}) as Record<string, unknown>)}: {MOTIVOS[o.error ?? ''] ?? o.error}
-            </span>
-            <button
-              type="button"
-              className="boton boton--chico"
-              onClick={() => void llamar('sync:descartarRechazada', { id: o.id }).then(() => setLista((l) => l.filter((x) => x.id !== o.id)))}
-            >
-              Visto
-            </button>
-          </li>
-        ))}
-      </ul>
-    </section>
-  );
-}
 
 function Diferencia({ valor }: { valor: number }) {
   if (valor === 0) return <strong className="ok-texto">Da justo</strong>;
@@ -136,7 +79,6 @@ export function Caja() {
     return (
       <div className="detalle">
         <h1 className="titulo">Caja</h1>
-        <Rechazadas />
         <p className="suave">La caja está cerrada. Abrila con el fondo de cambio para empezar a cobrar.</p>
         <label className="campo">
           Fondo de cambio
@@ -173,7 +115,6 @@ export function Caja() {
         </span>
       </div>
       {avisos}
-      <Rechazadas />
 
       <table className="tabla" aria-label="Ventas por método">
         <thead>

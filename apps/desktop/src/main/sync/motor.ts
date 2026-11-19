@@ -22,6 +22,8 @@ export type EstadoSync = {
   pendientes: number;
   rechazadas: number;
   ultimaSync: string | null;
+  /** Hora del servidor menos hora de la PC (ms), medida en la última sincronización. */
+  desfaseReloj: number | null;
 };
 
 type ClienteSync = {
@@ -29,6 +31,8 @@ type ClienteSync = {
   tokenActual(): string | null;
   refrescar(): Promise<boolean>;
   url(ruta: string): string;
+  /** Cabecera `Date` de la última respuesta. */
+  fechaServidor?(): string | null;
 };
 
 export type SocketMinimo = {
@@ -79,7 +83,11 @@ export function crearMotor(opts: {
   const crearSocket = opts.crearSocket ?? socketIo;
   const oyentes = new Set<(e: EstadoSync) => void>();
   const contar = () => ({ pendientes: contarPendientes(base), rechazadas: contarRechazadas(base) });
-  let estado: EstadoSync = { conexion: 'sincronizando', ultimaSync: null, ...contar() };
+  let estado: EstadoSync = { conexion: 'sincronizando', ultimaSync: null, desfaseReloj: null, ...contar() };
+  const medirDesfase = () => {
+    const t = Date.parse(cliente.fechaServidor?.() ?? '');
+    return Number.isNaN(t) ? estado.desfaseReloj : t - Date.now();
+  };
   let enCurso: Promise<void> | null = null;
   let repetir = false;
   let backoff = 1000;
@@ -226,7 +234,7 @@ export function crearMotor(opts: {
           await push();
           await pull();
           backoff = 1000;
-          emitir({ conexion: 'en-linea', ultimaSync: new Date().toISOString() });
+          emitir({ conexion: 'en-linea', ultimaSync: new Date().toISOString(), desfaseReloj: medirDesfase() });
           if (activo && !socket) conectarSocket();
         } catch (e) {
           // Sin red: 'sin-conexion'. Error de la API (servidor respondió): sigue en línea y se reintenta.

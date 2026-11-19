@@ -46,7 +46,7 @@ async function armar(rol: 'dueno' | 'mesero' = 'mesero') {
     reconectar: vi.fn(),
     iniciar: vi.fn(),
     detener: vi.fn(),
-    estado: () => ({ conexion: 'sin-conexion' as const, pendientes: 0, rechazadas: 0, ultimaSync: null }),
+    estado: () => ({ conexion: 'sin-conexion' as const, pendientes: 0, rechazadas: 0, ultimaSync: null, desfaseReloj: null }),
   };
   const cliente = {
     pedir: vi.fn(),

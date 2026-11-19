@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { abrirBase, type BaseLocal } from '../src/main/db/base';
 import { aplicarCambiosCarta } from '../src/main/db/carta';
 import { aplicarCambiosSalon } from '../src/main/db/salon';
-import { pendientes } from '../src/main/db/outbox';
+import { marcarRechazada, pendientes } from '../src/main/db/outbox';
 import { crearSesion } from '../src/main/api/sesion';
 import { ErrorApiCliente, SinConexion } from '../src/main/api/cliente';
 import { crearServicios } from '../src/main/servicios';
@@ -37,7 +37,7 @@ async function armar(rol: 'dueno' | 'mesero' = 'dueno', pedir: Pedir = async () 
     reconectar: vi.fn(),
     iniciar: vi.fn(),
     detener: vi.fn(),
-    estado: () => ({ conexion: 'sin-conexion' as const, pendientes: 0, rechazadas: 0, ultimaSync: null }),
+    estado: () => ({ conexion: 'sin-conexion' as const, pendientes: 0, rechazadas: 0, ultimaSync: null, desfaseReloj: null }),
   };
   const cliente = {
     pedir: vi.fn(pedir),
@@ -258,4 +258,20 @@ describe('autorización sin conexión con el PIN guardado en la PC', () => {
     await expect(intentar('0000')).rejects.toMatchObject({ codigo: 'PIN_BLOQUEADO' });
     await expect(intentar('5555')).rejects.toMatchObject({ codigo: 'PIN_BLOQUEADO' });
   });
+});
+
+it('las rechazadas dicen a qué mesa se referían', async () => {
+  const { servicios, base } = await armar();
+  const { sesionId } = await mesaConPedido(servicios);
+  const ops = pendientes(base);
+  const abrir = ops.find((o) => o.tipo === 'mesa.abrir')!;
+  const pedido = ops.find((o) => o.tipo === 'pedido.crear')!;
+  marcarRechazada(base, abrir.id, 'NO_ENCONTRADO');
+  marcarRechazada(base, pedido.id, 'NO_ENCONTRADO');
+  const r = await servicios['sync:rechazadas']();
+  expect(r.map((o) => [o.tipo, o.lugar])).toEqual([
+    ['mesa.abrir', 'Mesa 1'],
+    ['pedido.crear', 'Mesa 1'],
+  ]);
+  expect(sesionId).toBeTruthy();
 });

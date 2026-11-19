@@ -23,7 +23,7 @@ function armar(pedir: (metodo: string, ruta: string, cuerpo?: unknown) => unknow
   aplicarCambiosCarta(base, pullDePrueba());
   const sesion = crearSesion(base, identidad);
   sesion.guardar({ accessToken: 'a', refreshToken: 'r', usuario: { id: 'u1', nombre: 'Ale', rol }, local, dispositivoId: 'd1' });
-  const motor = { sincronizarAhora: vi.fn(async () => {}), reconectar: vi.fn(), iniciar: vi.fn(), detener: vi.fn(), estado: () => ({ conexion: red.hay ? ('en-linea' as const) : ('sin-conexion' as const), pendientes: 0, rechazadas: 0, ultimaSync: null }) };
+  const motor = { sincronizarAhora: vi.fn(async () => {}), reconectar: vi.fn(), iniciar: vi.fn(), detener: vi.fn(), estado: () => ({ conexion: red.hay ? ('en-linea' as const) : ('sin-conexion' as const), pendientes: 0, rechazadas: 0, ultimaSync: null, desfaseReloj: null }) };
   const cliente = {
     pedir: vi.fn(async (m: string, r: string, c?: unknown) => {
       if (!red.hay) throw new SinConexion();

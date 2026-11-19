@@ -28,6 +28,8 @@ export function crearCliente(opts: { urlBase: string | (() => string); sesion: S
   const oyentes = new Map<Evento, Set<() => void>>();
   const emitir = (e: Evento) => oyentes.get(e)?.forEach((fn) => fn());
   let refrescando: Promise<boolean> | null = null;
+  /** Cabecera `Date` de la última respuesta del servidor (para detectar el reloj de la PC mal puesto). */
+  let ultimaFecha: string | null = null;
 
   async function crudo(
     metodo: Metodo,
@@ -44,11 +46,14 @@ export function crearCliente(opts: { urlBase: string | (() => string); sesion: S
       headers['content-type'] = 'application/json';
       body = JSON.stringify(cuerpo);
     }
+    let r: Response;
     try {
-      return await f(url(ruta, base), { method: metodo, headers, body, signal: AbortSignal.timeout(15_000) });
+      r = await f(url(ruta, base), { method: metodo, headers, body, signal: AbortSignal.timeout(15_000) });
     } catch {
       throw new SinConexion();
     }
+    ultimaFecha = r.headers?.get?.('date') ?? ultimaFecha;
+    return r;
   }
 
   async function error(r: Response): Promise<ErrorApiCliente> {
@@ -137,6 +142,7 @@ export function crearCliente(opts: { urlBase: string | (() => string); sesion: S
       return d;
     },
     tokenActual: () => opts.sesion.actual()?.accessToken ?? null,
+    fechaServidor: () => ultimaFecha,
     refrescar,
     url,
   };

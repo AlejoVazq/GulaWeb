@@ -24,7 +24,7 @@ async function armar(rol: 'dueno' | 'encargado' | 'mesero' = 'mesero') {
     reconectar: vi.fn(),
     iniciar: vi.fn(),
     detener: vi.fn(),
-    estado: () => ({ conexion: 'sin-conexion' as const, pendientes: 0, rechazadas: 0, ultimaSync: null }),
+    estado: () => ({ conexion: 'sin-conexion' as const, pendientes: 0, rechazadas: 0, ultimaSync: null, desfaseReloj: null }),
   };
   const cliente = { pedir: vi.fn(), pin: vi.fn(async () => ({ accessToken: 'b', usuario: { id: 'u1', nombre: 'Ana', rol } })), login: vi.fn() };
   const vistas: Documento[] = [];

@@ -426,3 +426,14 @@ it('un 503 (servidor no disponible) no cuenta como culpa de la operación', asyn
   for (let i = 0; i < 40; i++) await motor.sincronizarAhora();
   expect(contarPendientes(base)).toBe(1);
 });
+
+it('calcula el desfase del reloj de la PC con la fecha que manda el servidor', async () => {
+  const cliente = {
+    ...clienteFalso(() => pullDePrueba()),
+    fechaServidor: () => new Date(Date.now() + 10 * 60_000).toUTCString(),
+  };
+  const motor = crearMotor({ base, crearSocket: sinSocket, cliente });
+  expect(motor.estado().desfaseReloj).toBeNull();
+  await motor.sincronizarAhora();
+  expect(Math.abs(motor.estado().desfaseReloj! - 600_000)).toBeLessThan(2_000);
+});
