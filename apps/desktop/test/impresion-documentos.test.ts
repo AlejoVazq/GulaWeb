@@ -26,7 +26,7 @@ const item = (nombre: string, sectorId: string | null, extra: Partial<Item> = {}
   creadoEn: ahora.toISOString(),
   ...extra,
 });
-const pedido = (items: Item[], extra: Partial<Pedido> = {}): Pedido & { mesa: { id: string; nombre: string } | null } => ({
+const pedido = (items: Item[], extra: Partial<Pedido & { mesa: { id: string; nombre: string } | null }> = {}): Pedido & { mesa: { id: string; nombre: string } | null } => ({
   id: 'p1',
   origen: 'manual',
   estado: 'confirmado',

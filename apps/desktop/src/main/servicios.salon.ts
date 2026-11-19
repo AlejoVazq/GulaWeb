@@ -37,6 +37,8 @@ type Deps = {
   exigir: (accion: Accion) => string;
   emitir: (evento: EventoGula, dato: unknown) => void;
   sincronizar: () => void;
+  /** Tras confirmar o crear un pedido (ya guardado): imprime sus comandas. Nunca hace fallar la operación. */
+  alConfirmar?: (pedidoId: string) => void;
   ahora?: () => Date;
 };
 
@@ -53,6 +55,14 @@ export function crearServiciosSalon(d: Deps): ServiciosSalon {
     });
     d.emitir('salon:cambio', null);
     d.sincronizar();
+  };
+
+  const imprimir = (pedidoId: string) => {
+    try {
+      d.alConfirmar?.(pedidoId);
+    } catch (e) {
+      console.error('No se pudieron encolar las comandas', e);
+    }
   };
 
   const productos = () => {
@@ -138,6 +148,7 @@ export function crearServiciosSalon(d: Deps): ServiciosSalon {
       });
       d.emitir('salon:cambio', null);
       d.sincronizar();
+      imprimir(pedidoId);
       return { pedidoId, numero };
     },
 
@@ -165,6 +176,7 @@ export function crearServiciosSalon(d: Deps): ServiciosSalon {
       });
       d.emitir('salon:cambio', null);
       d.sincronizar();
+      imprimir(pedidoId);
       return { numero };
     },
 

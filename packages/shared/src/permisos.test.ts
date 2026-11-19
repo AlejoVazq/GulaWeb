@@ -8,6 +8,8 @@ it('mesero', () => {
   expect(puede('mesero', 'cobro.registrar')).toBe('no');
   expect(puede('mesero', 'carta.editar')).toBe('no');
   expect(puede('mesero', 'pedido.anular')).toBe('con_autorizacion');
+  expect(puede('mesero', 'impresion.configurar')).toBe('no');
+  expect(puede('encargado', 'impresion.configurar')).toBe('si');
 });
 it('encargado', () => {
   expect(puede('encargado', 'caja.operar')).toBe('si');
@@ -18,6 +20,6 @@ it('encargado', () => {
 it('dueño puede todo', () => {
   for (const a of ACCIONES) expect(puede('dueno', a)).toBe('si');
 });
-it('ACCIONES tiene exactamente 15 acciones', () => {
-  expect(ACCIONES).toHaveLength(15);
+it('ACCIONES tiene exactamente 16 acciones', () => {
+  expect(ACCIONES).toHaveLength(16);
 });

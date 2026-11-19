@@ -12,6 +12,9 @@ import type { Sesion } from './api/sesion';
 import { SinConexion, type Cliente } from './api/cliente';
 import type { Motor } from './sync/motor';
 import { ErrorGula, sinConexion } from './errores';
+import { crearColaImpresion, type ColaImpresion } from './impresion/cola';
+import { crearTransporteWindows } from './impresion/windows';
+import { crearServiciosImpresion } from './servicios.impresion';
 
 type Deps = {
   base: BaseLocal;
@@ -22,6 +25,9 @@ type Deps = {
   elegirArchivo: () => Promise<string | null>;
   servidor?: () => string;
   fijarServidor?: (url: string) => void;
+  /** Cola de impresión (por defecto: impresora de Windows, eventos por `emitir`). */
+  cola?: ColaImpresion;
+  listarImpresoras?: () => Promise<string[]>;
 };
 
 const TIPOS_IMAGEN: Record<string, string> = { '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.webp': 'image/webp' };
@@ -46,7 +52,7 @@ function aRest(e: EdicionCarta): [metodo: 'POST' | 'PATCH' | 'PUT' | 'DELETE', r
   }
 }
 
-export function crearServicios(d: Deps): ServiciosGula & { bloquearPorInactividad(): void } {
+export function crearServicios(d: Deps): ServiciosGula & { bloquearPorInactividad(): void; recuperarImpresion(): void } {
   let desbloqueada = false;
 
   const estadoSesion = (): EstadoSesion => {
@@ -75,13 +81,36 @@ export function crearServicios(d: Deps): ServiciosGula & { bloquearPorInactivida
     }
   };
 
+  const cola =
+    d.cola ??
+    crearColaImpresion({
+      base: d.base,
+      transporte: crearTransporteWindows(),
+      alVistaPrevia: (documento, columnas) => d.emitir('impresion:vista', { documento, columnas }),
+      alCambiar: () => d.emitir('impresion:cambio', null),
+    });
+  const impresion = crearServiciosImpresion({
+    base: d.base,
+    cola,
+    exigir,
+    quien: () => {
+      const s = d.sesion.actual();
+      return { local: s?.local.nombre ?? '', usuario: s?.usuario.nombre ?? '' };
+    },
+    listarImpresoras: d.listarImpresoras ?? (async () => []),
+  });
+
   return {
     ...crearServiciosSalon({
       base: d.base,
       exigir,
       emitir: d.emitir,
       sincronizar: () => void d.motor.sincronizarAhora(),
+      alConfirmar: (pedidoId) => impresion.comandas(pedidoId),
     }),
+    ...impresion.servicios,
+    /** Al iniciar la app: resuelve lo que quedó a medio imprimir. */
+    recuperarImpresion: () => cola.recuperar(),
 
     'sesion:estado': async () => estadoSesion(),
 

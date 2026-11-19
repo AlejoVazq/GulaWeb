@@ -130,3 +130,15 @@ it('al abrir, lo pendiente se imprime', async () => {
   await cola.esperar();
   expect(imprimir).toHaveBeenCalledTimes(1);
 });
+
+it('un ticket encolado justo cuando termina el anterior también sale', async () => {
+  for (let espera = 0; espera < 6; espera++) {
+    const { cola, alVistaPrevia } = armar({ imprimir: vi.fn() }, 'vista_previa');
+    cola.encolar([{ tipo: 'comanda', documento: doc('A') }]);
+    for (let i = 0; i < espera; i++) await Promise.resolve();
+    cola.encolar([{ tipo: 'comanda', documento: doc('B') }]);
+    await cola.esperar();
+    expect(alVistaPrevia.mock.calls.map((c) => (c[0] as Documento).titulo)).toEqual(['A', 'B']);
+    base = abrirBase(tmp.ruta(`c${n++}.db`));
+  }
+});

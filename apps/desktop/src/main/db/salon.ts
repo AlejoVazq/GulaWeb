@@ -384,3 +384,18 @@ export function vaciarSalonLocal(base: BaseLocal): void {
     ),
   );
 }
+
+/** Todos los pedidos de una sesión (abierta o ya cerrada), con sus ítems vigentes. */
+export function pedidosDeSesion(base: BaseLocal, sesionId: string): Pedido[] {
+  return conItems(
+    base,
+    base.db.prepare('SELECT * FROM pedidos WHERE sesion_id = ? AND eliminado_en IS NULL ORDER BY creado_en').all(sesionId) as F[],
+  );
+}
+
+export function mesaDeSesion(base: BaseLocal, sesionId: string): { id: string; nombre: string } | null {
+  const f = base.db
+    .prepare('SELECT m.id, m.nombre FROM sesiones s JOIN mesas m ON m.id = s.mesa_id WHERE s.id = ?')
+    .get(sesionId) as { id: string; nombre: string } | undefined;
+  return f ? { id: f.id, nombre: f.nombre } : null;
+}

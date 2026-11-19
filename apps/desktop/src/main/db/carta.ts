@@ -128,3 +128,10 @@ export type { FilaCategoria, FilaGrupo, FilaOpcion, FilaSector };
 export function vaciarCartaLocal(base: BaseLocal): void {
   base.transaccion(() => base.db.exec('DELETE FROM opciones; DELETE FROM grupos; DELETE FROM productos; DELETE FROM categorias; DELETE FROM sectores;'));
 }
+
+export function leerSectores(base: BaseLocal): { id: string; nombre: string }[] {
+  return base.db.prepare('SELECT id, nombre FROM sectores WHERE eliminado_en IS NULL ORDER BY orden, nombre').all() as {
+    id: string;
+    nombre: string;
+  }[];
+}

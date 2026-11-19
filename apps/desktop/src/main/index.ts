@@ -76,8 +76,10 @@ void app.whenReady().then(() => {
   });
   motor.on('estado', (e) => emitir('sync:estado', e));
 
+  let ventana: BrowserWindow | null = null;
   const servicios = crearServicios({
     base,
+    listarImpresoras: async () => (ventana ? (await ventana.webContents.getPrintersAsync()).map((p) => p.name) : []),
     sesion,
     cliente,
     motor,
@@ -99,9 +101,11 @@ void app.whenReady().then(() => {
   });
 
   const { emitirA } = registrarIpc(servicios);
-  const ventana = crearVentana();
+  ventana = crearVentana();
   emitir = emitirA(ventana);
   if (sesion.actual()) motor.iniciar();
+  // Lo que quedó a medio imprimir en un cierre inesperado pasa a error; lo pendiente sale.
+  ventana.webContents.once('did-finish-load', () => servicios.recuperarImpresion());
 
   app.on('before-quit', () => motor.detener());
   // La base se cierra al final, cuando ya no puede haber escrituras del motor en curso.

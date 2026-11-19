@@ -2,6 +2,7 @@ import type { UsuarioPublico } from './usuarios';
 import type { Seleccion } from '@gula/shared';
 import type { CartaLocal } from './tipos';
 import type { Ajuste, DetalleMesa, Salon } from './salon';
+import type { ConfigImpresion, Documento, TrabajoImpresion } from './impresion';
 
 export type { UsuarioPublico };
 export type LocalInfo = { id: string; nombre: string; slug: string };
@@ -74,13 +75,24 @@ export type ServiciosGula = {
   'salon:confirmar': (a: { pedidoId: string; ajustes?: Ajuste[] }) => Promise<{ numero: number }>;
   'salon:rechazar': (a: { pedidoId: string; motivo: string }) => Promise<void>;
   'salon:atenderAviso': (a: { avisoId: string }) => Promise<void>;
+  'impresion:config': () => Promise<ConfigImpresion & { impresoras: string[] }>;
+  'impresion:guardarConfig': (c: ConfigImpresion) => Promise<void>;
+  'impresion:prueba': () => Promise<void>;
+  'impresion:trabajos': () => Promise<{ conError: TrabajoImpresion[]; recientes: TrabajoImpresion[] }>;
+  'impresion:reimprimir': (a: { pedidoId: string }) => Promise<void>;
+  'impresion:cuenta': (a: { sesionId: string } | { pedidoId: string }) => Promise<void>;
+  'impresion:reintentar': (a: { id: string }) => Promise<void>;
+  'impresion:descartar': (a: { id: string }) => Promise<void>;
 };
+
+/** Dato del evento `impresion:vista` (modo vista previa). */
+export type VistaImpresion = { documento: Documento; columnas: number };
 
 /** Lo que elige la moza; precios y nombres los calcula main con la carta local. */
 export type ItemPedido = { productoId: string; seleccion: Seleccion; nota: string; cantidad: number };
 
 export type CanalServicio = keyof ServiciosGula;
-export type EventoGula = 'sync:estado' | 'carta:cambio' | 'sesion:cambio' | 'salon:cambio';
+export type EventoGula = 'sync:estado' | 'carta:cambio' | 'sesion:cambio' | 'salon:cambio' | 'impresion:cambio' | 'impresion:vista';
 
 export const CANALES: CanalServicio[] = [
   'sesion:estado',
@@ -103,6 +115,14 @@ export const CANALES: CanalServicio[] = [
   'salon:confirmar',
   'salon:rechazar',
   'salon:atenderAviso',
+  'impresion:config',
+  'impresion:guardarConfig',
+  'impresion:prueba',
+  'impresion:trabajos',
+  'impresion:reimprimir',
+  'impresion:cuenta',
+  'impresion:reintentar',
+  'impresion:descartar',
 ];
 
 /** API expuesta en window.gula por el preload. */

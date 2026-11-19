@@ -28,6 +28,7 @@ type Deps = {
 export function crearColaImpresion(d: Deps) {
   const ahora = d.ahora ?? (() => new Date());
   let trabajando: Promise<void> | null = null;
+  let otraVuelta = false;
 
   const config = (): ConfigImpresion => {
     const crudo = leerKv(d.base, CLAVE);
@@ -50,7 +51,11 @@ export function crearColaImpresion(d: Deps) {
   }
 
   function procesar(): Promise<void> {
-    if (trabajando) return trabajando;
+    // Un encolado mientras el trabajador termina (ya vio la cola vacía) lo hace dar otra vuelta.
+    if (trabajando) {
+      otraVuelta = true;
+      return trabajando;
+    }
     trabajando = (async () => {
       for (let t = siguientePendiente(d.base); t; t = siguientePendiente(d.base)) {
         marcarImpresion(d.base, t.id, 'imprimiendo');
@@ -64,6 +69,10 @@ export function crearColaImpresion(d: Deps) {
       }
     })().finally(() => {
       trabajando = null;
+      if (otraVuelta) {
+        otraVuelta = false;
+        void procesar();
+      }
     });
     return trabajando;
   }
