@@ -5,6 +5,8 @@ import type { Ajuste, DetalleMesa, Pedido, Salon } from './salon';
 import type { ConfigImpresion, Documento, TrabajoImpresion } from './impresion';
 import type { EstadoCaja, PagoNuevo } from './caja';
 import type { DatosCliente, TableroDelivery } from './delivery';
+import type { RespuestaReporte } from './reportes';
+import type { TipoPeriodo } from '@gula/shared';
 import type { EstadoReparto } from '@gula/shared';
 import type { CategoriaMovimiento, TipoMovimiento } from '@gula/shared';
 
@@ -112,6 +114,8 @@ export type ServiciosGula = {
   'delivery:cliente': (a: { telefono: string }) => Promise<DatosCliente | null>;
   'delivery:config': () => Promise<{ envio: number }>;
   'delivery:guardarConfig': (a: { envio: number }) => Promise<void>;
+  'reportes:obtener': (a: { tipo: TipoPeriodo; desde: string; hasta: string }) => Promise<RespuestaReporte>;
+  'reportes:exportar': (a: { formato: 'csv' | 'pdf'; reporte: RespuestaReporte }) => Promise<boolean>;
   'sync:rechazadas': () => Promise<OperacionRechazada[]>;
   'sync:descartarRechazada': (a: { id: string }) => Promise<void>;
 };
@@ -174,6 +178,8 @@ export const CANALES: CanalServicio[] = [
   'delivery:cliente',
   'delivery:config',
   'delivery:guardarConfig',
+  'reportes:obtener',
+  'reportes:exportar',
   'sync:rechazadas',
   'sync:descartarRechazada',
 ];

@@ -13,6 +13,7 @@ import type { Sesion } from './api/sesion';
 import { ErrorApiCliente, SinConexion, type Cliente } from './api/cliente';
 import { crearServiciosCaja } from './servicios.caja';
 import { crearServiciosDelivery } from './servicios.delivery';
+import { crearServiciosReportes } from './servicios.reportes';
 import type { Motor } from './sync/motor';
 import { ErrorGula, sinConexion } from './errores';
 import { crearColaImpresion, type ColaImpresion } from './impresion/cola';
@@ -31,6 +32,9 @@ type Deps = {
   /** Cola de impresión (por defecto: impresora de Windows, eventos por `emitir`). */
   cola?: ColaImpresion;
   listarImpresoras?: () => Promise<string[]>;
+  /** Exportar reportes: diálogo "Guardar como" (false si se cancela) y HTML → PDF. */
+  guardarArchivo?: (nombreSugerido: string, datos: Uint8Array | string) => Promise<boolean>;
+  htmlAPdf?: (html: string) => Promise<Uint8Array>;
 };
 
 const TIPOS_IMAGEN: Record<string, string> = { '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.webp': 'image/webp' };
@@ -146,6 +150,13 @@ export function crearServicios(d: Deps): ServiciosGula & { bloquearPorInactivida
         impresion.comandas(pedidoId);
         impresion.delivery(pedidoId);
       },
+    }),
+    ...crearServiciosReportes({
+      exigir,
+      pedir: (metodo, ruta) => d.cliente.pedir(metodo, ruta),
+      local: () => d.sesion.actual()?.local.nombre ?? '',
+      guardarArchivo: d.guardarArchivo ?? (async () => false),
+      htmlAPdf: d.htmlAPdf ?? (async () => new Uint8Array()),
     }),
     /** Al iniciar la app: resuelve lo que quedó a medio imprimir. */
     recuperarImpresion: () => cola.recuperar(),

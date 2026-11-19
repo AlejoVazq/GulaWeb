@@ -1,5 +1,6 @@
 import { app, BrowserWindow, dialog, safeStorage, shell } from 'electron';
 import { join } from 'node:path';
+import { writeFile } from 'node:fs/promises';
 import type { EventoGula } from '../compartido/ipc';
 import { abrirBase } from './db/base';
 import { escribirKv, leerKv } from './db/kv';
@@ -94,6 +95,27 @@ void app.whenReady().then(() => {
         filters: [{ name: 'Imágenes', extensions: ['jpg', 'jpeg', 'png', 'webp'] }],
       });
       return r.canceled ? null : (r.filePaths[0] ?? null);
+    },
+    guardarArchivo: async (nombre, datos) => {
+      const ext = nombre.slice(nombre.lastIndexOf('.') + 1);
+      const r = await dialog.showSaveDialog({
+        title: 'Guardar reporte',
+        defaultPath: join(app.getPath('documents'), nombre),
+        filters: [{ name: ext.toUpperCase(), extensions: [ext] }],
+      });
+      if (r.canceled || !r.filePath) return false;
+      await writeFile(r.filePath, datos);
+      return true;
+    },
+    htmlAPdf: async (html) => {
+      // Ventana oculta, sin JavaScript ni acceso a la app: solo dibuja el HTML para imprimirlo.
+      const v = new BrowserWindow({ show: false, webPreferences: { javascript: false, sandbox: true, contextIsolation: true } });
+      try {
+        await v.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
+        return new Uint8Array(await v.webContents.printToPDF({ pageSize: 'A4', printBackground: true }));
+      } finally {
+        v.destroy();
+      }
     },
   });
   cliente.on('sesion-cerrada', () => {
