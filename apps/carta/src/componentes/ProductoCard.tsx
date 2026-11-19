@@ -9,10 +9,19 @@ type Props = {
   onElegir: (p: ProductoPublico) => void;
   /** Agregar sin pasar por el detalle; solo se usa si el producto no tiene opciones. */
   onAgregarRapido?: (p: ProductoPublico) => void;
+  /** Sin mesa (o mesa cerrada): se mira, no se pide. */
+  soloLectura?: boolean;
 };
 
 /** Un renglón de la carta: nombre en itálica, precio en la columna del ticket y el "+" cuadrado. */
-export function ProductoCard({ producto: p, habilitado, cantidadEnComanda, onElegir, onAgregarRapido }: Props) {
+export function ProductoCard({
+  producto: p,
+  habilitado,
+  cantidadEnComanda,
+  onElegir,
+  onAgregarRapido,
+  soloLectura,
+}: Props) {
   const puede = habilitado && p.disponible;
   const conOpciones = p.grupos.length > 0;
   const mas = () => (!conOpciones && onAgregarRapido ? onAgregarRapido(p) : onElegir(p));
@@ -23,8 +32,21 @@ export function ProductoCard({ producto: p, habilitado, cantidadEnComanda, onEle
       ? `Agregar otro ${p.nombre}, van ${cantidadEnComanda}`
       : `Agregar ${p.nombre}`;
   return (
-    <article className={p.disponible ? 'producto' : 'producto producto--sin-stock'}>
-      <button type="button" className="producto__abrir" disabled={!puede} onClick={() => onElegir(p)}>
+    <article
+      className={[
+        'producto',
+        !p.disponible && 'producto--sin-stock',
+        soloLectura && 'producto--lectura',
+      ]
+        .filter(Boolean)
+        .join(' ')}
+    >
+      <button
+        type="button"
+        className="producto__abrir"
+        disabled={!puede}
+        onClick={() => onElegir(p)}
+      >
         <h3 className="producto__nombre">{p.nombre}</h3>
         <span className="producto__desc">{p.disponible ? p.descripcion : 'Sin stock por hoy'}</span>
         {p.etiquetas.length > 0 && (
@@ -38,16 +60,27 @@ export function ProductoCard({ producto: p, habilitado, cantidadEnComanda, onEle
         )}
         <span className="producto__precio">{formatearPrecio(p.precio)}</span>
       </button>
-      {p.foto && <img className="producto__foto" src={p.foto.chica} alt="" loading="lazy" width={64} height={64} />}
-      <button
-        type="button"
-        className={lleno ? 'producto__mas producto__mas--lleno' : 'producto__mas'}
-        disabled={!puede}
-        aria-label={etiqueta}
-        onClick={mas}
-      >
-        {lleno ? cantidadEnComanda : <IconoMas />}
-      </button>
+      {p.foto && (
+        <img
+          className="producto__foto"
+          src={p.foto.chica}
+          alt=""
+          loading="lazy"
+          width={64}
+          height={64}
+        />
+      )}
+      {!soloLectura && (
+        <button
+          type="button"
+          className={lleno ? 'producto__mas producto__mas--lleno' : 'producto__mas'}
+          disabled={!puede}
+          aria-label={etiqueta}
+          onClick={mas}
+        >
+          {lleno ? cantidadEnComanda : <IconoMas />}
+        </button>
+      )}
     </article>
   );
 }

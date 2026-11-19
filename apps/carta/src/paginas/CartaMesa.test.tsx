@@ -103,21 +103,19 @@ it('con la mesa abierta envía los ítems sin precios y muestra que espera confi
   expect(screen.queryByRole('button', { name: /^Ver mi pedido/ })).not.toBeInTheDocument();
 });
 
-it('con la mesa cerrada el botón lo explica y está deshabilitado', async () => {
+it('mesa cerrada muestra la carta en solo lectura con el aviso', async () => {
   servidor({ ...mesaAbierta, aceptaPedidos: false, motivo: 'mesa_cerrada' });
   montar();
-  await agregarHamburguesa();
-  expect(
-    screen.getByRole('button', { name: 'Pedile a la moza que habilite la mesa' }),
-  ).toBeDisabled();
+  expect(await screen.findByText('Pedile a la moza que abra la mesa para pedir desde acá.')).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: /^Agregar / })).not.toBeInTheDocument();
   expect(screen.queryByRole('button', { name: 'Llamar a la moza' })).not.toBeInTheDocument();
 });
 
 it('si el local está sin conexión pide hacerlo con la moza', async () => {
   servidor({ ...mesaAbierta, aceptaPedidos: false, motivo: 'local_sin_conexion' });
   montar();
-  await agregarHamburguesa();
-  expect(screen.getByRole('button', { name: 'Hacé tu pedido a la moza' })).toBeDisabled();
+  expect(await screen.findByText('Hoy hacé tu pedido a la moza.')).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: /^Agregar / })).not.toBeInTheDocument();
   expect(screen.queryByRole('button', { name: 'Llamar a la moza' })).not.toBeInTheDocument();
 });
 

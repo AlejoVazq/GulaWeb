@@ -57,22 +57,36 @@ it('slug inexistente muestra "No encontramos este local"', async () => {
     vi.fn(() => respuesta(404, { error: { codigo: 'LOCAL_NO_ENCONTRADO', mensaje: 'x' } })),
   );
   montar('/nada');
-  expect(await screen.findByText('No encontramos este local')).toBeInTheDocument();
+  expect(await screen.findByText('No encontramos este local.')).toBeInTheDocument();
 });
 
-it('agregar un producto muestra la barra del pedido y el envío queda deshabilitado', async () => {
+it('sin mesa la carta es de solo lectura: sin "+", sin papel de comanda ni avisos', async () => {
   const { default: userEvent } = await import('@testing-library/user-event');
   montar();
-  await userEvent.click(await screen.findByRole('button', { name: /^Hamburguesa clásica/ }));
-  await userEvent.click(screen.getByLabelText(/Grande/));
-  await userEvent.click(screen.getByRole('button', { name: 'Agregar a la comanda · $ 6.500' }));
-  const barra = screen.getByRole('button', { name: 'Ver mi pedido: 1 ítem, $ 6.500' });
-  await userEvent.click(barra);
-  expect(screen.getByText('Grande')).toBeInTheDocument();
-  const enviar = screen.getByRole('button', { name: 'Pedí al mozo que habilite la mesa' });
-  expect(enviar).toBeDisabled();
-  await userEvent.click(screen.getByRole('button', { name: 'Quitar Hamburguesa clásica' }));
-  expect(screen.queryByRole('button', { name: /^Ver mi pedido/ })).not.toBeInTheDocument();
+  await screen.findByRole('heading', { name: 'Bar La Gula' });
+  expect(screen.queryByRole('button', { name: /^Agregar / })).not.toBeInTheDocument();
+  expect(screen.queryByRole('group', { name: 'Avisos a la moza' })).not.toBeInTheDocument();
+  await userEvent.click(screen.getByRole('button', { name: /^Hamburguesa clásica/ }));
+  expect(screen.queryByRole('button', { name: /^Agregar a la comanda/ })).not.toBeInTheDocument();
+  expect(screen.getByText('Para pedir, escaneá el QR de tu mesa.')).toBeInTheDocument();
+});
+
+it('error de red muestra "Reintentar" y al tocarlo vuelve a pedir la carta', async () => {
+  const { default: userEvent } = await import('@testing-library/user-event');
+  const f = vi.fn().mockRejectedValueOnce(new TypeError('Failed to fetch')).mockImplementation(() => respuesta(200, cartaDePrueba));
+  vi.stubGlobal('fetch', f);
+  montar();
+  expect(await screen.findByText('No pudimos cargar la carta.')).toBeInTheDocument();
+  await userEvent.click(screen.getByRole('button', { name: 'Reintentar' }));
+  expect(await screen.findByRole('heading', { name: 'Bar La Gula' })).toBeInTheDocument();
+  expect(f).toHaveBeenCalledTimes(2);
+});
+
+it('cargando expone aria-busy y el texto "Cargando la carta…"', () => {
+  vi.stubGlobal('fetch', vi.fn(() => new Promise(() => {})));
+  const { container } = montar();
+  expect(container.querySelector('[aria-busy="true"]')).toBeInTheDocument();
+  expect(screen.getByText('Cargando la carta…')).toBeInTheDocument();
 });
 
 it('al cerrar el detalle el foco vuelve a la tarjeta del producto', async () => {

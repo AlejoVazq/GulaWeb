@@ -15,6 +15,7 @@ type Props = {
   producto: ProductoPublico;
   onAgregar: (item: ItemCarrito) => void;
   onCerrar: () => void;
+  soloLectura?: boolean;
 };
 
 const MAX_NOTA = 140;
@@ -80,7 +81,7 @@ function Grupo({
   );
 }
 
-export function DetalleProducto({ producto: p, onAgregar, onCerrar }: Props) {
+export function DetalleProducto({ producto: p, onAgregar, onCerrar, soloLectura }: Props) {
   const [seleccion, setSeleccion] = useState<Seleccion>({});
   const [cantidad, setCantidad] = useState(1);
   const [nota, setNota] = useState('');
@@ -120,44 +121,58 @@ export function DetalleProducto({ producto: p, onAgregar, onCerrar }: Props) {
           />
         </label>
 
-        {!validacion.ok && <p className="hoja__error">{validacion.errores[0]}</p>}
-        <div className="detalle__pie">
-          <div className="cantidad" role="group" aria-label="Cantidad">
-            <button
-              type="button"
-              aria-label="Restar uno"
-              onClick={() => setCantidad((c) => Math.max(1, c - 1))}
-              disabled={cantidad <= 1}
-            >
-              <IconoMenos />
-            </button>
-            <span aria-live="polite">{cantidad}</span>
-            <button type="button" aria-label="Sumar uno" onClick={() => setCantidad((c) => Math.min(50, c + 1))}>
-              <IconoMas />
-            </button>
-          </div>
-          <button
-            type="button"
-            className="boton-principal boton-agregar"
-            disabled={!validacion.ok}
-            onClick={() =>
-              onAgregar({
-                clave: '',
-                productoId: p.id,
-                nombre: p.nombre,
-                seleccion: Object.fromEntries(Object.entries(seleccion).filter(([, ids]) => ids.length > 0)),
-                resumenOpciones: resumen(p, seleccion),
-                nota: nota.trim(),
-                cantidad,
-                precioUnitario: unitario,
-              })
-            }
-          >
-            <span>Agregar a la comanda</span>
-            <span className="sr-solo"> · </span>
-            <span className="boton-agregar__precio">{formatearPrecio(unitario * cantidad)}</span>
-          </button>
-        </div>
+        {soloLectura ? (
+          <p className="detalle__lectura">Para pedir, escaneá el QR de tu mesa.</p>
+        ) : (
+          <>
+            {!validacion.ok && <p className="hoja__error">{validacion.errores[0]}</p>}
+            <div className="detalle__pie">
+              <div className="cantidad" role="group" aria-label="Cantidad">
+                <button
+                  type="button"
+                  aria-label="Restar uno"
+                  onClick={() => setCantidad((c) => Math.max(1, c - 1))}
+                  disabled={cantidad <= 1}
+                >
+                  <IconoMenos />
+                </button>
+                <span aria-live="polite">{cantidad}</span>
+                <button
+                  type="button"
+                  aria-label="Sumar uno"
+                  onClick={() => setCantidad((c) => Math.min(50, c + 1))}
+                >
+                  <IconoMas />
+                </button>
+              </div>
+              <button
+                type="button"
+                className="boton-principal boton-agregar"
+                disabled={!validacion.ok}
+                onClick={() =>
+                  onAgregar({
+                    clave: '',
+                    productoId: p.id,
+                    nombre: p.nombre,
+                    seleccion: Object.fromEntries(
+                      Object.entries(seleccion).filter(([, ids]) => ids.length > 0),
+                    ),
+                    resumenOpciones: resumen(p, seleccion),
+                    nota: nota.trim(),
+                    cantidad,
+                    precioUnitario: unitario,
+                  })
+                }
+              >
+                <span>Agregar a la comanda</span>
+                <span className="sr-solo"> · </span>
+                <span className="boton-agregar__precio">
+                  {formatearPrecio(unitario * cantidad)}
+                </span>
+              </button>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

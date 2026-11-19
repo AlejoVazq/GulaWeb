@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { CartaPublica } from '@gula/shared';
 import { LocalNoEncontrado, obtenerCarta } from './api';
 
@@ -8,8 +8,9 @@ export type EstadoCarta =
   | { tipo: 'no-encontrado' }
   | { tipo: 'error' };
 
-export function useCarta(slug: string): EstadoCarta {
+export function useCarta(slug: string): { estado: EstadoCarta; reintentar: () => void } {
   const [estado, setEstado] = useState<EstadoCarta>({ tipo: 'cargando' });
+  const [intento, setIntento] = useState(0);
   useEffect(() => {
     const control = new AbortController();
     setEstado({ tipo: 'cargando' });
@@ -20,6 +21,7 @@ export function useCarta(slug: string): EstadoCarta {
         setEstado(e instanceof LocalNoEncontrado ? { tipo: 'no-encontrado' } : { tipo: 'error' });
       });
     return () => control.abort();
-  }, [slug]);
-  return estado;
+  }, [slug, intento]);
+  const reintentar = useCallback(() => setIntento((n) => n + 1), []);
+  return { estado, reintentar };
 }

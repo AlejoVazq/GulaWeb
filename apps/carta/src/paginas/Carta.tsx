@@ -16,15 +16,31 @@ import { leerMarca } from '@gula/shared';
 import { atributosTema, estiloMarca } from '../marca';
 import { useCategoriaActiva } from '../componentes/useCategoriaActiva';
 import { CabeceraLocal } from '../componentes/CabeceraLocal';
+import { EsqueletoCarta } from '../componentes/EsqueletoCarta';
 
 const MOTIVOS = {
-  mesa_cerrada: 'Pedile a la moza que habilite la mesa',
-  local_sin_conexion: 'Hacé tu pedido a la moza',
+  mesa_cerrada: 'Pedile a la moza que abra la mesa para pedir desde acá.',
+  local_sin_conexion: 'Hoy hacé tu pedido a la moza.',
 } as const;
+
+/** Pantalla de un solo aviso, con la banda neutra de la carta. */
+function PantallaAviso({ texto, children }: { texto: string; children?: React.ReactNode }) {
+  return (
+    <div className="carta" data-tema="comanda-bn" data-modo="auto">
+      <header className="cabecera">
+        <p className="cabecera__nombre">Carta</p>
+      </header>
+      <div className="pantalla-aviso">
+        <p>{texto}</p>
+        {children}
+      </div>
+    </div>
+  );
+}
 
 export function Carta() {
   const { slug = '', token } = useParams();
-  const estado = useCarta(slug);
+  const { estado, reintentar } = useCarta(slug);
   const [elegido, setElegido] = useState<ProductoPublico | null>(null);
   const { items, despachar } = useCarrito(slug);
   const { estado: mesa, recargar: recargarMesa } = useMesa(token);
@@ -35,15 +51,26 @@ export function Carta() {
     const suave = !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
     talones.current?.scrollIntoView?.({ behavior: suave ? 'smooth' : 'auto', block: 'start' });
   };
-  const activa = useCategoriaActiva(estado.tipo === 'lista' ? estado.carta.categorias.map((c) => c.id) : []);
+  const activa = useCategoriaActiva(
+    estado.tipo === 'lista' ? estado.carta.categorias.map((c) => c.id) : [],
+  );
 
-  if (estado.tipo === 'cargando') return <p className="aviso">Cargando la carta…</p>;
-  if (estado.tipo === 'no-encontrado') return <p className="aviso">No encontramos este local</p>;
+  if (estado.tipo === 'cargando') return <EsqueletoCarta />;
+  if (estado.tipo === 'no-encontrado') return <PantallaAviso texto="No encontramos este local." />;
   if (estado.tipo === 'error')
-    return <p className="aviso">No pudimos cargar la carta. Probá de nuevo en un momento.</p>;
+    return (
+      <PantallaAviso texto="No pudimos cargar la carta.">
+        <button type="button" className="boton-principal" onClick={reintentar}>
+          Reintentar
+        </button>
+      </PantallaAviso>
+    );
 
   const { carta } = estado;
   const infoMesa = mesa.tipo === 'lista' ? mesa.mesa : null;
+  // Solo se arma la comanda desde una mesa que acepta pedidos (o mientras se confirma que la acepta).
+  const puedePedir =
+    Boolean(token) && mesa.tipo !== 'no-encontrada' && !(infoMesa && !infoMesa.aceptaPedidos);
 
   let datosEnvio: Envio | undefined;
   if (token) {
@@ -88,8 +115,9 @@ export function Carta() {
       <CabeceraLocal nombre={carta.local.nombre} marca={marca} mesa={infoMesa?.mesa.nombre} />
       <div inert={Boolean(elegido)}>
         {mesa.tipo === 'no-encontrada' && (
-          <p className="aviso">Este QR ya no es válido. Pedile a la moza el de tu mesa.</p>
+          <p className="aviso-mesa">Este QR ya no es válido. Pedile a la moza el de tu mesa.</p>
         )}
+        {infoMesa?.motivo && <p className="aviso-mesa">{MOTIVOS[infoMesa.motivo]}</p>}
         {token && envio.pedidos.length > 0 && (
           <div className="pedidos-enviados" ref={talones}>
             {envio.pedidos.map((p) => (
@@ -120,8 +148,12 @@ export function Carta() {
                     key={p.id}
                     producto={p}
                     habilitado={c.enHorario}
-                    cantidadEnComanda={items.reduce((n, i) => (i.productoId === p.id ? n + i.cantidad : n), 0)}
+                    cantidadEnComanda={items.reduce(
+                      (n, i) => (i.productoId === p.id ? n + i.cantidad : n),
+                      0,
+                    )}
                     onElegir={setElegido}
+                    soloLectura={!puedePedir}
                     onAgregarRapido={(prod) =>
                       despachar({
                         tipo: 'agregar',
@@ -148,20 +180,25 @@ export function Carta() {
         <DetalleProducto
           producto={elegido}
           onCerrar={() => setElegido(null)}
+          soloLectura={!puedePedir}
           onAgregar={(item) => {
             despachar({ tipo: 'agregar', item });
             setElegido(null);
           }}
         />
       )}
-      {!elegido && (
+      {!elegido && puedePedir && (
         <Carrito
           items={items}
           despachar={despachar}
           envio={datosEnvio}
           mesa={infoMesa?.mesa.nombre}
           local={carta.local.nombre}
-          encima={token && infoMesa && infoMesa.motivo === null ? <AvisosMesa token={token} onError={recargarMesa} /> : undefined}
+          encima={
+            token && infoMesa && infoMesa.motivo === null ? (
+              <AvisosMesa token={token} onError={recargarMesa} />
+            ) : undefined
+          }
         />
       )}
     </div>
