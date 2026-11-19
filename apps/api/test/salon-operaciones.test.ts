@@ -226,3 +226,31 @@ it('atender un aviso registra quién y cuándo', async () => {
   expect(a!.atendidoEn).not.toBeNull();
   expect(a!.atendidoPor).not.toBeNull();
 });
+
+it('lo hecho sin conexión conserva la hora en que se hizo, no la de la reconexión', async () => {
+  const m = await mesaDePrueba(e.localId, 'Mesa 8', false);
+  const sesionId = nuevoId();
+  const pedidoId = nuevoId();
+  const haceDosHoras = new Date(Date.now() - 2 * 3_600_000).toISOString();
+  const haceUnaHora = new Date(Date.now() - 3_600_000).toISOString();
+  await enviar(
+    { ...op('mesa.abrir', { sesionId, mesaId: m.id }), creadaEn: haceDosHoras },
+    {
+      ...op('pedido.crear', { pedidoId, origen: 'manual', sesionId, numero: 1, dia: '2026-11-18', items: [itemManual()] }),
+      creadaEn: haceUnaHora,
+    },
+  );
+  const [s] = await leer((tx) => tx.select().from(sesionesMesa).where(eq(sesionesMesa.id, sesionId)));
+  expect(s!.abiertaEn.toISOString()).toBe(haceDosHoras);
+  const [p] = await leer((tx) => tx.select().from(pedidos).where(eq(pedidos.id, pedidoId)));
+  expect(p!.creadoEn.toISOString()).toBe(haceUnaHora);
+  expect(p!.confirmadoEn!.toISOString()).toBe(haceUnaHora);
+});
+
+it('una hora del futuro (reloj de la PC adelantado) se toma como ahora', async () => {
+  const m = await mesaDePrueba(e.localId, 'Mesa 9', false);
+  const sesionId = nuevoId();
+  await enviar({ ...op('mesa.abrir', { sesionId, mesaId: m.id }), creadaEn: new Date(Date.now() + 86_400_000).toISOString() });
+  const [s] = await leer((tx) => tx.select().from(sesionesMesa).where(eq(sesionesMesa.id, sesionId)));
+  expect(s!.abiertaEn.getTime()).toBeLessThanOrEqual(Date.now());
+});

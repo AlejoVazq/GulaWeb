@@ -130,8 +130,8 @@ export function crearMotor(opts: {
       'GET',
       cursorSalon ? `/sync/salon?desde=${encodeURIComponent(cursorSalon)}` : '/sync/salon',
     );
-    aplicarCambiosSalon(base, salon);
-    escribirKv(base, CLAVE_CURSOR_SALON, salon.cursor);
+    // Si hubo que saltear filas con cambios en vuelo, el próximo pull las vuelve a pedir.
+    if (aplicarCambiosSalon(base, salon) === 0) escribirKv(base, CLAVE_CURSOR_SALON, salon.cursor);
     if (hayFilasSalon(salon)) opts.alCambiarSalon?.();
   }
 

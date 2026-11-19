@@ -46,7 +46,7 @@ registrarTipoOperacion('mesa.abrir', {
     mesaId: z.uuid(),
     comensales: z.number().int().min(1).max(100).nullish(),
   }),
-  aplicar: async (tx, { sesion }, d) => {
+  aplicar: async (tx, { sesion, hechaEn }, d) => {
     // El bloqueo de la mesa serializa aperturas simultáneas.
     await buscarVigente(tx, mesas, d.mesaId, 'esa mesa');
     const [ocupada] = await tx
@@ -61,6 +61,7 @@ registrarTipoOperacion('mesa.abrir', {
       estado: 'abierta',
       comensales: d.comensales ?? null,
       abiertaPor: sesion.usuarioId,
+      abiertaEn: hechaEn,
     });
   },
 });
@@ -69,9 +70,9 @@ registrarTipoOperacion('mesa.cerrar', {
   permiso: 'mesa.operar',
   tema: 'salon',
   esquema: z.object({ sesionId: z.uuid() }),
-  aplicar: async (tx, { sesion }, d) => {
+  aplicar: async (tx, { sesion, hechaEn }, d) => {
     await sesionNoCerrada(tx, d.sesionId);
-    const ahora = new Date();
+    const ahora = hechaEn;
     // Lo que quedó sin resolver se cierra con la mesa: el cliente ve el rechazo y la PC deja de sonar.
     await tx
       .update(pedidos)
@@ -117,7 +118,7 @@ registrarTipoOperacion('pedido.crear', {
       (d) => (d.origen === 'manual') === !!d.sesionId,
       'Un pedido manual va en una mesa; uno de mostrador, no.',
     ),
-  aplicar: async (tx, { sesion }, d) => {
+  aplicar: async (tx, { sesion, hechaEn }, d) => {
     const s = d.sesionId ? await sesionNoCerrada(tx, d.sesionId) : null;
     // Un sector borrado del todo no rompe el pedido: el ítem queda sin sector.
     const idsSector = [...new Set(d.items.map((i) => i.sectorId).filter((x): x is string => !!x))];
@@ -131,7 +132,7 @@ registrarTipoOperacion('pedido.crear', {
           ).map((x) => x.id)
         : [],
     );
-    const ahora = new Date();
+    const ahora = hechaEn;
     await tx.insert(pedidos).values({
       id: d.pedidoId,
       localId: sesion.localId,
@@ -145,6 +146,7 @@ registrarTipoOperacion('pedido.crear', {
       creadoPor: sesion.usuarioId,
       confirmadoPor: sesion.usuarioId,
       confirmadoEn: ahora,
+      creadoEn: ahora,
     });
     await tx.insert(itemsPedido).values(
       d.items.map(({ itemId, sectorId, ...i }) => ({
@@ -152,6 +154,7 @@ registrarTipoOperacion('pedido.crear', {
         id: itemId,
         localId: sesion.localId,
         pedidoId: d.pedidoId,
+        creadoEn: ahora,
         sectorId: sectorId && validos.has(sectorId) ? sectorId : null,
       })),
     );
@@ -170,7 +173,7 @@ registrarTipoOperacion('pedido.confirmar', {
       .max(ITEMS_MAXIMOS)
       .optional(),
   }),
-  aplicar: async (tx, { sesion }, d) => {
+  aplicar: async (tx, { sesion, hechaEn }, d) => {
     await pedidoPendiente(tx, d.pedidoId);
     const actuales = await tx
       .select()
@@ -195,7 +198,7 @@ registrarTipoOperacion('pedido.confirmar', {
         numero: d.numero,
         dia: d.dia,
         confirmadoPor: sesion.usuarioId,
-        confirmadoEn: new Date(),
+        confirmadoEn: hechaEn,
       })
       .where(eq(pedidos.id, d.pedidoId));
   },
@@ -205,14 +208,14 @@ registrarTipoOperacion('pedido.rechazar', {
   permiso: 'pedido.confirmar',
   tema: 'salon',
   esquema: z.object({ pedidoId: z.uuid(), motivo: z.string().trim().min(1).max(NOTA_MAXIMA) }),
-  aplicar: async (tx, { sesion }, d) => {
+  aplicar: async (tx, { sesion, hechaEn }, d) => {
     await pedidoPendiente(tx, d.pedidoId);
     await tx
       .update(pedidos)
       .set({
         estado: 'rechazado',
         motivoRechazo: d.motivo,
-        rechazadoEn: new Date(),
+        rechazadoEn: hechaEn,
         confirmadoPor: sesion.usuarioId,
       })
       .where(eq(pedidos.id, d.pedidoId));
@@ -223,7 +226,7 @@ registrarTipoOperacion('aviso.atender', {
   permiso: 'mesa.operar',
   tema: 'salon',
   esquema: z.object({ avisoId: z.uuid() }),
-  aplicar: async (tx, { sesion }, d) => {
+  aplicar: async (tx, { sesion, hechaEn }, d) => {
     const [a] = await tx
       .select()
       .from(avisosMesa)
@@ -233,7 +236,7 @@ registrarTipoOperacion('aviso.atender', {
     if (a.atendidoEn) return; // Ya lo atendió otra persona: no es un error.
     await tx
       .update(avisosMesa)
-      .set({ atendidoEn: new Date(), atendidoPor: sesion.usuarioId })
+      .set({ atendidoEn: hechaEn, atendidoPor: sesion.usuarioId })
       .where(eq(avisosMesa.id, d.avisoId));
   },
 });

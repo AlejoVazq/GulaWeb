@@ -4,7 +4,7 @@ import { eq } from 'drizzle-orm';
 import { io, type Socket } from 'socket.io-client';
 import { nuevoId } from '@gula/shared';
 import { conLocal } from '../src/db/conLocal.js';
-import { itemsPedido, pedidos, sesionesMesa } from '../src/db/schema/index.js';
+import { avisosMesa, itemsPedido, pedidos, sesionesMesa } from '../src/db/schema/index.js';
 import { appDePrueba, escenario, pedir, type Escenario } from './app.js';
 import { dbs, limpiarDb } from './db.js';
 import { cartaChica, mesaDePrueba, type CartaChica } from './salon.js';
@@ -235,6 +235,7 @@ describe('GET /publico/pedidos/:id', () => {
 describe('POST /publico/mesas/:token/avisos', () => {
   it('pedir la cuenta pasa la sesión a cuenta_pedida y no duplica el aviso', async () => {
     const m = await mesaDePrueba(e.localId);
+    await conectarPc();
     const a = await publico('POST', `/publico/mesas/${m.token}/avisos`, { tipo: 'cuenta' });
     expect(a.statusCode).toBe(201);
     const b = await publico('POST', `/publico/mesas/${m.token}/avisos`, { tipo: 'cuenta' });
@@ -252,6 +253,14 @@ describe('POST /publico/mesas/:token/avisos', () => {
     await publico('POST', `/publico/mesas/${m.token}/avisos`, { tipo: 'cuenta' });
     const r = await publico('POST', `/publico/mesas/${m.token}/pedidos`, { id: nuevoId(), items: [hamburguesaGrande()] });
     expect(r.statusCode).toBe(201);
+  });
+
+  it('sin PC conectada no se le promete al cliente que se avisó → 503', async () => {
+    const m = await mesaDePrueba(e.localId);
+    const r = await publico('POST', `/publico/mesas/${m.token}/avisos`, { tipo: 'llamar' });
+    expect(r.statusCode).toBe(503);
+    expect(r.json().error.codigo).toBe('LOCAL_SIN_CONEXION');
+    expect(await conLocal(dbs.dbApp, e.localId, (tx) => tx.select().from(avisosMesa))).toEqual([]);
   });
 
   it('llamar a la moza con la mesa cerrada → 409', async () => {

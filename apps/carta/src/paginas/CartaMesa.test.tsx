@@ -114,6 +114,7 @@ it('si el local está sin conexión pide hacerlo con la moza', async () => {
   montar();
   await agregarHamburguesa();
   expect(screen.getByRole('button', { name: 'Hacé tu pedido a la moza' })).toBeDisabled();
+  expect(screen.queryByRole('button', { name: 'Llamar a la moza' })).not.toBeInTheDocument();
 });
 
 it('un fallo de red reintenta con el mismo id', async () => {

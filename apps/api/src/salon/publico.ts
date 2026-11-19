@@ -41,6 +41,12 @@ const cuerpoPedido = z.object({
     .max(ITEMS_MAXIMOS),
 });
 
+const localSinConexion = () =>
+  new ErrorApi(
+    503,
+    'LOCAL_SIN_CONEXION',
+    'El local no está recibiendo pedidos por acá en este momento. Pedile a la moza.',
+  );
 const mesaNoEncontrada = () => new ErrorApi(404, 'MESA_NO_ENCONTRADA', 'No encontramos esta mesa.');
 const mesaCerrada = () =>
   new ErrorApi(
@@ -169,12 +175,7 @@ export async function rutasPublicasSalon(
 
       const sesion = await sesionAbierta(tx, m.id);
       if (!sesion) throw mesaCerrada();
-      if (app.pcsConectadas(m.localId) === 0)
-        throw new ErrorApi(
-          503,
-          'LOCAL_SIN_CONEXION',
-          'El local no está recibiendo pedidos por acá en este momento. Pedile a la moza.',
-        );
+      if (app.pcsConectadas(m.localId) === 0) throw localSinConexion();
       const items = await armarItems(tx, m.local, b.items);
       const insertado = await tx
         .insert(pedidos)
@@ -236,6 +237,8 @@ export async function rutasPublicasSalon(
     const r = await conLocal(dbs.dbApp, m.localId, async (tx) => {
       const sesion = await sesionAbierta(tx, m.id);
       if (!sesion) throw mesaCerrada();
+      // Sin una PC conectada nadie se enteraría: no se le dice al cliente que se avisó.
+      if (app.pcsConectadas(m.localId) === 0) throw localSinConexion();
       const [existente] = await tx
         .select({ id: avisosMesa.id })
         .from(avisosMesa)

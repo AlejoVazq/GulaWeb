@@ -18,7 +18,33 @@ const b = (v: boolean) => (v ? 1 : 0);
 /** Las filas creadas en la PC pierden contra cualquier versión del servidor. */
 const LOCAL = '';
 
-export function aplicarCambiosSalon(base: BaseLocal, c: RespuestaPullSalon): void {
+/**
+ * Filas con un cambio local que todavía viaja en la outbox: un pull (en vuelo o del solape) traería
+ * la versión anterior del servidor y desharía lo que la moza acaba de hacer.
+ */
+function protegidas(base: BaseLocal) {
+  const ops = base.db.prepare("SELECT datos FROM outbox WHERE estado = 'pendiente' AND tipo LIKE '%.%'").all() as {
+    datos: string;
+  }[];
+  const sesiones = new Set<string>();
+  const pedidos = new Set<string>();
+  const avisos = new Set<string>();
+  for (const o of ops) {
+    const d = JSON.parse(o.datos) as { sesionId?: string; pedidoId?: string; avisoId?: string };
+    if (d.sesionId) sesiones.add(d.sesionId);
+    if (d.pedidoId) pedidos.add(d.pedidoId);
+    if (d.avisoId) avisos.add(d.avisoId);
+  }
+  return {
+    sesion: (id: string) => sesiones.has(id),
+    pedido: (p: { id: string; sesionId: string | null }) => pedidos.has(p.id) || (!!p.sesionId && sesiones.has(p.sesionId)),
+    aviso: (a: { id: string; sesionId: string }) => avisos.has(a.id) || sesiones.has(a.sesionId),
+    item: (pedidoId: string) => pedidos.has(pedidoId),
+  };
+}
+
+/** Devuelve cuántas filas se salteó por tener cambios locales en vuelo (si hubo, no hay que avanzar el cursor). */
+export function aplicarCambiosSalon(base: BaseLocal, c: RespuestaPullSalon): number {
   const mes = upsert(base, 'mesas', ['nombre', 'zona', 'capacidad', 'orden', 'token']);
   const ses = upsert(base, 'sesiones', [
     'mesa_id', 'estado', 'comensales', 'abierta_por', 'abierta_en', 'cerrada_por', 'cerrada_en',
@@ -32,7 +58,18 @@ export function aplicarCambiosSalon(base: BaseLocal, c: RespuestaPullSalon): voi
     'sector_id', 'anulado', 'creado_en',
   ]);
   const avi = upsert(base, 'avisos', ['sesion_id', 'tipo', 'atendido_por', 'atendido_en', 'creado_en']);
-  base.transaccion(() => {
+  return base.transaccion(() => {
+    const prot = protegidas(base);
+    const total = c.sesiones.length + c.pedidos.length + c.items.length + c.avisos.length;
+    // Ojo: un pedido protegido por su sesión no protege sus ítems (no cambian al cerrar la mesa).
+    c = {
+      ...c,
+      sesiones: c.sesiones.filter((s) => !prot.sesion(s.id)),
+      pedidos: c.pedidos.filter((p) => !prot.pedido(p)),
+      items: c.items.filter((i) => !prot.item(i.pedidoId)),
+      avisos: c.avisos.filter((a) => !prot.aviso(a)),
+    };
+    const salteadas = total - (c.sesiones.length + c.pedidos.length + c.items.length + c.avisos.length);
     for (const m of c.mesas) mes.run(m.id, m.nombre, m.zona, m.capacidad, m.orden, m.token, m.actualizadoEn, m.eliminadoEn);
     for (const s of c.sesiones) {
       ses.run(
@@ -55,6 +92,7 @@ export function aplicarCambiosSalon(base: BaseLocal, c: RespuestaPullSalon): voi
     for (const a of c.avisos) {
       avi.run(a.id, a.sesionId, a.tipo, a.atendidoPor, a.atendidoEn, a.creadoEn, a.actualizadoEn, a.eliminadoEn);
     }
+    return salteadas;
   });
 }
 

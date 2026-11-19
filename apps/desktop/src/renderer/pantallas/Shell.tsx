@@ -8,16 +8,15 @@ import { DetalleMesa } from './DetalleMesa';
 import { TomarPedido } from '../componentes/TomarPedido';
 import { Alerta } from '../componentes/Alerta';
 import { Pendientes } from '../componentes/Pendientes';
-import { useSalon } from '../useSalon';
+import type { Salon } from '../../compartido/salon';
 
 type Activa = Extract<EstadoSesion, { tipo: 'activa' }>;
 type Seccion = 'mesas' | 'carta';
 type Vista = { tipo: 'seccion' } | { tipo: 'mesa'; mesaId: string } | { tipo: 'mostrador' };
 
-export function Shell({ sesion, sync }: { sesion: Activa; sync: EstadoSync }) {
+export function Shell({ sesion, sync, salon }: { sesion: Activa; sync: EstadoSync; salon: Salon }) {
   const [seccion, setSeccion] = useState<Seccion>('mesas');
   const [vista, setVista] = useState<Vista>({ tipo: 'seccion' });
-  const { salon } = useSalon();
   const [aviso, setAviso] = useState<string | null>(null);
   const volver = () => setVista({ tipo: 'seccion' });
   const sinAtender = salon.pendientes.length + salon.avisos.length;

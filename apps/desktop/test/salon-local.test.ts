@@ -14,6 +14,7 @@ import {
   vaciarSalonLocal,
 } from '../src/main/db/salon';
 import type { RespuestaPullSalon } from '../src/compartido/salon';
+import { encolar } from '../src/main/db/outbox';
 import { carpetaTemporal } from './tmp';
 
 const tmp = carpetaTemporal();
@@ -247,4 +248,28 @@ it('vaciar el salón borra todo', () => {
   vaciarSalonLocal(base);
   expect(leerSalon(base).mesas).toEqual([]);
   expect(siguienteNumero(base, '2026-11-18')).toBe(1);
+});
+
+it('un pull no revierte un cambio local que todavía está en la outbox', () => {
+  const p = pull({ sesiones: [sesion('s1', 'm1')], pedidos: [pedidoQr('p1', 's1', 'm1')], items: [item('i1', 'p1')] });
+  aplicarCambiosSalon(base, p);
+  confirmarPedidoLocal(base, { pedidoId: 'p1', numero: 1, dia: '2026-11-18', ajustes: [], usuarioId: 'u1', ahora: AHORA });
+  encolar(base, { tipo: 'pedido.confirmar', datos: { pedidoId: 'p1', numero: 1, dia: '2026-11-18' } });
+  aplicarCambiosSalon(base, p); // el mismo pull (solape) llega en vuelo
+  expect(leerSalon(base).pendientes).toEqual([]);
+  // Cuando la operación ya se aplicó (outbox vacía), el servidor vuelve a mandar.
+  base.db.exec('DELETE FROM outbox');
+  aplicarCambiosSalon(base, pull({ pedidos: [{ ...pedidoQr('p1', 's1', 'm1'), estado: 'confirmado', numero: 1, actualizadoEn: T1 } as never] }));
+  expect(leerMesa(base, 'm1')!.pedidos[0]).toMatchObject({ estado: 'confirmado', numero: 1 });
+});
+
+it('cerrar la mesa con la operación en vuelo no resucita sus pendientes', () => {
+  const p = pull({ sesiones: [sesion('s1', 'm1')], pedidos: [pedidoQr('p1', 's1', 'm1')], items: [item('i1', 'p1')] });
+  aplicarCambiosSalon(base, p);
+  cerrarMesaLocal(base, { sesionId: 's1', usuarioId: 'u1', ahora: AHORA });
+  encolar(base, { tipo: 'mesa.cerrar', datos: { sesionId: 's1' } });
+  aplicarCambiosSalon(base, p);
+  const s = leerSalon(base);
+  expect(s.mesas[0]!.sesion).toBeNull();
+  expect(s.pendientes).toEqual([]);
 });

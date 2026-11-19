@@ -9,7 +9,16 @@ import type { Sesion } from '../auth/plugin.js';
 import { verificarPin } from '../auth/pin.js';
 import type { Tema } from '../tiempoReal/socket.js';
 
-export type Contexto = { sesion: Sesion; autorizadoPor?: string };
+/** `hechaEn`: cuándo se hizo en la PC (puede ser antes del envío si estuvo sin conexión). */
+export type Contexto = { sesion: Sesion; autorizadoPor?: string; hechaEn: Date };
+
+const MAXIMO_ATRASO_MS = 7 * 86_400_000;
+
+/** La hora de la PC, acotada: nunca en el futuro (reloj adelantado) ni más de 7 días atrás. */
+export function horaDeOperacion(creadaEn: string, ahora = new Date()): Date {
+  const t = new Date(creadaEn).getTime();
+  return new Date(Math.min(ahora.getTime(), Math.max(ahora.getTime() - MAXIMO_ATRASO_MS, t)));
+}
 
 type TipoOperacion<D> = {
   permiso: Accion;
@@ -129,7 +138,11 @@ async function procesar(
     const { def, datos, autorizadoPor, sesion: actorOp } = await verificar(dbs, sesion, op);
     resultado = { id: op.id, estado: 'aplicada' };
     await conLocal(dbs.dbApp, sesion.localId, async (tx) => {
-      await def.aplicar(tx, { sesion: actorOp, autorizadoPor }, datos);
+      await def.aplicar(
+        tx,
+        { sesion: actorOp, autorizadoPor, hechaEn: horaDeOperacion(op.creadaEn) },
+        datos,
+      );
       await guardar(tx, sesion, op, resultado);
     });
     if (def.tema) temas.add(def.tema);

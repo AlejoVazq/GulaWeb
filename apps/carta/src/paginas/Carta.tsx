@@ -84,7 +84,7 @@ export function Carta() {
             ))}
           </div>
         )}
-        {token && infoMesa && infoMesa.motivo !== 'mesa_cerrada' && (
+        {token && infoMesa && infoMesa.motivo === null && (
           <AvisosMesa token={token} onError={recargarMesa} />
         )}
         <Categorias categorias={carta.categorias} />

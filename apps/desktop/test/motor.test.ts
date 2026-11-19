@@ -1,7 +1,7 @@
 import { beforeEach, expect, it } from 'vitest';
 import { abrirBase, type BaseLocal } from '../src/main/db/base';
 import { contarPendientes, encolar, pendientes } from '../src/main/db/outbox';
-import { escribirKv } from '../src/main/db/kv';
+import { escribirKv, leerKv } from '../src/main/db/kv';
 import { crearMotor, type EstadoSync } from '../src/main/sync/motor';
 import { SinConexion } from '../src/main/api/cliente';
 import { carpetaTemporal } from './tmp';
@@ -277,4 +277,22 @@ it('si el servidor rechaza pedido.crear, el pedido optimista desaparece y se pid
   expect(base.db.prepare("SELECT count(*) AS n FROM pedidos WHERE id = 'p9'").get()).toEqual({ n: 0 });
   expect(base.db.prepare("SELECT count(*) AS n FROM items WHERE pedido_id = 'p9'").get()).toEqual({ n: 0 });
   expect(rutas).toEqual(['/sync/salon']);
+});
+
+it('si el pull tuvo que saltear filas con cambios en vuelo, no avanza el cursor', async () => {
+  escribirKv(base, 'cursor:salon', 'C0');
+  const motor = crearMotor({
+    base,
+    crearSocket: sinSocket,
+    cliente: clienteFalso(
+      (ruta) => (ruta === '/sync/operaciones' ? { resultados: [] } : pullDePrueba()),
+      () => {
+        // La moza toca algo justo mientras el pull viaja.
+        encolar(base, { tipo: 'mesa.cerrar', datos: { sesionId: 's1' } });
+        return { ...salonVacio, cursor: 'C1', sesiones: [sesionLocal('s1')] };
+      },
+    ),
+  });
+  await motor.sincronizarAhora();
+  expect(leerKv(base, 'cursor:salon')).toBe('C0');
 });
