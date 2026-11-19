@@ -119,3 +119,11 @@ input[type='checkbox'], input[type='radio'] { width: 18px; height: 18px; min-hei
 .ticket__renglon--doble { font-size: 26px; line-height: 1.2; }
 .ticket__renglon--negrita { font-weight: 700; }
 .ticket__corte { margin-top: var(--espacio-3); border-top: 2px dashed #999; }
+
+/* Caja */
+.tabla { border-collapse: collapse; min-width: 360px; background: var(--color-superficie); border-radius: var(--radio); }
+.tabla th, .tabla td { padding: var(--espacio-2) var(--espacio-3); border-bottom: 1px solid var(--color-borde); text-align: right; }
+.tabla th[scope='row'], .tabla thead th:first-child { text-align: left; }
+.caja__esperado { font-size: 1.25rem; }
+.ok-texto { color: var(--color-ok); }
+.error-texto { color: var(--color-alerta); }

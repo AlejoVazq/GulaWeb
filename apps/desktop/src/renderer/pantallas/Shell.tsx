@@ -11,11 +11,12 @@ import { Pendientes } from '../componentes/Pendientes';
 import type { Salon } from '../../compartido/salon';
 import { puede } from '@gula/shared';
 import { Impresion } from './Impresion';
+import { Caja } from './Caja';
 import { AvisoImpresion } from '../componentes/AvisoImpresion';
 import { VistaPrevia } from '../componentes/VistaPrevia';
 
 type Activa = Extract<EstadoSesion, { tipo: 'activa' }>;
-type Seccion = 'mesas' | 'carta' | 'impresion';
+type Seccion = 'mesas' | 'caja' | 'carta' | 'impresion';
 type Vista = { tipo: 'seccion' } | { tipo: 'mesa'; mesaId: string } | { tipo: 'mostrador' };
 
 export function Shell({ sesion, sync, salon }: { sesion: Activa; sync: EstadoSync; salon: Salon }) {
@@ -26,6 +27,7 @@ export function Shell({ sesion, sync, salon }: { sesion: Activa; sync: EstadoSyn
   const sinAtender = salon.pendientes.length + salon.avisos.length;
   const secciones: [Seccion, string][] = [
     ['mesas', 'Mesas'],
+    ...(puede(sesion.usuario.rol, 'caja.operar') === 'si' ? [['caja', 'Caja'] as [Seccion, string]] : []),
     ['carta', 'Carta'],
     ...(puede(sesion.usuario.rol, 'impresion.configurar') === 'si' ? [['impresion', 'Impresión'] as [Seccion, string]] : []),
   ];
@@ -87,6 +89,7 @@ export function Shell({ sesion, sync, salon }: { sesion: Activa; sync: EstadoSyn
         )}
         {seccion === 'carta' && <Carta usuario={sesion.usuario} conexion={sync.conexion} />}
         {seccion === 'impresion' && <Impresion />}
+        {seccion === 'caja' && <Caja />}
       </section>
       <Pendientes salon={salon} />
       <VistaPrevia />
