@@ -16,6 +16,12 @@ win:
     - target: nsis
       arch: [x64]
   artifactName: GulaWeb-Setup-${version}.${ext}
+linux:
+  target:
+    - target: AppImage
+      arch: [x64]
+  category: Office
+  artifactName: GulaWeb-${version}.${ext}
 nsis:
   oneClick: false
   perMachine: false

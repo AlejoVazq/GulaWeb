@@ -11,7 +11,8 @@
     "e2e": "electron-vite build && playwright test",
     "lint": "eslint src test",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "dist": "electron-vite build && electron-builder --win --publish never"
+    "dist": "electron-vite build && electron-builder --win --publish never",
+    "dist:linux": "electron-vite build && electron-builder --linux --publish never"
   },
   "dependencies": {
     "@gula/shared": "workspace:*",
