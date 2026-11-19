@@ -13,7 +13,9 @@ import { EstadoPedido } from '../componentes/EstadoPedido';
 import { AvisosMesa } from '../componentes/AvisosMesa';
 import type { Envio } from '../componentes/Carrito';
 import { leerMarca } from '@gula/shared';
-import { estiloMarca } from '../marca';
+import { atributosTema, estiloMarca } from '../marca';
+import { useCategoriaActiva } from '../componentes/useCategoriaActiva';
+import { CabeceraLocal } from '../componentes/CabeceraLocal';
 
 const MOTIVOS = {
   mesa_cerrada: 'Pedile a la moza que habilite la mesa',
@@ -27,6 +29,7 @@ export function Carta() {
   const { items, despachar } = useCarrito(slug);
   const { estado: mesa, recargar: recargarMesa } = useMesa(token);
   const envio = useEnvioPedidos(token);
+  const activa = useCategoriaActiva(estado.tipo === 'lista' ? estado.carta.categorias.map((c) => c.id) : []);
 
   if (estado.tipo === 'cargando') return <p className="aviso">Cargando la carta…</p>;
   if (estado.tipo === 'no-encontrado') return <p className="aviso">No encontramos este local</p>;
@@ -71,12 +74,8 @@ export function Carta() {
 
   const marca = leerMarca(carta.local.marca);
   return (
-    <div className="carta" style={estiloMarca(marca)}>
-      <header className="carta__encabezado">
-        {marca.logo && <img className="carta__logo" src={marca.logo} alt="" />}
-        <h1>{carta.local.nombre}</h1>
-        {infoMesa && <p className="carta__mesa">{infoMesa.mesa.nombre}</p>}
-      </header>
+    <div className="carta" {...atributosTema(marca)} style={estiloMarca(marca)}>
+      <CabeceraLocal nombre={carta.local.nombre} marca={marca} mesa={infoMesa?.mesa.nombre} />
       <div inert={Boolean(elegido)}>
         {mesa.tipo === 'no-encontrada' && (
           <p className="aviso">Este QR ya no es válido. Pedile a la moza el de tu mesa.</p>
@@ -91,16 +90,18 @@ export function Carta() {
         {token && infoMesa && infoMesa.motivo === null && (
           <AvisosMesa token={token} onError={recargarMesa} />
         )}
-        <Categorias categorias={carta.categorias} />
+        <Categorias categorias={carta.categorias} activa={activa} />
         <main>
           {carta.categorias.map((c) => (
             <section
               key={c.id}
               id={anclaCategoria(c.id)}
-              className="seccion"
+              className={c.enHorario ? 'seccion' : 'seccion seccion--fuera-de-horario'}
               aria-labelledby={`t-${c.id}`}
             >
-              <h2 id={`t-${c.id}`}>{c.nombre}</h2>
+              <h2 id={`t-${c.id}`} className="seccion__banda">
+                {c.nombre}
+              </h2>
               {!c.enHorario && c.horario && (
                 <p className="seccion__horario">
                   Disponible de {c.horario.desde} a {c.horario.hasta}
@@ -112,7 +113,23 @@ export function Carta() {
                     key={p.id}
                     producto={p}
                     habilitado={c.enHorario}
+                    cantidadEnComanda={items.reduce((n, i) => (i.productoId === p.id ? n + i.cantidad : n), 0)}
                     onElegir={setElegido}
+                    onAgregarRapido={(prod) =>
+                      despachar({
+                        tipo: 'agregar',
+                        item: {
+                          clave: '',
+                          productoId: prod.id,
+                          nombre: prod.nombre,
+                          seleccion: {},
+                          resumenOpciones: '',
+                          nota: '',
+                          cantidad: 1,
+                          precioUnitario: prod.precio,
+                        },
+                      })
+                    }
                   />
                 ))}
               </div>

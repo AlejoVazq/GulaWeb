@@ -73,7 +73,7 @@ function montar() {
 }
 
 async function agregarHamburguesa() {
-  await userEvent.click(await screen.findByRole('button', { name: /Hamburguesa clásica/ }));
+  await userEvent.click(await screen.findByRole('button', { name: /^Hamburguesa clásica/ }));
   await userEvent.click(screen.getByLabelText(/Grande/));
   await userEvent.click(screen.getByRole('button', { name: 'Agregar · $ 6.500' }));
   await userEvent.click(screen.getByRole('button', { name: /Ver pedido/ }));
@@ -85,7 +85,7 @@ afterEach(() => vi.unstubAllGlobals());
 it('con la mesa abierta envía los ítems sin precios y muestra que espera confirmación', async () => {
   servidor(mesaAbierta);
   montar();
-  expect(await screen.findByText('Mesa 3')).toBeInTheDocument();
+  expect(await screen.findByLabelText('Mesa 3')).toBeInTheDocument();
   await agregarHamburguesa();
   await userEvent.click(screen.getByRole('button', { name: 'Enviar pedido · $ 6.500' }));
 
@@ -140,4 +140,12 @@ it('"Llamar a la moza" avisa y se deshabilita un rato', async () => {
   expect(await within(zona).findByText('¡Listo! Ya le avisamos.')).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Llamar a la moza' })).toBeDisabled();
   expect(screen.getByRole('button', { name: 'Pedir la cuenta' })).toBeEnabled();
+});
+
+it('entrando por QR muestra el sello MESA con el nombre de la mesa', async () => {
+  servidor(mesaAbierta);
+  montar();
+  const sello = await screen.findByLabelText('Mesa 3');
+  expect(sello).toHaveTextContent('MESA');
+  expect(sello).toHaveTextContent('3');
 });
