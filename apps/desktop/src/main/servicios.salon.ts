@@ -23,12 +23,14 @@ import {
   crearPedidoLocal,
   leerMesa,
   leerSalon,
+  pedidosDeSesion,
   rechazarPedidoLocal,
   siguienteNumero,
 } from './db/salon';
 import { ErrorGula } from './errores';
 
-type CanalSalon = Extract<keyof ServiciosGula, `salon:${string}`>;
+/** Las anulaciones son `salon:` pero las resuelve servicios.caja (necesitan autorización). */
+type CanalSalon = Exclude<Extract<keyof ServiciosGula, `salon:${string}`>, 'salon:anularItem' | 'salon:anularPedido'>;
 export type ServiciosSalon = Pick<ServiciosGula, CanalSalon>;
 
 type Deps = {
@@ -100,6 +102,8 @@ export function crearServiciosSalon(d: Deps): ServiciosSalon {
       const usuarioId = d.exigir('mesa.operar');
       if (!leerSalon(d.base).mesas.some((m) => m.sesion?.id === sesionId))
         throw new ErrorGula('ESTADO_INVALIDO', 'La mesa ya está cerrada.');
+      if (pedidosDeSesion(d.base, sesionId).some((p) => p.estado === 'confirmado'))
+        throw new ErrorGula('CUENTA_PENDIENTE', 'Cobrá la mesa (o anulá sus pedidos) antes de cerrarla.');
       operar('mesa.cerrar', usuarioId, { sesionId }, () => cerrarMesaLocal(d.base, { sesionId, usuarioId, ahora: ahora() }));
     },
 

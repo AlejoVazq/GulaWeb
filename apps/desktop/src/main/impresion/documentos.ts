@@ -1,4 +1,4 @@
-import { formatearPrecio } from '@gula/shared';
+import { METODOS_PAGO, NOMBRE_METODO, formatearPrecio, type ResumenTurno } from '@gula/shared';
 import type { Documento, Linea } from '../../compartido/impresion';
 import type { Pedido } from '../../compartido/salon';
 
@@ -17,7 +17,7 @@ const destinoDe = (p: PedidoImprimible) => p.mesa?.nombre ?? (p.origen === 'most
 export function comandasDePedido(
   p: PedidoImprimible,
   ctx: Contexto,
-  opciones: { reimpresion?: boolean } = {},
+  opciones: { reimpresion?: boolean; anulacion?: string } = {},
 ): { sectorId: string | null; documento: Documento }[] {
   const conocidos = new Set(ctx.sectores.map((s) => s.id));
   const grupos: { sectorId: string | null; nombre: string }[] = [
@@ -29,6 +29,8 @@ export function comandasDePedido(
     const items = p.items.filter((i) => (g.sectorId ? i.sectorId === g.sectorId : !i.sectorId || !conocidos.has(i.sectorId)));
     const l: Linea[] = [];
     if (opciones.reimpresion) l.push({ tipo: 'texto', texto: '*** REIMPRESIÓN ***', alinear: 'centro', negrita: true });
+    if (opciones.anulacion !== undefined)
+      l.push({ tipo: 'texto', texto: '*** ANULADO ***', alinear: 'centro', negrita: true, tam: 'doble' });
     l.push(
       { tipo: 'texto', texto: g.nombre.toUpperCase(), tam: 'doble', alinear: 'centro', negrita: true },
       { tipo: 'texto', texto: destinoDe(p), tam: 'doble', alinear: 'centro' },
@@ -44,8 +46,13 @@ export function comandasDePedido(
       if (i.resumenOpciones) l.push({ tipo: 'texto', texto: i.resumenOpciones, sangria: 3 });
       if (i.nota) l.push({ tipo: 'texto', texto: `» ${i.nota}`, sangria: 3, tam: 'alto' });
     }
-    if (p.notas) l.push({ tipo: 'separador' }, { tipo: 'texto', texto: `Nota: ${p.notas}`, tam: 'alto', negrita: true });
-    const titulo = `Comanda ${g.nombre} · Pedido ${p.numero ?? '-'}${opciones.reimpresion ? ' (reimpresión)' : ''}`;
+    if (opciones.anulacion !== undefined)
+      l.push({ tipo: 'separador' }, { tipo: 'texto', texto: `NO PREPARAR. Motivo: ${opciones.anulacion}`, tam: 'alto', negrita: true });
+    else if (p.notas) l.push({ tipo: 'separador' }, { tipo: 'texto', texto: `Nota: ${p.notas}`, tam: 'alto', negrita: true });
+    const titulo =
+      opciones.anulacion !== undefined
+        ? `Anulación ${g.nombre} · Pedido ${p.numero ?? '-'}`
+        : `Comanda ${g.nombre} · Pedido ${p.numero ?? '-'}${opciones.reimpresion ? ' (reimpresión)' : ''}`;
     return { sectorId: g.sectorId, documento: { titulo, lineas: l } };
   });
 }
@@ -100,4 +107,40 @@ export function ticketPrueba(local: string, columnas: number, ahora: Date): Docu
       { tipo: 'texto', texto: 'Si ves todo bien, la impresora está lista.', alinear: 'centro' },
     ],
   };
+}
+
+/** Ticket de cierre de caja: lo esperado por método, lo contado y la diferencia. */
+export function cierreDeCaja(
+  t: { fondo: number; abiertoEn: string; contado: number; esperado: number },
+  r: ResumenTurno,
+  ctx: { local: string; atendio: string; ahora: Date },
+): Documento {
+  const dif = t.contado - t.esperado;
+  const l: Linea[] = [
+    { tipo: 'texto', texto: 'CIERRE DE CAJA', tam: 'doble', alinear: 'centro', negrita: true },
+    { tipo: 'texto', texto: ctx.local, alinear: 'centro' },
+    { tipo: 'texto', texto: `Abierta ${fecha(new Date(t.abiertoEn))} ${hora(new Date(t.abiertoEn))}`, alinear: 'centro' },
+    { tipo: 'texto', texto: `Cerrada ${fecha(ctx.ahora)} ${hora(ctx.ahora)} · ${ctx.atendio}`, alinear: 'centro' },
+    { tipo: 'separador' },
+    { tipo: 'texto', texto: 'Ventas por método', negrita: true },
+    ...METODOS_PAGO.filter((m) => r.porMetodo[m].ventas || r.porMetodo[m].propinas).flatMap((m): Linea[] => [
+      { tipo: 'par', izq: NOMBRE_METODO[m], der: formatearPrecio(r.porMetodo[m].ventas) },
+      ...(r.porMetodo[m].propinas
+        ? [{ tipo: 'par', izq: `  Propinas ${NOMBRE_METODO[m].toLowerCase()}`, der: formatearPrecio(r.porMetodo[m].propinas) } as Linea]
+        : []),
+    ]),
+    { tipo: 'par', izq: 'Total ventas', der: formatearPrecio(r.ventas), negrita: true },
+    { tipo: 'par', izq: 'Total propinas', der: formatearPrecio(r.propinas) },
+    { tipo: 'separador' },
+    { tipo: 'texto', texto: 'Efectivo', negrita: true },
+    { tipo: 'par', izq: 'Fondo de cambio', der: formatearPrecio(t.fondo) },
+    { tipo: 'par', izq: 'Ingresos', der: formatearPrecio(r.ingresos) },
+    { tipo: 'par', izq: 'Egresos', der: formatearPrecio(-r.egresos) },
+    { tipo: 'par', izq: 'Efectivo esperado', der: formatearPrecio(t.esperado), negrita: true },
+    { tipo: 'par', izq: 'Efectivo contado', der: formatearPrecio(t.contado), negrita: true },
+    { tipo: 'par', izq: 'Diferencia', der: formatearPrecio(dif), negrita: true, tam: 'alto' },
+    { tipo: 'espacio' },
+    { tipo: 'texto', texto: 'Documento no válido como factura', alinear: 'centro' },
+  ];
+  return { titulo: `Cierre de caja ${fecha(ctx.ahora)}`, lineas: l };
 }

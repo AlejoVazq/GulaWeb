@@ -3,9 +3,9 @@ import type { ConfigImpresion } from '../compartido/impresion';
 import type { ServiciosGula } from '../compartido/ipc';
 import type { BaseLocal } from './db/base';
 import { leerSectores } from './db/carta';
-import { leerPedido, mesaDeSesion, pedidosDeSesion } from './db/salon';
+import { leerPedido, leerPedidoConAnulados, mesaDeSesion, pedidosDeSesion } from './db/salon';
 import type { ColaImpresion } from './impresion/cola';
-import { comandasDePedido, cuentaDe, ticketPrueba } from './impresion/documentos';
+import { cierreDeCaja, comandasDePedido, cuentaDe, ticketPrueba } from './impresion/documentos';
 import { ErrorGula } from './errores';
 
 type CanalImpresion = Extract<keyof ServiciosGula, `impresion:${string}`>;
@@ -32,6 +32,26 @@ export function crearServiciosImpresion(d: Deps) {
     const q = d.quien();
     const docs = comandasDePedido(p, { local: q.local, atendio: q.usuario, ahora: ahora(), sectores: leerSectores(d.base) }, opciones);
     d.cola.encolar(docs.map((c) => ({ tipo: 'comanda', pedidoId, sectorId: c.sectorId, documento: c.documento })));
+  }
+
+  /** Comanda "ANULADO" a los sectores de los ítems anulados (la cocina no tiene que prepararlos). */
+  function anulacion(pedidoId: string, itemIds: string[] | null, motivo: string) {
+    const p = leerPedidoConAnulados(d.base, pedidoId);
+    if (!p) return;
+    const items = itemIds ? p.items.filter((i) => itemIds.includes(i.id)) : p.items;
+    if (!items.length) return;
+    const q = d.quien();
+    const docs = comandasDePedido(
+      { ...p, items },
+      { local: q.local, atendio: q.usuario, ahora: ahora(), sectores: leerSectores(d.base) },
+      { anulacion: motivo },
+    );
+    d.cola.encolar(docs.map((c) => ({ tipo: 'comanda', pedidoId, sectorId: c.sectorId, documento: c.documento })));
+  }
+
+  function cierre(t: Parameters<typeof cierreDeCaja>[0], r: Parameters<typeof cierreDeCaja>[1]) {
+    const q = d.quien();
+    d.cola.encolar([{ tipo: 'cierre', documento: cierreDeCaja(t, r, { local: q.local, atendio: q.usuario, ahora: ahora() }) }]);
   }
 
   const validarConfig = (c: ConfigImpresion) => {
@@ -92,5 +112,5 @@ export function crearServiciosImpresion(d: Deps) {
     },
   };
 
-  return { servicios, comandas };
+  return { servicios, comandas, anulacion, cierre };
 }

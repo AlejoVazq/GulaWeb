@@ -404,3 +404,11 @@ export function mesaDeSesion(base: BaseLocal, sesionId: string): { id: string; n
     .get(sesionId) as { id: string; nombre: string } | undefined;
   return f ? { id: f.id, nombre: f.nombre } : null;
 }
+
+/** Un pedido con todos sus ítems, también los anulados (para imprimir la anulación). */
+export function leerPedidoConAnulados(base: BaseLocal, pedidoId: string): (Pedido & { mesa: { id: string; nombre: string } | null }) | null {
+  const p = leerPedido(base, pedidoId);
+  if (!p) return null;
+  const items = (base.db.prepare('SELECT * FROM items WHERE pedido_id = ? AND eliminado_en IS NULL ORDER BY creado_en, id').all(pedidoId) as F[]).map(aItem);
+  return { ...p, items };
+}

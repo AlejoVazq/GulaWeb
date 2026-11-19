@@ -1,8 +1,10 @@
 import type { UsuarioPublico } from './usuarios';
 import type { Seleccion } from '@gula/shared';
 import type { CartaLocal } from './tipos';
-import type { Ajuste, DetalleMesa, Salon } from './salon';
+import type { Ajuste, DetalleMesa, Pedido, Salon } from './salon';
 import type { ConfigImpresion, Documento, TrabajoImpresion } from './impresion';
+import type { EstadoCaja, PagoNuevo } from './caja';
+import type { CategoriaMovimiento, TipoMovimiento } from '@gula/shared';
 
 export type { UsuarioPublico };
 export type LocalInfo = { id: string; nombre: string; slug: string };
@@ -83,7 +85,22 @@ export type ServiciosGula = {
   'impresion:cuenta': (a: { sesionId: string } | { pedidoId: string }) => Promise<void>;
   'impresion:reintentar': (a: { id: string }) => Promise<void>;
   'impresion:descartar': (a: { id: string }) => Promise<void>;
+  'caja:leer': () => Promise<EstadoCaja & { porCobrar: Pedido[] }>;
+  'caja:abrir': (a: { fondo: number }) => Promise<void>;
+  'caja:movimiento': (a: { tipo: TipoMovimiento; categoria: CategoriaMovimiento; monto: number; motivo: string }) => Promise<void>;
+  'caja:cerrar': (a: { contado: number; notas?: string }) => Promise<{ esperado: number; diferencia: number }>;
+  'caja:cobrar': (a: {
+    destino: { sesionId: string } | { pedidoId: string };
+    descuento?: { tipo: 'monto' | 'porcentaje'; valor: number; motivo: string } | null;
+    pagos: PagoNuevo[];
+  }) => Promise<{ cobroId: string; total: number }>;
+  'salon:anularItem': (a: { itemId: string; motivo: string; autorizacion?: Autorizacion }) => Promise<void>;
+  'salon:anularPedido': (a: { pedidoId: string; motivo: string; autorizacion?: Autorizacion }) => Promise<void>;
+  'sesion:autorizantes': () => Promise<UsuarioPublico[]>;
 };
+
+/** Usuario y PIN de quien autoriza (encargado o dueño). */
+export type Autorizacion = { usuarioId: string; pin: string };
 
 /** Dato del evento `impresion:vista` (modo vista previa). */
 export type VistaImpresion = { documento: Documento; columnas: number };
@@ -123,6 +140,14 @@ export const CANALES: CanalServicio[] = [
   'impresion:cuenta',
   'impresion:reintentar',
   'impresion:descartar',
+  'caja:leer',
+  'caja:abrir',
+  'caja:movimiento',
+  'caja:cerrar',
+  'caja:cobrar',
+  'salon:anularItem',
+  'salon:anularPedido',
+  'sesion:autorizantes',
 ];
 
 /** API expuesta en window.gula por el preload. */

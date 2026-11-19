@@ -10,7 +10,8 @@ import { vaciarCajaLocal } from './db/caja';
 import { crearServiciosSalon } from './servicios.salon';
 import { borrarKv, escribirKv, leerKv } from './db/kv';
 import type { Sesion } from './api/sesion';
-import { SinConexion, type Cliente } from './api/cliente';
+import { ErrorApiCliente, SinConexion, type Cliente } from './api/cliente';
+import { crearServiciosCaja } from './servicios.caja';
 import type { Motor } from './sync/motor';
 import { ErrorGula, sinConexion } from './errores';
 import { crearColaImpresion, type ColaImpresion } from './impresion/cola';
@@ -73,6 +74,20 @@ export function crearServicios(d: Deps): ServiciosGula & { bloquearPorInactivida
     if (puede(s.usuario.rol, accion) !== 'si') throw new ErrorGula('SIN_PERMISO', 'No tenés permiso para hacer esto.');
     return s.usuario.id;
   };
+  const permiso = (accion: Accion) => {
+    const s = d.sesion.actual();
+    if (!s || !desbloqueada) throw new ErrorGula('SESION_BLOQUEADA', 'Elegí tu usuario para continuar.');
+    return { usuarioId: s.usuario.id, permiso: puede(s.usuario.rol, accion) };
+  };
+  const autorizar = async (a: { usuarioId: string; pin: string }, accion: Accion) => {
+    try {
+      await d.cliente.pedir('POST', '/auth/autorizar', { usuarioId: a.usuarioId, pin: a.pin, accion });
+    } catch (e) {
+      if (e instanceof SinConexion) return; // lo verifica el servidor al sincronizar
+      if (e instanceof ErrorApiCliente) throw new ErrorGula('REQUIERE_AUTORIZACION', e.mensaje);
+      throw e;
+    }
+  };
   const online = async <T>(fn: () => Promise<T>, mensaje: string) => {
     try {
       return await fn();
@@ -110,6 +125,17 @@ export function crearServicios(d: Deps): ServiciosGula & { bloquearPorInactivida
       alConfirmar: (pedidoId) => impresion.comandas(pedidoId),
     }),
     ...impresion.servicios,
+    ...crearServiciosCaja({
+      base: d.base,
+      exigir,
+      permiso,
+      autorizar,
+      usuarios: () => d.cliente.pedir<UsuarioPublico[]>('GET', '/auth/usuarios'),
+      emitir: d.emitir,
+      sincronizar: () => void d.motor.sincronizarAhora(),
+      imprimirAnulacion: (pedidoId, itemIds, motivo) => impresion.anulacion(pedidoId, itemIds, motivo),
+      imprimirCierre: (t, r) => impresion.cierre(t, r),
+    }),
     /** Al iniciar la app: resuelve lo que quedó a medio imprimir. */
     recuperarImpresion: () => cola.recuperar(),
 
