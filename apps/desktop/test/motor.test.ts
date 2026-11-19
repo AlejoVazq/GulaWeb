@@ -1,9 +1,9 @@
 import { beforeEach, expect, it } from 'vitest';
 import { abrirBase, type BaseLocal } from '../src/main/db/base';
-import { contarPendientes, encolar, pendientes } from '../src/main/db/outbox';
+import { contarPendientes, encolar, leerRechazadas, pendientes } from '../src/main/db/outbox';
 import { escribirKv, leerKv } from '../src/main/db/kv';
 import { crearMotor, type EstadoSync } from '../src/main/sync/motor';
-import { SinConexion } from '../src/main/api/cliente';
+import { ErrorApiCliente, SinConexion } from '../src/main/api/cliente';
 import { carpetaTemporal } from './tmp';
 import { abrirMesaLocal, crearPedidoLocal } from '../src/main/db/salon';
 import { pullDePrueba } from './fixtures';
@@ -369,4 +369,60 @@ it('si el servidor rechaza caja.abrir, la caja optimista desaparece y se pide la
   await motor.sincronizarAhora();
   expect(base.db.prepare("SELECT count(*) AS n FROM turnos").get()).toEqual({ n: 0 });
   expect(rutas[0]).toBe('/sync/caja');
+});
+
+it('una operación con la que el servidor falla siempre termina rechazada sola y las demás se aplican en orden', async () => {
+  const ops = Array.from({ length: 5 }, (_, i) => encolar(base, { tipo: 'producto.disponibilidad', datos: { productoId: `p${i}`, disponible: false } }));
+  const x = ops[2]!;
+  const aplicadas: string[] = [];
+  const motor = crearMotor({
+    base,
+    crearSocket: sinSocket,
+    cliente: clienteFalso((ruta, cuerpo) => {
+      if (ruta !== '/sync/operaciones') return pullDePrueba();
+      const lote = (cuerpo as { operaciones: { id: string }[] }).operaciones;
+      if (lote.some((o) => o.id === x.id)) throw new ErrorApiCliente(500, 'ERROR_INTERNO', 'Error interno');
+      aplicadas.push(...lote.map((o) => o.id));
+      return { resultados: lote.map((o) => ({ id: o.id, estado: 'aplicada' })) };
+    }),
+  });
+  for (let i = 0; i < 60 && contarPendientes(base) > 0; i++) await motor.sincronizarAhora();
+  expect(contarPendientes(base)).toBe(0);
+  expect(aplicadas).toEqual([ops[0]!.id, ops[1]!.id, ops[3]!.id, ops[4]!.id]);
+  expect(leerRechazadas(base)).toEqual([expect.objectContaining({ id: x.id, error: 'ERROR_SERVIDOR' })]);
+});
+
+it('sin conexión nunca se rechaza nada por reintentos', async () => {
+  encolar(base, { tipo: 'producto.disponibilidad', datos: { productoId: 'p1', disponible: false } });
+  const motor = crearMotor({ base, cliente: clienteFalso(() => { throw new SinConexion(); }), crearSocket: sinSocket });
+  for (let i = 0; i < 40; i++) await motor.sincronizarAhora();
+  expect(contarPendientes(base)).toBe(1);
+});
+
+it('si el servidor entero falla (también el pull), no se rechaza ninguna operación', async () => {
+  encolar(base, { tipo: 'producto.disponibilidad', datos: { productoId: 'p1', disponible: false } });
+  const motor = crearMotor({
+    base,
+    crearSocket: sinSocket,
+    cliente: clienteFalso(() => {
+      throw new ErrorApiCliente(500, 'ERROR_INTERNO', 'Error interno');
+    }),
+  });
+  for (let i = 0; i < 40; i++) await motor.sincronizarAhora();
+  expect(contarPendientes(base)).toBe(1);
+  expect(leerRechazadas(base)).toEqual([]);
+});
+
+it('un 503 (servidor no disponible) no cuenta como culpa de la operación', async () => {
+  encolar(base, { tipo: 'producto.disponibilidad', datos: { productoId: 'p1', disponible: false } });
+  const motor = crearMotor({
+    base,
+    crearSocket: sinSocket,
+    cliente: clienteFalso((ruta) => {
+      if (ruta === '/sync/operaciones') throw new ErrorApiCliente(503, 'NO_DISPONIBLE', 'No disponible');
+      return pullDePrueba();
+    }),
+  });
+  for (let i = 0; i < 40; i++) await motor.sincronizarAhora();
+  expect(contarPendientes(base)).toBe(1);
 });

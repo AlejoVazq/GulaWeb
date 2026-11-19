@@ -15,7 +15,7 @@ import {
   pendientes,
   registrarFallo,
 } from '../db/outbox';
-import { SinConexion } from '../api/cliente';
+import { ErrorApiCliente, SinConexion } from '../api/cliente';
 
 export type EstadoSync = {
   conexion: 'en-linea' | 'sin-conexion' | 'sincronizando';
@@ -46,6 +46,13 @@ const CLAVE_CURSOR_SALON = 'cursor:salon';
 const CLAVE_CURSOR_CAJA = 'cursor:caja';
 const PERIODO_MS = 60_000;
 const BACKOFF_MAX_MS = 60_000;
+const LOTE_MAX = 100;
+/** Fallos seguidos del servidor con el mismo tamaño de lote antes de partirlo (o, con 1, rechazarla). */
+const FALLOS_PARA_PARTIR = 3;
+
+/** ¿El servidor respondió con un error (no es falta de red ni de sesión)? Puede ser culpa de una operación. */
+const esFalloDelServidor = (e: unknown) =>
+  e instanceof ErrorApiCliente && e.status !== 401 && e.status !== 502 && e.status !== 503 && e.status !== 504;
 
 export const socketIo: CrearSocket = (url, path, obtenerToken) =>
   io(url, {
@@ -80,15 +87,30 @@ export function crearMotor(opts: {
   let periodico: ReturnType<typeof setInterval> | null = null;
   let socket: SocketMinimo | null = null;
   let activo = false;
+  /** Tamaño de lote actual: se parte a la mitad cuando el servidor falla seguido, y vuelve a crecer al andar. */
+  let tamLote = LOTE_MAX;
+  let fallosSeguidos = 0;
 
   const emitir = (cambios: Partial<EstadoSync>) => {
     estado = { ...estado, ...cambios, ...contar() };
     oyentes.forEach((fn) => fn(estado));
   };
 
+  function rechazarLocal(o: { id: string; tipo: string; datos: unknown }, codigo: string) {
+    marcarRechazada(base, o.id, codigo);
+    revertirOperacionLocal(base, o.tipo, o.datos);
+    revertirOperacionCaja(base, o.tipo, o.datos);
+  }
+  /** Un rechazo deja un cambio optimista local que el servidor nunca hizo: pull completo para revertirlo. */
+  function pedirPullCompleto() {
+    borrarKv(base, CLAVE_CURSOR);
+    borrarKv(base, CLAVE_CURSOR_SALON);
+    borrarKv(base, CLAVE_CURSOR_CAJA);
+  }
+
   async function push(): Promise<void> {
     for (;;) {
-      const lote = pendientes(base, 100);
+      const lote = pendientes(base, tamLote);
       if (!lote.length) return;
       let resultados: Resultado[];
       try {
@@ -104,24 +126,33 @@ export function crearMotor(opts: {
         }));
       } catch (e) {
         registrarFallo(base, lote.map((o) => o.id), e instanceof Error ? e.message : String(e));
+        if (esFalloDelServidor(e) && ++fallosSeguidos >= FALLOS_PARA_PARTIR) {
+          fallosSeguidos = 0;
+          if (lote.length > 1) {
+            tamLote = Math.ceil(lote.length / 2);
+          } else {
+            // Antes de culpar a la operación: si el servidor tampoco responde un pull, el problema es suyo.
+            await pull().catch(() => {
+              throw e;
+            });
+            // Una sola operación con la que el servidor falla siempre: se aparta para que la cola siga.
+            rechazarLocal(lote[0]!, 'ERROR_SERVIDOR');
+            pedirPullCompleto();
+            continue;
+          }
+        }
         throw e;
       }
+      fallosSeguidos = 0;
+      tamLote = Math.min(LOTE_MAX, tamLote * 2);
       marcarAplicadas(base, resultados.filter((r) => r.estado === 'aplicada').map((r) => r.id));
       const rechazadas = resultados.filter((x) => x.estado === 'rechazada');
       for (const r of rechazadas) {
-        marcarRechazada(base, r.id, r.error?.codigo ?? 'RECHAZADA');
         const o = lote.find((x) => x.id === r.id);
-        if (o) {
-          revertirOperacionLocal(base, o.tipo, o.datos);
-          revertirOperacionCaja(base, o.tipo, o.datos);
-        }
+        if (o) rechazarLocal(o, r.error?.codigo ?? 'RECHAZADA');
+        else marcarRechazada(base, r.id, r.error?.codigo ?? 'RECHAZADA');
       }
-      // Un rechazo deja un cambio optimista local que el servidor nunca hizo: pull completo para revertirlo.
-      if (rechazadas.length) {
-        borrarKv(base, CLAVE_CURSOR);
-        borrarKv(base, CLAVE_CURSOR_SALON);
-        borrarKv(base, CLAVE_CURSOR_CAJA);
-      }
+      if (rechazadas.length) pedirPullCompleto();
       if (resultados.length < lote.length) return; // respuesta parcial: lo que falta se reintenta después
     }
   }

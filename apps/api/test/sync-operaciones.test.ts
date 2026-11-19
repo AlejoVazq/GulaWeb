@@ -5,6 +5,16 @@ import { nuevoId } from '@gula/shared';
 import { auditoria, categorias, productos } from '../src/db/schema/index.js';
 import { appDePrueba, escenario, pedir, type Escenario } from './app.js';
 import { dbs, limpiarDb } from './db.js';
+import { z } from 'zod';
+import { registrarTipoOperacion } from '../src/sync/operaciones.js';
+
+registrarTipoOperacion('prueba.explotar', {
+  permiso: 'pedido.ver',
+  esquema: z.object({}),
+  aplicar: async () => {
+    throw new Error('boom');
+  },
+});
 
 let app: FastifyInstance;
 let e: Escenario;
@@ -98,4 +108,19 @@ it('los permisos se evalúan con el usuario de la operación', async () => {
   const [moza] = (await pedir(app, e.tokenDueno)('GET', '/usuarios')).json().filter((u: { rol: string }) => u.rol === 'mesero');
   const r = (await enviar(e.tokenDueno, [{ ...op('prueba.caja2', {}), usuarioId: moza.id }])).json();
   expect(r.resultados[0]).toMatchObject({ estado: 'rechazada', error: { codigo: 'SIN_PERMISO' } });
+});
+
+it('una operación que hace explotar al servidor queda rechazada sola con ERROR_INTERNO', async () => {
+  const a = op('producto.disponibilidad', { productoId, disponible: false });
+  const boom = op('prueba.explotar', {});
+  const b = op('opcion.disponibilidad', { opcionId, disponible: false });
+  const r1 = await enviar(e.tokenMoza, [a, boom, b]);
+  expect(r1.statusCode).toBe(200);
+  expect(r1.json().resultados).toEqual([
+    { id: a.id, estado: 'aplicada' },
+    { id: boom.id, estado: 'rechazada', error: { codigo: 'ERROR_INTERNO', mensaje: 'El servidor no pudo aplicar este cambio.' } },
+    { id: b.id, estado: 'aplicada' },
+  ]);
+  const r2 = await enviar(e.tokenMoza, [a, boom, b]);
+  expect(r2.json()).toEqual(r1.json());
 });

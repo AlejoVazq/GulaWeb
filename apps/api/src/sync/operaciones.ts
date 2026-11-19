@@ -124,11 +124,15 @@ async function verificar(dbs: Dbs, sesionEnvio: Sesion, op: Operacion) {
 }
 
 /** Aplica una operación exactamente una vez (idempotente por id). */
+type Log = { error: (obj: object, msg: string) => void };
+const logConsola: Log = { error: (obj, msg) => console.error(msg, obj) };
+
 async function procesar(
   dbs: Dbs,
   sesion: Sesion,
   op: Operacion,
   temas: Set<Tema>,
+  log: Log,
 ): Promise<Resultado> {
   const previo = await guardado(dbs, sesion.localId, op.id);
   if (previo) return previo;
@@ -152,22 +156,27 @@ async function procesar(
       // Choque de id (dos envíos simultáneos de la misma operación): gana el que ya la guardó.
       const ya = await guardado(dbs, sesion.localId, op.id);
       if (ya) return ya;
-      throw e;
+      // Una excepción no prevista no frena el lote: esta operación queda rechazada sola.
+      log.error({ err: e, tipo: op.tipo, operacionId: op.id }, 'Una operación offline hizo fallar al servidor');
+      resultado = rechazo(op.id, 'ERROR_INTERNO', 'El servidor no pudo aplicar este cambio.');
+    } else {
+      resultado = rechazo(op.id, e.codigo, e.message);
     }
-    resultado = rechazo(op.id, e.codigo, e.message);
   }
   try {
     await conLocal(dbs.dbApp, sesion.localId, (tx) => guardar(tx, sesion, op, resultado));
-  } catch {
+  } catch (e) {
     const ya = await guardado(dbs, sesion.localId, op.id);
     if (ya) return ya;
+    // Si ni siquiera se puede guardar el rechazo (base caída), no es culpa de la operación: que reintente.
+    if (resultado.estado === 'rechazada' && resultado.error.codigo === 'ERROR_INTERNO') throw e;
   }
   return resultado;
 }
 
-export async function procesarLote(dbs: Dbs, sesion: Sesion, ops: Operacion[]) {
+export async function procesarLote(dbs: Dbs, sesion: Sesion, ops: Operacion[], log: Log = logConsola) {
   const temas = new Set<Tema>();
   const resultados: Resultado[] = [];
-  for (const op of ops) resultados.push(await procesar(dbs, sesion, op, temas));
+  for (const op of ops) resultados.push(await procesar(dbs, sesion, op, temas, log));
   return { resultados, temas };
 }

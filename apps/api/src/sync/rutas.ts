@@ -94,7 +94,7 @@ export async function rutasSync(app: FastifyInstance, { dbs }: { dbs: Dbs }) {
     { preHandler: app.autenticar, bodyLimit: 1024 * 1024 },
     async (req) => {
       const { operaciones } = esquemaLote.parse(req.body);
-      const { resultados, temas } = await procesarLote(dbs, req.sesion, operaciones);
+      const { resultados, temas } = await procesarLote(dbs, req.sesion, operaciones, req.log);
       for (const t of temas) app.avisar(req.sesion.localId, t);
       return { resultados };
     },
