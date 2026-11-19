@@ -1,0 +1,28 @@
+/* Base común de GulaWeb: movimiento, foco, selección y cifras. Sin colores de ningún mundo. */
+:root {
+  --ui-curva-salida: cubic-bezier(0.16, 1, 0.3, 1);
+  --ui-dur-rapida: 140ms;
+  --ui-dur-media: 240ms;
+  --ui-dur-firma: 520ms;
+}
+:focus-visible {
+  outline: 3px solid currentColor;
+  outline-offset: 2px;
+}
+::selection {
+  background: var(--ui-seleccion-fondo, #0b0b0b);
+  color: var(--ui-seleccion-texto, #ffffff);
+}
+.ui-tabular {
+  font-variant-numeric: tabular-nums;
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

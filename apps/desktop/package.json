@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@gula/shared": "workspace:*",
+    "@gula/ui": "workspace:*",
     "electron-updater": "^6.8.11",
     "qrcode": "^1.5.4",
     "react": "^19.3.1",

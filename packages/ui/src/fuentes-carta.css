@@ -1,0 +1,6 @@
+/* Carta: Archivo variable (ejes wght + wdth, roman e itálica) y Azeret Mono para cifras.
+   Los archivos variables traen varios subconjuntos con unicode-range: el navegador baja solo el latino. */
+@import '@fontsource-variable/archivo/wdth.css';
+@import '@fontsource-variable/archivo/wdth-italic.css';
+@import '@fontsource/azeret-mono/latin-400.css';
+@import '@fontsource/azeret-mono/latin-600.css';

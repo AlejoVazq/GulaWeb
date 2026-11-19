@@ -1,0 +1,147 @@
+/* Papel de comanda compartido (carta, caja y talones). Cada app ajusta las variables --papel-*. */
+.papel {
+  --_perfo: 10px;
+  position: relative;
+  background: var(--papel-fondo, #ffffff);
+  color: var(--papel-tinta, #0b0b0b);
+  padding: calc(var(--_perfo) + 12px) 16px calc(var(--_perfo) + 12px);
+  font-family: var(--papel-fuente, inherit);
+  font-size: 14px;
+  line-height: 1.35;
+  /* Perforación arriba y abajo recortando el propio papel. */
+  -webkit-mask:
+    radial-gradient(circle at 50% 0, transparent 3.5px, #000 4px) top / var(--_perfo) var(--_perfo) repeat-x,
+    radial-gradient(circle at 50% 100%, transparent 3.5px, #000 4px) bottom / var(--_perfo) var(--_perfo) repeat-x,
+    linear-gradient(#000, #000) center / 100% calc(100% - 2 * var(--_perfo) + 2px) no-repeat;
+  mask:
+    radial-gradient(circle at 50% 0, transparent 3.5px, #000 4px) top / var(--_perfo) var(--_perfo) repeat-x,
+    radial-gradient(circle at 50% 100%, transparent 3.5px, #000 4px) bottom / var(--_perfo) var(--_perfo) repeat-x,
+    linear-gradient(#000, #000) center / 100% calc(100% - 2 * var(--_perfo) + 2px) no-repeat;
+  filter: drop-shadow(0 6px 10px rgb(0 0 0 / 0.18));
+}
+.papel--compacto {
+  font-size: 13px;
+  padding-inline: 12px;
+}
+.papel__cabeza {
+  position: relative;
+  text-align: center;
+  margin-bottom: 10px;
+}
+.papel__cabeza p {
+  margin: 0;
+}
+.papel__local {
+  font-family: var(--papel-local-fuente, inherit);
+  font-weight: 900;
+  font-size: 1.3em;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.papel__titulo,
+.papel__subtitulo,
+.papel__cant,
+.papel__importe,
+.papel__total {
+  font-family: var(--papel-cifras, 'Azeret Mono', ui-monospace, monospace);
+  font-variant-numeric: tabular-nums;
+}
+.papel__titulo {
+  font-weight: 600;
+  letter-spacing: 0.12em;
+}
+.papel__subtitulo {
+  font-size: 0.8em;
+  letter-spacing: 0.1em;
+  opacity: 0.8;
+}
+.papel--compacto .papel__cabeza {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  text-align: left;
+  margin-bottom: 6px;
+}
+.papel__lineas {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.papel__linea {
+  display: grid;
+  grid-template-columns: 2.4em minmax(0, 1fr) auto;
+  gap: 2px 8px;
+  align-items: baseline;
+  padding: 6px 0;
+  border-top: 1px dashed color-mix(in srgb, currentColor 45%, transparent);
+}
+.papel__cuerpo {
+  display: grid;
+  min-width: 0;
+}
+.papel__nombre {
+  font-family: var(--papel-nombre-fuente, inherit);
+  font-style: italic;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+.papel__detalle {
+  font-size: 0.85em;
+  opacity: 0.8;
+  overflow-wrap: anywhere;
+}
+.papel__importe {
+  text-align: right;
+  white-space: nowrap;
+}
+.papel__acciones {
+  grid-column: 2 / -1;
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+.papel__linea--quitada .papel__nombre,
+.papel__linea--quitada .papel__importe,
+.papel__linea--quitada .papel__cant {
+  text-decoration: line-through;
+  opacity: 0.45;
+}
+.papel__total {
+  display: flex;
+  justify-content: space-between;
+  margin: 8px 0 0;
+  padding-top: 8px;
+  border-top: 2px solid currentColor;
+  font-weight: 600;
+  font-size: 1.1em;
+  text-transform: uppercase;
+}
+.papel__pie {
+  margin-top: 12px;
+  display: grid;
+  gap: 8px;
+}
+.papel__sello {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  translate: 0 -50%;
+  rotate: -4deg;
+  border: 2px solid currentColor;
+  padding: 2px 8px;
+  font-family: var(--papel-cifras, 'Azeret Mono', ui-monospace, monospace);
+  font-weight: 600;
+  font-size: 0.8em;
+  letter-spacing: 0.14em;
+}
+.papel--compacto .papel__sello {
+  position: static;
+  translate: none;
+}
+.papel__sello--ok {
+  color: var(--papel-sello-ok, #0b0b0b);
+}
+.papel__sello--mal {
+  color: var(--papel-sello-mal, #b3261e);
+}
