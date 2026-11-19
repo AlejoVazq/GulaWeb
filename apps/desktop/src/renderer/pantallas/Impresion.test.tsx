@@ -33,3 +33,17 @@ it('imprime una prueba y lista los últimos trabajos', async () => {
   expect(screen.getByText('Prueba de impresión')).toBeInTheDocument();
   expect(screen.getByText('Impresa')).toBeInTheDocument();
 });
+
+it('"Imprimir prueba" usa la impresora recién elegida (guarda antes)', async () => {
+  const p = puenteFalso({
+    'impresion:config': () => ({ modo: 'vista_previa', impresora: null, columnas: 48, impresoras: ['Termica 80'] }),
+    'impresion:trabajos': () => ({ conError: [], recientes: [] }),
+  });
+  render(<Impresion />);
+  await userEvent.click(await screen.findByRole('radio', { name: 'Impresora' }));
+  await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Impresora de Windows' }), 'Termica 80');
+  await userEvent.click(screen.getByRole('button', { name: 'Imprimir prueba' }));
+  const canales = p.invocar.mock.calls.map((c) => c[0]);
+  expect(canales.indexOf('impresion:guardarConfig')).toBeGreaterThan(-1);
+  expect(canales.indexOf('impresion:guardarConfig')).toBeLessThan(canales.indexOf('impresion:prueba'));
+});

@@ -82,7 +82,14 @@ export function Impresion() {
         >
           Guardar
         </button>
-        <button type="button" className="boton" onClick={() => void intentar(() => llamar('impresion:prueba'), 'Prueba enviada.')}>
+        <button type="button" className="boton" onClick={() =>
+            // La prueba sale con lo que se ve en pantalla: se guarda antes.
+            void intentar(async () => {
+              await llamar('impresion:guardarConfig', config);
+              await llamar('impresion:prueba');
+            }, 'Guardado. Prueba enviada.')
+          }
+        >
           Imprimir prueba
         </button>
       </div>
