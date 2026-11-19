@@ -27,6 +27,7 @@ import { escribirKv, leerKv } from './db/kv';
 import { encolar } from './db/outbox';
 import { leerPedido, leerSalon, pedidosDeSesion } from './db/salon';
 import { ErrorGula } from './errores';
+import { leerDelivery } from './db/delivery';
 
 type Canal = 'caja:leer' | 'caja:abrir' | 'caja:movimiento' | 'caja:cerrar' | 'caja:cobrar' | 'salon:anularItem' | 'salon:anularPedido' | 'sesion:autorizantes';
 export type ServiciosCaja = Pick<ServiciosGula, Canal>;
@@ -153,7 +154,8 @@ export function crearServiciosCaja(d: Deps): ServiciosCaja {
         const p = leerPedido(d.base, destino.pedidoId);
         if (!p || p.sesionId || p.estado !== 'confirmado') throw new ErrorGula('ESTADO_INVALIDO', 'Ese pedido ya se cobró o se anuló.');
         pedidoId = p.id;
-        subtotal = p.total;
+        // Un delivery cobra también el envío.
+        subtotal = p.origen === 'delivery' ? (leerDelivery(d.base, p.id)?.aCobrar ?? p.total) : p.total;
       }
       if (subtotal <= 0) throw new ErrorGula('ESTADO_INVALIDO', 'No hay nada para cobrar.');
       if (subtotal > MONTO_MAXIMO_CAJA) throw invalido('El total supera el máximo que acepta la caja.');

@@ -9,7 +9,7 @@ import {
   validarSeleccion,
   type Accion,
 } from '@gula/shared';
-import type { EventoGula, ServiciosGula } from '../compartido/ipc';
+import type { EventoGula, ItemPedido, ServiciosGula } from '../compartido/ipc';
 import type { ItemNuevo } from '../compartido/salon';
 import type { ProductoLocal } from '../compartido/tipos';
 import type { BaseLocal } from './db/base';
@@ -46,6 +46,33 @@ type Deps = {
 
 const invalido = (mensaje: string) => new ErrorGula('DATOS_INVALIDOS', mensaje);
 
+/** Valida lo elegido contra la carta local y arma los ítems con precio y nombre de la PC. */
+export function armarItems(base: BaseLocal, items: ItemPedido[]): ItemNuevo[] {
+  if (!items.length || items.length > ITEMS_MAXIMOS) throw invalido('El pedido no tiene ítems.');
+  const carta = new Map<string, ProductoLocal>();
+  for (const c of leerCarta(base).categorias) for (const p of c.productos) carta.set(p.id, p);
+  return items.map((i) => {
+    const p = carta.get(i.productoId);
+    if (!p) throw invalido('Un producto del pedido ya no está en la carta.');
+    if (!p.disponible) throw new ErrorGula('PRODUCTO_NO_DISPONIBLE', `"${p.nombre}" está marcado sin stock.`);
+    if (!Number.isInteger(i.cantidad) || i.cantidad < 1 || i.cantidad > CANTIDAD_MAXIMA)
+      throw invalido(`Cantidad inválida para "${p.nombre}".`);
+    const v = validarSeleccion(p, i.seleccion);
+    if (!v.ok) throw invalido(`${p.nombre}: ${v.errores.join('. ')}`);
+    return {
+      itemId: nuevoId(),
+      productoId: p.id,
+      nombre: p.nombre,
+      precioUnitario: precioUnitario(p, i.seleccion),
+      cantidad: i.cantidad,
+      seleccion: i.seleccion,
+      resumenOpciones: resumirOpciones(p, i.seleccion),
+      nota: i.nota.trim().slice(0, NOTA_MAXIMA),
+      sectorId: p.sectorId,
+    };
+  });
+}
+
 export function crearServiciosSalon(d: Deps): ServiciosSalon {
   const ahora = d.ahora ?? (() => new Date());
 
@@ -65,12 +92,6 @@ export function crearServiciosSalon(d: Deps): ServiciosSalon {
     } catch (e) {
       console.error('No se pudieron encolar las comandas', e);
     }
-  };
-
-  const productos = () => {
-    const mapa = new Map<string, ProductoLocal>();
-    for (const c of leerCarta(d.base).categorias) for (const p of c.productos) mapa.set(p.id, p);
-    return mapa;
   };
 
   const pedidoPendiente = (pedidoId: string) => {
@@ -111,28 +132,7 @@ export function crearServiciosSalon(d: Deps): ServiciosSalon {
       const usuarioId = d.exigir('pedido.tomar');
       if (origen === 'manual' && !leerSalon(d.base).mesas.some((m) => m.sesion?.id === sesionId))
         throw new ErrorGula('ESTADO_INVALIDO', 'La mesa no está abierta.');
-      if (!items.length || items.length > ITEMS_MAXIMOS) throw invalido('El pedido no tiene ítems.');
-      const carta = productos();
-      const armados: ItemNuevo[] = items.map((i) => {
-        const p = carta.get(i.productoId);
-        if (!p) throw invalido('Un producto del pedido ya no está en la carta.');
-        if (!p.disponible) throw new ErrorGula('PRODUCTO_NO_DISPONIBLE', `"${p.nombre}" está marcado sin stock.`);
-        if (!Number.isInteger(i.cantidad) || i.cantidad < 1 || i.cantidad > CANTIDAD_MAXIMA)
-          throw invalido(`Cantidad inválida para "${p.nombre}".`);
-        const v = validarSeleccion(p, i.seleccion);
-        if (!v.ok) throw invalido(`${p.nombre}: ${v.errores.join('. ')}`);
-        return {
-          itemId: nuevoId(),
-          productoId: p.id,
-          nombre: p.nombre,
-          precioUnitario: precioUnitario(p, i.seleccion),
-          cantidad: i.cantidad,
-          seleccion: i.seleccion,
-          resumenOpciones: resumirOpciones(p, i.seleccion),
-          nota: i.nota.trim().slice(0, NOTA_MAXIMA),
-          sectorId: p.sectorId,
-        };
-      });
+      const armados = armarItems(d.base, items);
       const pedidoId = nuevoId();
       const t = ahora();
       const dia = diaOperativo(t);

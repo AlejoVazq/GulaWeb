@@ -12,6 +12,7 @@ import { borrarKv, escribirKv, leerKv } from './db/kv';
 import type { Sesion } from './api/sesion';
 import { ErrorApiCliente, SinConexion, type Cliente } from './api/cliente';
 import { crearServiciosCaja } from './servicios.caja';
+import { crearServiciosDelivery } from './servicios.delivery';
 import type { Motor } from './sync/motor';
 import { ErrorGula, sinConexion } from './errores';
 import { crearColaImpresion, type ColaImpresion } from './impresion/cola';
@@ -135,6 +136,16 @@ export function crearServicios(d: Deps): ServiciosGula & { bloquearPorInactivida
       sincronizar: () => void d.motor.sincronizarAhora(),
       imprimirAnulacion: (pedidoId, itemIds, motivo) => impresion.anulacion(pedidoId, itemIds, motivo),
       imprimirCierre: (t, r) => impresion.cierre(t, r),
+    }),
+    ...crearServiciosDelivery({
+      base: d.base,
+      exigir,
+      emitir: d.emitir,
+      sincronizar: () => void d.motor.sincronizarAhora(),
+      alCrear: (pedidoId) => {
+        impresion.comandas(pedidoId);
+        impresion.delivery(pedidoId);
+      },
     }),
     /** Al iniciar la app: resuelve lo que quedó a medio imprimir. */
     recuperarImpresion: () => cola.recuperar(),

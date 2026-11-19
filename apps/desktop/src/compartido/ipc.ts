@@ -4,6 +4,8 @@ import type { CartaLocal } from './tipos';
 import type { Ajuste, DetalleMesa, Pedido, Salon } from './salon';
 import type { ConfigImpresion, Documento, TrabajoImpresion } from './impresion';
 import type { EstadoCaja, PagoNuevo } from './caja';
+import type { DatosCliente, TableroDelivery } from './delivery';
+import type { EstadoReparto } from '@gula/shared';
 import type { CategoriaMovimiento, TipoMovimiento } from '@gula/shared';
 
 export type { UsuarioPublico };
@@ -98,6 +100,18 @@ export type ServiciosGula = {
   'salon:anularItem': (a: { itemId: string; motivo: string; autorizacion?: Autorizacion }) => Promise<void>;
   'salon:anularPedido': (a: { pedidoId: string; motivo: string; autorizacion?: Autorizacion }) => Promise<void>;
   'sesion:autorizantes': () => Promise<UsuarioPublico[]>;
+  'delivery:tablero': () => Promise<TableroDelivery>;
+  'delivery:crear': (a: {
+    cliente: DatosCliente;
+    costoEnvio: number;
+    pagaCon?: number | null;
+    notas?: string;
+    items: ItemPedido[];
+  }) => Promise<{ pedidoId: string; numero: number }>;
+  'delivery:estado': (a: { pedidoId: string; estado: Exclude<EstadoReparto, 'preparando'>; repartidor?: string }) => Promise<void>;
+  'delivery:cliente': (a: { telefono: string }) => Promise<DatosCliente | null>;
+  'delivery:config': () => Promise<{ envio: number }>;
+  'delivery:guardarConfig': (a: { envio: number }) => Promise<void>;
   'sync:rechazadas': () => Promise<OperacionRechazada[]>;
   'sync:descartarRechazada': (a: { id: string }) => Promise<void>;
 };
@@ -154,6 +168,12 @@ export const CANALES: CanalServicio[] = [
   'salon:anularItem',
   'salon:anularPedido',
   'sesion:autorizantes',
+  'delivery:tablero',
+  'delivery:crear',
+  'delivery:estado',
+  'delivery:cliente',
+  'delivery:config',
+  'delivery:guardarConfig',
   'sync:rechazadas',
   'sync:descartarRechazada',
 ];
