@@ -19,6 +19,8 @@ export type MesaPublica = {
   local: { nombre: string; slug: string };
   aceptaPedidos: boolean;
   motivo: MotivoSinPedidos | null;
+  /** Id opaco de la sesión abierta de la mesa (null si está cerrada): ata los pedidos del celular a esa sesión. */
+  sesion: string | null;
 };
 
 export type PedidoPublico = {

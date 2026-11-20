@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router';
 import type { MesaPublica } from '@gula/shared';
@@ -16,6 +16,7 @@ const mesaAbierta: MesaPublica = {
   local: { nombre: 'Bar La Gula', slug: 'la-gula' },
   aceptaPedidos: true,
   motivo: null,
+  sesion: 'S1',
 };
 
 type Llamada = { url: string; metodo: string; cuerpo: unknown };
@@ -104,7 +105,7 @@ it('con la mesa abierta envía los ítems sin precios y muestra que espera confi
 });
 
 it('mesa cerrada muestra la carta en solo lectura con el aviso', async () => {
-  servidor({ ...mesaAbierta, aceptaPedidos: false, motivo: 'mesa_cerrada' });
+  servidor({ ...mesaAbierta, aceptaPedidos: false, motivo: 'mesa_cerrada', sesion: null });
   montar();
   expect(await screen.findByText('Pedile a la moza que abra la mesa para pedir desde acá.')).toBeInTheDocument();
   expect(screen.queryByRole('button', { name: /^Agregar / })).not.toBeInTheDocument();
@@ -215,4 +216,38 @@ it('con 25 líneas el botón "Mandar a la barra" queda fuera del área con scrol
   const boton = screen.getByRole('button', { name: 'Mandar a la barra' });
   expect(boton.closest('.papel__lineas')).toBeNull();
   expect(screen.getByRole('dialog', { name: 'Tu comanda' }).querySelectorAll('.papel__linea')).toHaveLength(25);
+});
+
+const talonGuardado = (sesion: string) => {
+  sessionStorage.setItem(
+    'gula:pedidos:TOKEN',
+    JSON.stringify([{ id: 'x', estado: 'pendiente', motivoRechazo: null, total: 0, items: [] }]),
+  );
+  sessionStorage.setItem('gula:sesion:TOKEN', JSON.stringify(sesion));
+};
+
+it('el talón de la misma sesión de la mesa sigue a la vista al volver', async () => {
+  talonGuardado('S1');
+  servidor(mesaAbierta);
+  montar();
+  expect(await screen.findByText('Esperando que lo confirmen en la barra.')).toBeInTheDocument();
+});
+
+it('al cerrarse la mesa desaparece el pedido anterior', async () => {
+  talonGuardado('S1');
+  servidor({ ...mesaAbierta, aceptaPedidos: false, motivo: 'mesa_cerrada', sesion: null });
+  montar();
+  await screen.findByText('Pedile a la moza que abra la mesa para pedir desde acá.');
+  await waitFor(() => expect(sessionStorage.getItem('gula:pedidos:TOKEN')).toBe('[]'));
+  expect(screen.queryByText('Esperando que lo confirmen en la barra.')).not.toBeInTheDocument();
+});
+
+it('si la mesa se volvió a abrir (otra sesión) no muestra el pedido de la anterior', async () => {
+  talonGuardado('S0');
+  servidor(mesaAbierta);
+  montar();
+  await screen.findByRole('button', { name: /^Hamburguesa clásica/ });
+  await waitFor(() => expect(sessionStorage.getItem('gula:pedidos:TOKEN')).toBe('[]'));
+  expect(sessionStorage.getItem('gula:sesion:TOKEN')).toBe('"S1"');
+  expect(screen.queryByText('Esperando que lo confirmen en la barra.')).not.toBeInTheDocument();
 });

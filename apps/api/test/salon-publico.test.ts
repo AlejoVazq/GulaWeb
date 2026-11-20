@@ -61,6 +61,7 @@ describe('GET /publico/mesas/:token', () => {
       local: { nombre: 'Local local-a', slug: 'local-a' },
       aceptaPedidos: true,
       motivo: null,
+      sesion: expect.any(String),
     });
   });
 
@@ -70,6 +71,7 @@ describe('GET /publico/mesas/:token', () => {
     expect((await publico('GET', `/publico/mesas/${m.token}`)).json()).toMatchObject({
       aceptaPedidos: false,
       motivo: 'mesa_cerrada',
+      sesion: null,
     });
   });
 

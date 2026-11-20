@@ -65,9 +65,10 @@ const reintentable = (e: unknown) =>
  * Envío de pedidos de la mesa. El id se genera una vez por envío y se reutiliza en cada reintento
  * (también si se recarga la página), así el servidor nunca duplica el pedido.
  */
-export function useEnvioPedidos(token: string | undefined) {
+export function useEnvioPedidos(token: string | undefined, sesion?: string | null) {
   const claveEnvio = `gula:envio:${token}`;
   const clavePedidos = `gula:pedidos:${token}`;
+  const claveSesion = `gula:sesion:${token}`;
   const [pedidos, setPedidos] = useState<PedidoPublico[]>(() =>
     token ? leer(clavePedidos, []) : [],
   );
@@ -78,6 +79,15 @@ export function useEnvioPedidos(token: string | undefined) {
   useEffect(() => {
     if (token) escribir(clavePedidos, pedidos);
   }, [token, clavePedidos, pedidos]);
+
+  // Los talones son de la sesión en la que se pidieron: si la mesa se cerró (o ya es otra sesión),
+  // se descartan para que el próximo que escanee el QR no vea el pedido anterior.
+  useEffect(() => {
+    if (!token || sesion === undefined) return;
+    const anterior = leer<string | null>(claveSesion, null);
+    if (sesion === null || (anterior !== null && anterior !== sesion)) setPedidos([]);
+    escribir(claveSesion, sesion);
+  }, [token, claveSesion, sesion]);
 
   const enviar = async (items: ItemSolicitado[]): Promise<boolean> => {
     if (!token) return false;

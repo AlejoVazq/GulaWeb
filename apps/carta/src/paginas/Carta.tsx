@@ -44,7 +44,7 @@ export function Carta() {
   const [elegido, setElegido] = useState<ProductoPublico | null>(null);
   const { items, despachar } = useCarrito(slug);
   const { estado: mesa, recargar: recargarMesa } = useMesa(token);
-  const envio = useEnvioPedidos(token);
+  const envio = useEnvioPedidos(token, mesa.tipo === 'lista' ? mesa.mesa.sesion : undefined);
   // Al mandar, el papel sale hacia arriba: cuando termina el corte, la vista lo acompaña hasta el talón.
   const talones = useRef<HTMLDivElement>(null);
   const irAlTalon = () => {

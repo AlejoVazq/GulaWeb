@@ -157,6 +157,7 @@ export async function rutasPublicasSalon(
         local: { nombre: m.local.nombre, slug: m.local.slug },
         aceptaPedidos: motivo === null,
         motivo,
+        sesion: sesion?.id ?? null,
       };
     },
   );
