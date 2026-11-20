@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { LocalInfo, UsuarioPublico } from '../../compartido/ipc';
 import { llamar, mensajeDe } from '../gula';
+import { IconoFlecha } from '@gula/ui';
 
 export const NOMBRE_ROL: Record<UsuarioPublico['rol'], string> = {
   dueno: 'Dueño',
@@ -103,8 +104,9 @@ export function ElegirUsuario({ local }: { local: LocalInfo }) {
   return (
     <main className="centrado">
       <div className="tarjeta teclado-pin">
-        <button type="button" className="enlace" onClick={() => setElegido(null)}>
-          ← Volver
+        <button type="button" className="enlace boton--icono" onClick={() => setElegido(null)}>
+          <IconoFlecha hacia="izq" />
+          Volver
         </button>
         <h2>Hola, {elegido.nombre}</h2>
         <p className="suave">Ingresá tu PIN</p>

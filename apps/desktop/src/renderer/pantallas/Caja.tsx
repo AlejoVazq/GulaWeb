@@ -259,7 +259,7 @@ export function Caja() {
 
         <section className="modulo" aria-labelledby="movimientos">
           <h2 id="movimientos" className="modulo__titulo">
-            Movimientos <span className="columna__cuenta">{caja.movimientos.length}</span>
+            Movimientos <span className="columna__cuenta" aria-hidden="true">{caja.movimientos.length}</span>
           </h2>
           {!caja.movimientos.length ? (
             <p className="suave">Sin movimientos.</p>
@@ -292,7 +292,7 @@ export function Caja() {
 
         <section className="modulo" aria-labelledby="cobros">
           <h2 id="cobros" className="modulo__titulo">
-            Cobros <span className="columna__cuenta">{caja.cobros.length}</span>
+            Cobros <span className="columna__cuenta" aria-hidden="true">{caja.cobros.length}</span>
           </h2>
           {!caja.cobros.length ? (
             <p className="suave">Todavía no se cobró nada.</p>

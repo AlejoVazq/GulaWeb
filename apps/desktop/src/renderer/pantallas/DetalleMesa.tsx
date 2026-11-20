@@ -6,7 +6,7 @@ import { TomarPedido } from '../componentes/TomarPedido';
 import { hora } from '../formato';
 import { Cobrar } from '../componentes/Cobrar';
 import { Anular } from '../componentes/Anular';
-import { PapelComanda, selloDeEstado, type LineaPapel } from '@gula/ui';
+import { IconoFlecha, PapelComanda, selloDeEstado, type LineaPapel } from '@gula/ui';
 
 type Anulando =
   { tipo: 'item'; id: string; titulo: string } | { tipo: 'pedido'; id: string; titulo: string };
@@ -160,10 +160,11 @@ export function DetalleMesa({
   return (
     <div className="detalle">
       <div className="fila fila--entre">
-        <button type="button" className="boton" onClick={onVolver}>
-          ← Mesas
+        {/* El nombre de la mesa ya es el título del cartel. */}
+        <button type="button" className="boton boton--icono" onClick={onVolver}>
+          <IconoFlecha hacia="izq" />
+          Mesas
         </button>
-        <h1 className="sr-solo">{mesa.nombre}</h1>
         <span className="suave">
           Abierta {hora(sesion.abiertaEn)}
           {sesion.comensales ? ` · ${sesion.comensales} personas` : ''}

@@ -99,7 +99,7 @@ export function Carta({ usuario, conexion }: Props) {
     <div className={editor && cat && edicion ? 'carta carta--editando' : 'carta'}>
       <nav className="carta__categorias" aria-label="Categorías">
         <h2 className="columna__titulo">
-          Categorías <span className="columna__cuenta">{carta.categorias.length}</span>
+          Categorías <span className="columna__cuenta" aria-hidden="true">{carta.categorias.length}</span>
         </h2>
         <ul className="categorias">
           {carta.categorias.map((c) => (
@@ -115,7 +115,9 @@ export function Carta({ usuario, conexion }: Props) {
               >
                 <span className="categorias__nombre">{c.nombre}</span>
                 {!c.visible && <span className="etiqueta categorias__oculta">Oculta</span>}
-                <span className="categorias__cuenta">{c.productos.length}</span>
+                <span className="categorias__cuenta" aria-hidden="true">
+                  {c.productos.length}
+                </span>
               </button>
             </li>
           ))}

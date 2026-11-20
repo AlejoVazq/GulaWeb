@@ -153,7 +153,7 @@ export function Delivery({ rol }: { rol: Rol }) {
   const columna = (id: string, titulo: string, lista: PedidoDelivery[], vacio: string) => (
     <section className="delivery__columna" aria-labelledby={id}>
       <h2 id={id} className="columna__titulo">
-        {titulo} <span className="columna__cuenta">{lista.length}</span>
+        {titulo} <span className="columna__cuenta" aria-hidden="true">{lista.length}</span>
       </h2>
       {lista.length ? lista.map(tarjeta) : <p className="columna__vacia">{vacio}</p>}
     </section>

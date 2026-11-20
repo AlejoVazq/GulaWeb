@@ -139,16 +139,16 @@ test('pedido QR: la PC abre la mesa, el cliente pide, suena la alerta, se confir
     });
     expect(r.status).toBe(201);
 
-    const bandeja = v.getByRole('complementary', { name: /Pendientes/ });
+    const bandeja = v.getByRole('complementary', { name: /^Entrando/ });
     const tarjeta = bandeja.getByRole('article', { name: /Mesa 3/ });
     await expect(tarjeta).toBeVisible({ timeout: 20_000 });
-    await expect(tarjeta).toContainText(`2× ${producto.nombre}`);
-    await expect(v.getByText('Hay pedidos o avisos sin atender')).toBeVisible();
+    await expect(tarjeta).toContainText(new RegExp(`2×\\s*${producto.nombre}`));
+    await expect(v.getByText(/^\d+ sin atender$/)).toBeVisible();
     if (process.env.CAPTURA_SALON) await v.screenshot({ path: process.env.CAPTURA_SALON });
 
-    await tarjeta.getByRole('button', { name: 'Confirmar' }).click();
+    await tarjeta.getByRole('button', { name: 'Aceptar e imprimir' }).click();
     await expect(tarjeta).toBeHidden();
-    await expect(v.getByText('Hay pedidos o avisos sin atender')).toBeHidden();
+    await expect(v.getByText(/^\d+ sin atender$/)).toBeHidden();
 
     // Sin impresora configurada, la comanda sale en la vista previa.
     const previa = v.getByRole('complementary', { name: 'Vista previa de impresión' });
@@ -191,7 +191,7 @@ test('caja: se abre, se cobra la Mesa 3 en efectivo y se cierra contando lo espe
   await expect(v.getByRole('button', { name: /^Mesa 3 / })).toContainText('Libre');
 
   await menu.getByRole('button', { name: 'Caja' }).click();
-  const esperado = (await v.getByText(/Efectivo esperado/).textContent())!.replace(/.*\$\s*/, '').trim();
+  const esperado = (await v.getByText(/Efectivo esperado \$/).textContent())!.replace(/.*\$\s*/, '').trim();
   await v.getByRole('button', { name: 'Cerrar caja' }).click();
   await v.getByLabel('Efectivo contado').fill(esperado);
   await expect(v.getByText('Da justo')).toBeVisible();
@@ -226,7 +226,7 @@ test('delivery: se carga, sale, se cobra con el envío al entregar y el servidor
   await menu.getByRole('button', { name: 'Caja' }).click();
   await v.getByLabel('Fondo de cambio').fill('0');
   await v.getByRole('button', { name: 'Abrir caja' }).click();
-  await expect(v.getByText(/Efectivo esperado/)).toBeVisible();
+  await expect(v.getByText(/Efectivo esperado \$/)).toBeVisible();
 
   await menu.getByRole('button', { name: 'Delivery' }).click();
   await v.getByRole('button', { name: 'Nuevo delivery' }).click();

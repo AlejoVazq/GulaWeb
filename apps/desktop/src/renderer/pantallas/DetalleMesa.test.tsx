@@ -28,7 +28,7 @@ const detalle: Detalle = {
 it('muestra los pedidos con número, ítems y total', async () => {
   puenteFalso({ 'salon:mesa': () => detalle });
   render(<DetalleMesa mesaId="m1" onVolver={vi.fn()} />);
-  expect(await screen.findByRole('heading', { name: 'Mesa 3' })).toBeInTheDocument();
+  expect(await screen.findByRole('article', { name: 'Pedido 4' })).toBeInTheDocument();
   const pedido = screen.getByRole('article', { name: 'Pedido 4' });
   expect(within(pedido).getByText('2×')).toBeInTheDocument();
   expect(within(pedido).getByText('Clásica')).toBeInTheDocument();
@@ -96,7 +96,7 @@ it('con pedidos sin cobrar no se puede cerrar la mesa', async () => {
 it('"Cobrar" solo aparece para quien puede cobrar y abre el cobro con el total', async () => {
   puenteFalso({ 'salon:mesa': () => detalle });
   const { unmount } = render(<DetalleMesa mesaId="m1" onVolver={vi.fn()} rol="mesero" />);
-  await screen.findByRole('heading', { name: 'Mesa 3' });
+  await screen.findByRole('article', { name: 'Pedido 4' });
   expect(screen.queryByRole('button', { name: 'Cobrar' })).toBeNull();
   unmount();
   render(<DetalleMesa mesaId="m1" onVolver={vi.fn()} rol="encargado" />);
