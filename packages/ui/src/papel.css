@@ -86,12 +86,13 @@
   font-family: var(--papel-nombre-fuente, inherit);
   font-style: italic;
   font-weight: 800;
-  overflow-wrap: anywhere;
+  /* Parte una palabra solo si no entra entera en el renglón. */
+  overflow-wrap: break-word;
 }
 .papel__detalle {
   font-size: 0.85em;
   opacity: 0.8;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 .papel__importe {
   text-align: right;
@@ -147,11 +148,15 @@
 .papel__sello--mal {
   color: var(--papel-sello-mal, #b3261e);
 }
-/* En el papel compacto los controles de cada línea van al final del renglón. */
+/* En el papel compacto los controles de cada línea van debajo del importe: así el nombre
+   conserva el ancho aunque el importe sea de siete cifras. */
 .papel--compacto .papel__linea {
-  grid-template-columns: 2.2em minmax(0, 1fr) auto auto;
+  grid-template-columns: 2.2em minmax(0, 1fr) auto;
+}
+.papel--compacto .papel__linea:has(.papel__acciones) .papel__cuerpo {
+  grid-row: span 2;
 }
 .papel--compacto .papel__acciones {
-  grid-column: auto;
+  grid-column: 3;
   gap: 4px;
 }

@@ -18,8 +18,9 @@ export function Categorias({ categorias, activa }: { categorias: CategoriaPublic
           href={`#${anclaCategoria(c.id)}`}
           className="categorias__item"
           aria-current={c.id === activa ? 'true' : undefined}
+          title={c.nombre}
         >
-          {c.nombre}
+          <span className="categorias__texto">{c.nombre}</span>
         </a>
       ))}
     </nav>

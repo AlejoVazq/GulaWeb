@@ -123,3 +123,15 @@ it('un pedido pendiente aparece como papel de comanda con su mesa y sus líneas'
   expect(within(papel).getByText('MESA 3')).toBeInTheDocument();
   expect(papel.querySelectorAll('.papel__linea').length).toBeGreaterThan(0);
 });
+
+it('un pedido de 30 renglones se muestra plegado, con el total completo, y se despliega', async () => {
+  puenteFalso({});
+  const items = Array.from({ length: 30 }, (_, n) => ({ ...pendiente.items[1]!, id: `x${n}`, nombre: `Producto ${n + 1}`, precioUnitario: 100000 }));
+  render(<Pendientes salon={{ mesas: [], avisos: [], pendientes: [{ ...pendiente, items }] }} />);
+  const papel = screen.getByRole('article', { name: /Mesa 3/ });
+  expect(within(papel).getAllByRole('listitem')).toHaveLength(6);
+  expect(papel).toHaveTextContent('$ 30.000');
+  await userEvent.click(within(papel).getByRole('button', { name: 'Ver los 30 renglones' }));
+  expect(within(papel).getAllByRole('listitem')).toHaveLength(30);
+  expect(within(papel).getByRole('button', { name: 'Ver menos' })).toBeInTheDocument();
+});

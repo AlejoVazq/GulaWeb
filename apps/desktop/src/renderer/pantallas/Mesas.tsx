@@ -94,9 +94,14 @@ const FILTROS: [Filtro, string][] = [
 ];
 
 /** "Mesa 7" → "7"; un nombre sin número va entero (y la placa se achica). */
-function placaDe(nombre: string): string {
-  const m = /^mesa\s*(\d+)$/i.exec(nombre.trim());
-  return m ? m[1]! : nombre;
+/** "Mesa 4" → 4; "Patio cubierto 12" → 12 en la placa y "Patio cubierto" como rótulo; sin número, el nombre entero. */
+function placaDe(nombre: string): { placa: string; lugar?: string } {
+  const n = nombre.trim();
+  const mesa = /^mesa\s*(\d+)$/i.exec(n);
+  if (mesa) return { placa: mesa[1]! };
+  const conNumero = /^(.+?)\s+(\d+)$/.exec(n);
+  if (conNumero) return { placa: conNumero[2]!, lugar: conNumero[1]! };
+  return { placa: n };
 }
 
 export function Mesas({ salon, onVerMesa, onMostrador, porCobrar = [], onCobrar, ahora = new Date() }: Props) {
@@ -150,7 +155,7 @@ export function Mesas({ salon, onVerMesa, onMostrador, porCobrar = [], onCobrar,
             {mesas.map((m) => {
               const estados = estadoDe(m);
               const info = detalle(m, ahora);
-              const placa = placaDe(m.nombre);
+              const { placa, lugar } = placaDe(m.nombre);
               return (
                 <button
                   key={m.id}
@@ -161,6 +166,7 @@ export function Mesas({ salon, onVerMesa, onMostrador, porCobrar = [], onCobrar,
                 >
                   <span className={placa.length > 3 ? 'mesa__placa mesa__placa--larga' : 'mesa__placa'}>{placa}</span>
                   <span className="mesa__estados">
+                    {lugar && <span className="mesa__lugar">{lugar}</span>}
                     {estados.map((e) => (
                       <span key={e.texto} className="mesa__estado">
                         {e.texto}

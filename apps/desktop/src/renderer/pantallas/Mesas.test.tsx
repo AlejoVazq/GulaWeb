@@ -141,3 +141,14 @@ it('30 mesas con nombres largos se renderizan todas con su nombre completo', () 
   render(<Mesas salon={{ mesas: muchas, pendientes: [], avisos: [] }} ahora={AHORA} onVerMesa={vi.fn()} onMostrador={vi.fn()} />);
   for (const m of muchas) expect(tarjeta(m.nombre)).toBeInTheDocument();
 });
+
+it('un nombre con número al final lleva el número en la placa y el lugar como rótulo', () => {
+  puenteFalso({});
+  const ms = [mesa('a', 'Patio cubierto 12'), mesa('b', 'Salón privado VIP'), mesa('c', 'Mesa 4')];
+  render(<Mesas salon={{ mesas: ms, pendientes: [], avisos: [] }} ahora={AHORA} onVerMesa={vi.fn()} onMostrador={vi.fn()} />);
+  const patio = tarjeta('Patio cubierto 12');
+  expect(patio.querySelector('.mesa__placa')).toHaveTextContent(/^12$/);
+  expect(patio.querySelector('.mesa__lugar')).toHaveTextContent('Patio cubierto');
+  expect(tarjeta('Salón privado VIP').querySelector('.mesa__placa')).toHaveTextContent('Salón privado VIP');
+  expect(tarjeta('Mesa 4').querySelector('.mesa__lugar')).toBeNull();
+});

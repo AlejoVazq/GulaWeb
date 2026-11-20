@@ -192,6 +192,13 @@ p {
     color var(--ui-dur-rapida) var(--ui-curva-salida),
     border-color var(--ui-dur-rapida) var(--ui-curva-salida);
 }
+/* Un nombre de categoría largo no ocupa toda la barra: se corta acá y se lee entero en su banda. */
+.categorias__texto {
+  max-width: 62vw;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
 .categorias__item[aria-current='true'] {
   color: var(--texto);
   border-bottom-color: var(--texto);

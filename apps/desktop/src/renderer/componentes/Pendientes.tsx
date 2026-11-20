@@ -5,6 +5,9 @@ import { hora } from '../formato';
 import { PapelComanda, type LineaPapel } from '@gula/ui';
 
 const SUGERENCIAS = ['Sin stock', 'Cocina cerrada'];
+/** Un pedido largo entra plegado: el botón de aceptar no queda a mil píxeles. */
+const PLEGAR_DESDE = 9;
+const VISIBLES_PLEGADO = 6;
 const AVISOS = { llamar: 'Llamó a la moza', cuenta: 'Pidió la cuenta' } as const;
 
 function TarjetaPendiente({ p }: { p: PedidoPendiente }) {
@@ -15,6 +18,7 @@ function TarjetaPendiente({ p }: { p: PedidoPendiente }) {
   const [motivo, setMotivo] = useState('');
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [desplegado, setDesplegado] = useState(false);
   const titulo = `${p.mesa?.nombre ?? 'Sin mesa'} · ${hora(p.creadoEn)}`;
   const total = p.items.reduce((t, i) => t + i.precioUnitario * (cantidades[i.id] ?? 0), 0);
   const vacio = p.items.every((i) => (cantidades[i.id] ?? 0) === 0);
@@ -40,13 +44,14 @@ function TarjetaPendiente({ p }: { p: PedidoPendiente }) {
     detalle: [i.resumenOpciones, i.nota && `“${i.nota}”`].filter(Boolean).join(' · ') || undefined,
     quitada: (cantidades[i.id] ?? 0) === 0,
   }));
+  const plegable = lineas.length >= PLEGAR_DESDE;
   return (
     <PapelComanda
       compacto
       aria-label={titulo}
       titulo={(p.mesa?.nombre ?? 'Sin mesa').toUpperCase()}
       subtitulo={hora(p.creadoEn)}
-      lineas={lineas}
+      lineas={plegable && !desplegado ? lineas.slice(0, VISIBLES_PLEGADO) : lineas}
       total={total}
       accionesLinea={(l) => (
         <>
@@ -70,6 +75,11 @@ function TarjetaPendiente({ p }: { p: PedidoPendiente }) {
         </>
       )}
     >
+      {plegable && (
+        <button type="button" className="enlace papel__desplegar" onClick={() => setDesplegado((d) => !d)}>
+          {desplegado ? 'Ver menos' : `Ver los ${lineas.length} renglones`}
+        </button>
+      )}
       {error && (
         <p className="error" role="alert">
           {error}

@@ -894,16 +894,29 @@ input[role='switch'] {
   line-height: 1;
   color: #8b9096;
   font-variant-numeric: tabular-nums;
-  overflow-wrap: anywhere;
   text-align: center;
 }
+/* Nombres sin número ("Salón privado VIP"): envuelven por palabras, nunca a mitad de una. */
 .mesa__placa--larga {
-  font-size: 1.5rem;
-  max-width: 7ch;
+  font-size: 1.15rem;
+  line-height: 1.05;
+  max-width: 8.5ch;
+  overflow-wrap: break-word;
 }
 .mesa__estados {
   display: grid;
   align-self: end;
+  min-width: 0;
+}
+.mesa__lugar {
+  font-family: var(--cartelera);
+  font-weight: 600;
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+  line-height: 1.15;
+  text-transform: uppercase;
+  color: var(--texto-suave);
+  overflow-wrap: break-word;
 }
 .mesa__estado {
   font-family: var(--cartelera);
@@ -2007,4 +2020,10 @@ fieldset.modulo > legend.modulo__titulo {
 .detalle__total .cifra {
   font-family: var(--cifras);
   font-size: 1.5rem;
+}
+.papel__desplegar {
+  justify-self: start;
+  min-height: 32px;
+  font-family: var(--fuente);
+  font-size: 0.85rem;
 }
