@@ -1,5 +1,5 @@
 import { and, eq, inArray, isNotNull } from 'drizzle-orm';
-import { nuevoId } from '@gula/shared';
+import { leerMarca, nuevoId } from '@gula/shared';
 import type { Dbs } from '../db/cliente.js';
 import { conLocal } from '../db/conLocal.js';
 import { dispositivos, locales, refreshTokens, usuarios } from '../db/schema/index.js';
@@ -62,7 +62,7 @@ export async function loginDispositivo(
     refreshToken,
     dispositivoId,
     usuario: { id: usuario.id, nombre: usuario.nombre, rol: usuario.rol },
-    local: { id: local.id, nombre: local.nombre, slug: local.slug },
+    local: { id: local.id, nombre: local.nombre, slug: local.slug, logo: leerMarca(local.marca).logo ?? null },
   };
 }
 
@@ -145,7 +145,7 @@ export async function quienSoy(dbs: Dbs, sesion: Sesion) {
     if (!u || !l) throw sesionInvalida();
     return {
       usuario: { id: u.id, nombre: u.nombre, rol: u.rol },
-      local: { id: l.id, nombre: l.nombre, slug: l.slug },
+      local: { id: l.id, nombre: l.nombre, slug: l.slug, logo: leerMarca(l.marca).logo ?? null },
     };
   });
 }

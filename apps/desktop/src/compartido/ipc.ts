@@ -11,7 +11,7 @@ import type { EstadoReparto } from '@gula/shared';
 import type { CategoriaMovimiento, TipoMovimiento } from '@gula/shared';
 
 export type { UsuarioPublico };
-export type LocalInfo = { id: string; nombre: string; slug: string };
+export type LocalInfo = { id: string; nombre: string; slug: string; logo?: string | null };
 
 export type EstadoSesion =
   | { tipo: 'sin-dispositivo'; servidor: string }

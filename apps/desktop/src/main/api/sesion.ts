@@ -3,7 +3,7 @@ import type { BaseLocal } from '../db/base';
 import { borrarKv, escribirKv, leerKv } from '../db/kv';
 
 export type Cifrador = { cifrar(texto: string): string; descifrar(texto: string): string };
-export type LocalSesion = { id: string; nombre: string; slug: string };
+export type LocalSesion = { id: string; nombre: string; slug: string; logo?: string | null };
 export type UsuarioSesion = { id: string; nombre: string; rol: Rol };
 
 export type SesionGuardada = {
@@ -63,6 +63,12 @@ export function crearSesion(base: BaseLocal, cifrador: Cifrador) {
       if (!s) return;
       accessToken = t.accessToken;
       escribir({ ...s, refreshToken: t.refreshToken ?? s.refreshToken, usuario: t.usuario ?? s.usuario });
+    },
+    /** Actualiza los datos del local (p. ej. el logo) sin tocar tokens. */
+    fijarLocal(local: LocalSesion) {
+      const s = leer();
+      if (!s || s.local.id !== local.id) return;
+      escribir({ ...s, local });
     },
     olvidarAcceso() {
       accessToken = null;

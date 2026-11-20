@@ -30,6 +30,8 @@ export function Shell({ sesion, sync, salon }: { sesion: Activa; sync: EstadoSyn
   const [seccion, setSeccion] = useState<Seccion>('mesas');
   const [vista, setVista] = useState<Vista>({ tipo: 'seccion' });
   const [aviso, setAviso] = useState<string | null>(null);
+  /** URL del logo que no cargó (si cambia el logo, se vuelve a intentar). */
+  const [logoRoto, setLogoRoto] = useState<string | null>(null);
   const volver = () => setVista({ tipo: 'seccion' });
   const sinAtender = salon.pendientes.length + salon.avisos.length;
   const puedeCobrar = puede(sesion.usuario.rol, 'cobro.registrar') === 'si';
@@ -57,6 +59,9 @@ export function Shell({ sesion, sync, salon }: { sesion: Activa; sync: EstadoSyn
     <div className={seccion === 'mesas' || sinAtender > 0 ? 'shell' : 'shell shell--sin-bandeja'}>
       <nav className="riel" aria-label="Secciones">
         <div className="riel__local">
+          {sesion.local.logo && logoRoto !== sesion.local.logo && (
+            <img className="riel__logo" src={sesion.local.logo} alt="" height={28} onError={() => setLogoRoto(sesion.local.logo ?? null)} />
+          )}
           <span className="riel__nombre">{sesion.local.nombre}</span>
         </div>
         {ids.map((id) => (

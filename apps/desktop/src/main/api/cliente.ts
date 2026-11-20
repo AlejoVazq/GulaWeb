@@ -128,7 +128,7 @@ export function crearCliente(opts: { urlBase: string | (() => string); sesion: S
         refreshToken: string;
         dispositivoId: string;
         usuario: UsuarioSesion;
-        local: { id: string; nombre: string; slug: string };
+        local: { id: string; nombre: string; slug: string; logo?: string | null };
       };
       opts.sesion.guardar(d);
       return d;

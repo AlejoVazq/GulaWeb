@@ -1,7 +1,9 @@
 import { it, expect, beforeEach, afterAll, afterEach } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import { appDePrueba, credenciales, localConDueno, login, refresh } from './app.js';
+import { eq } from 'drizzle-orm';
 import { dbs, limpiarDb } from './db.js';
+import { locales } from '../src/db/schema/index.js';
 
 let app: FastifyInstance;
 beforeEach(async () => {
@@ -41,4 +43,9 @@ it('limita a 10 intentos por minuto', async () => {
   expect(r.statusCode).toBe(429);
   expect(r.json().error.codigo).toBe('DEMASIADOS_INTENTOS');
   await limitada.close();
+});
+it('login devuelve el logo de la marca del local, o null', async () => {
+  expect((await login(app, credenciales)).json().local.logo).toBeNull();
+  await dbs.dbAdmin.update(locales).set({ marca: { logo: '/marcas/gula-hoja.svg' } }).where(eq(locales.slug, 'local-a'));
+  expect((await login(app, credenciales)).json().local.logo).toBe('/marcas/gula-hoja.svg');
 });

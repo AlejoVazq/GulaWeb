@@ -47,3 +47,37 @@ it('el riel marca la sección activa con aria-current y el cartel muestra su nom
   await userEvent.click(within(riel).getByRole('button', { name: 'Mesas' }));
   expect(screen.getByRole('heading', { name: /^Entrando/ })).toBeInTheDocument();
 });
+
+function sesionCon(logo?: string | null) {
+  puenteFalso({
+    'sesion:estado': () => ({
+      tipo: 'activa',
+      local: { id: 'l1', nombre: 'Gula', slug: 'gula', ...(logo === undefined ? {} : { logo }) },
+      usuario: { id: 'u1', nombre: 'Sofía', rol: 'dueno' },
+    }),
+    'sync:estado': () => ({ conexion: 'en-linea', pendientes: 0, rechazadas: 0, ultimaSync: null }),
+    'salon:leer': () => ({ mesas: [], avisos: [], pendientes: [] }),
+    'impresion:trabajos': () => ({ conError: [], recientes: [] }),
+  });
+}
+
+it('sin logo el riel muestra solo el nombre del local', async () => {
+  sesionCon(undefined);
+  const { container } = render(<App />);
+  const riel = await screen.findByRole('navigation', { name: 'Secciones' });
+  expect(within(riel).getByText('Gula')).toBeInTheDocument();
+  expect(container.querySelector('.riel__logo')).toBeNull();
+});
+
+it('con logo el riel lo muestra junto al nombre, y si no carga lo esconde', async () => {
+  const { fireEvent } = await import('@testing-library/react');
+  sesionCon('https://vaztech.com.ar/marcas/gula-hoja.svg');
+  const { container } = render(<App />);
+  const riel = await screen.findByRole('navigation', { name: 'Secciones' });
+  const img = container.querySelector('.riel__logo') as HTMLImageElement;
+  expect(img).toHaveAttribute('src', 'https://vaztech.com.ar/marcas/gula-hoja.svg');
+  expect(img).toHaveAttribute('alt', '');
+  expect(within(riel).getByText('Gula')).toBeInTheDocument();
+  fireEvent.error(img);
+  expect(container.querySelector('.riel__logo')).toBeNull();
+});

@@ -38,10 +38,26 @@ function armar(pedir: (metodo: string, ruta: string, cuerpo?: unknown) => unknow
     }),
     login: vi.fn(),
   };
-  const servicios = crearServicios({ base, sesion, cliente: cliente as never, motor, emitir: vi.fn(), elegirArchivo: async () => null });
+  const servicios = crearServicios({ base, sesion, cliente: cliente as never, motor, emitir: vi.fn(), elegirArchivo: async () => null, servidor: () => 'https://vaztech.com.ar/api' });
   const entrar = () => servicios['sesion:elegirUsuario']({ usuarioId: 'u2', pin: '4321' });
   return { servicios, cliente, motor, entrar, sesion };
 }
+
+it('al pedir los usuarios refresca el local guardado con su logo (sesiones viejas sin logo)', async () => {
+  const { servicios } = armar((m, r) =>
+    r === '/auth/yo' ? { usuario: { id: 'u1', nombre: 'Ale', rol: 'dueno' }, local: { ...local, logo: '/marcas/hoja.svg' } } : [],
+  );
+  await servicios['sesion:usuarios']();
+  expect(await servicios['sesion:estado']()).toMatchObject({ local: { id: 'l1', logo: 'https://vaztech.com.ar/marcas/hoja.svg' } });
+});
+
+it('si /auth/yo falla, la lista de usuarios igual vuelve', async () => {
+  const { servicios } = armar((m, r) => {
+    if (r === '/auth/yo') throw new Error('caído');
+    return [{ id: 'u2', nombre: 'Ana', rol: 'dueno' }];
+  });
+  expect(await servicios['sesion:usuarios']()).toHaveLength(1);
+});
 
 it('estando bloqueada no se puede operar', async () => {
   const { servicios } = armar(() => ({}));
@@ -57,7 +73,7 @@ it('PIN incorrecto devuelve el código de la API', async () => {
 
 it('PIN correcto desbloquea con el nuevo usuario', async () => {
   const { servicios, motor } = armar(() => ({}), 'mesero');
-  expect(await servicios['sesion:estado']()).toEqual({ tipo: 'bloqueada', local });
+  expect(await servicios['sesion:estado']()).toEqual({ tipo: 'bloqueada', local: { ...local, logo: null } });
   const e = await servicios['sesion:elegirUsuario']({ usuarioId: 'u2', pin: '4321' });
   expect(e).toMatchObject({ tipo: 'activa', usuario: { id: 'u2', rol: 'mesero' } });
   expect(motor.reconectar).toHaveBeenCalled();

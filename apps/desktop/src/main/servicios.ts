@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { basename } from 'node:path';
 import { puede, type Accion } from '@gula/shared';
-import type { EdicionCarta, EstadoSesion, EventoGula, ServiciosGula, UsuarioPublico } from '../compartido/ipc';
+import type { EdicionCarta, EstadoSesion, EventoGula, LocalInfo, ServiciosGula, UsuarioPublico } from '../compartido/ipc';
 import type { BaseLocal } from './db/base';
 import { fijarDisponibilidadLocal, leerCarta, vaciarCartaLocal } from './db/carta';
 import { borrarRechazada, encolar, leerRechazadas, vaciarOutbox } from './db/outbox';
@@ -107,8 +107,32 @@ export function crearServicios(d: Deps): ServiciosGula & { bloquearPorInactivida
   const estadoSesion = (): EstadoSesion => {
     const s = d.sesion.actual();
     if (!s) return { tipo: 'sin-dispositivo', servidor: d.servidor?.() ?? '' };
-    if (!desbloqueada) return { tipo: 'bloqueada', local: s.local };
-    return { tipo: 'activa', local: s.local, usuario: usuarioActivo()! };
+    const local = localParaPantalla(s.local);
+    if (!desbloqueada) return { tipo: 'bloqueada', local };
+    return { tipo: 'activa', local, usuario: usuarioActivo()! };
+  };
+  /** Un logo relativo ("/marcas/x.svg") se resuelve contra el origen del servidor configurado. */
+  const localParaPantalla = (l: LocalInfo): LocalInfo => {
+    if (!l.logo) return { ...l, logo: null };
+    try {
+      return { ...l, logo: new URL(l.logo, d.servidor?.() || undefined).href };
+    } catch {
+      return { ...l, logo: null };
+    }
+  };
+  /** Trae nombre/logo actuales del local: las sesiones guardadas antes del logo no lo tienen. */
+  const refrescarLocal = async () => {
+    try {
+      const yo = await d.cliente.pedir<{ local?: LocalInfo }>('GET', '/auth/yo');
+      const actual = d.sesion.actual()?.local;
+      const nuevo = yo?.local;
+      if (!actual || !nuevo || nuevo.id !== actual.id) return;
+      if (nuevo.nombre === actual.nombre && (nuevo.logo ?? null) === (actual.logo ?? null)) return;
+      d.sesion.fijarLocal({ id: nuevo.id, nombre: nuevo.nombre, slug: nuevo.slug, logo: nuevo.logo ?? null });
+      avisarSesion();
+    } catch {
+      // No es crítico: se queda con lo guardado.
+    }
   };
   const avisarSesion = () => {
     const e = estadoSesion();
@@ -284,6 +308,7 @@ export function crearServicios(d: Deps): ServiciosGula & { bloquearPorInactivida
       try {
         const lista = await d.cliente.pedir<UsuarioPublico[]>('GET', '/auth/usuarios');
         escribirKv(d.base, 'usuarios', JSON.stringify(lista));
+        await refrescarLocal();
         pinLocal.conservarSolo(lista.map((u) => u.id));
         return lista;
       } catch (e) {
