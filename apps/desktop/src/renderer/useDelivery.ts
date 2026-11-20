@@ -3,7 +3,7 @@ import type { TableroDelivery } from '../compartido/delivery';
 import { escuchar, llamar } from './gula';
 
 /** Tablero de delivery desde la base local; se recarga con `salon:cambio` y `caja:cambio` (un cobro lo mueve). */
-export function useDelivery(): { tablero: TableroDelivery | null; envio: number; recargar: () => void } {
+export function useDelivery(activo = true): { tablero: TableroDelivery | null; envio: number; recargar: () => void } {
   const [tablero, setTablero] = useState<TableroDelivery | null>(null);
   const [envio, setEnvio] = useState(0);
   const recargar = useCallback(() => {
@@ -15,6 +15,7 @@ export function useDelivery(): { tablero: TableroDelivery | null; envio: number;
       .catch(() => undefined);
   }, []);
   useEffect(() => {
+    if (!activo) return;
     recargar();
     const a = escuchar('salon:cambio', recargar);
     const b = escuchar('caja:cambio', recargar);
@@ -22,6 +23,6 @@ export function useDelivery(): { tablero: TableroDelivery | null; envio: number;
       a();
       b();
     };
-  }, [recargar]);
+  }, [recargar, activo]);
   return { tablero, envio, recargar };
 }

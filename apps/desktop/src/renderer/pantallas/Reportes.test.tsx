@@ -48,7 +48,7 @@ it('"Anterior" pide el mes anterior y cambiar a semana pide la semana', async ()
   const p = puenteFalso({ 'reportes:obtener': () => completo });
   render(<Reportes hoy="2026-11-19" />);
   await screen.findByRole('group', { name: 'Ventas' });
-  await userEvent.click(screen.getByRole('button', { name: '◀ Anterior' }));
+  await userEvent.click(screen.getByRole('button', { name: 'Anterior' }));
   expect(p.invocar).toHaveBeenLastCalledWith('reportes:obtener', { tipo: 'mes', desde: '2026-10-01', hasta: '2026-10-31' });
   await userEvent.selectOptions(screen.getByLabelText('Período'), 'semana');
   expect(p.invocar).toHaveBeenLastCalledWith('reportes:obtener', { tipo: 'semana', desde: '2026-11-16', hasta: '2026-11-22' });

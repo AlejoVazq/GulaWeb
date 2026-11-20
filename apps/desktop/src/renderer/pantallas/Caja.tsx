@@ -22,6 +22,9 @@ function Diferencia({ valor }: { valor: number }) {
   );
 }
 
+/** Importe con signo explícito: el egreso se lee como egreso aunque no se vea el color. */
+const conSigno = (tipo: TipoMovimiento, monto: number) => `${tipo === 'egreso' ? '−' : '+'} ${formatearPrecio(monto)}`;
+
 export function Caja() {
   const { caja } = useCaja();
   const [fondo, setFondo] = useState('');
@@ -77,25 +80,34 @@ export function Caja() {
   if (!caja.turno || !caja.resumen) {
     const f = parsearPesos(fondo);
     return (
-      <div className="detalle">
-        <h1 className="titulo">Caja</h1>
-        <p className="suave">La caja está cerrada. Abrila con el fondo de cambio para empezar a cobrar.</p>
-        <label className="campo">
-          Fondo de cambio
-          <input inputMode="decimal" value={fondo} onChange={(e) => setFondo(e.target.value)} placeholder="$ 0" />
-        </label>
-        <button
-          type="button"
-          className="boton boton--principal"
-          disabled={f === null || enviando}
-          onClick={() => void intentar(() => llamar('caja:abrir', { fondo: f! }), 'Caja abierta.').then((x) => x && setFondo(''))}
-        >
-          Abrir caja
-        </button>
-        {avisos}
+      <div className="caja-cerrada">
+        <section className="modulo caja-cerrada__abrir" aria-labelledby="abrir-caja">
+          <h2 id="abrir-caja" className="modulo__titulo">
+            La caja está cerrada
+          </h2>
+          <p className="suave">Abrila con el fondo de cambio para empezar a cobrar.</p>
+          <form
+            className="caja-cerrada__form"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (f === null || enviando) return;
+              void intentar(() => llamar('caja:abrir', { fondo: f }), 'Caja abierta.').then((x) => x && setFondo(''));
+            }}
+          >
+            <label className="campo">
+              Fondo de cambio
+              <input className="cifra caja__monto" inputMode="decimal" value={fondo} onChange={(e) => setFondo(e.target.value)} placeholder="$ 0" />
+            </label>
+            <button type="submit" className="boton boton--linea" disabled={f === null || enviando}>
+              Abrir caja
+            </button>
+          </form>
+          {avisos}
+        </section>
         {caja.ultimoCierre && (
-          <p className="suave">
-            Último cierre: {hora(caja.ultimoCierre.cerradoEn!)} · contado {formatearPrecio(caja.ultimoCierre.contado ?? 0)} ·{' '}
+          <p className="caja-cerrada__ultimo">
+            Último cierre a las {hora(caja.ultimoCierre.cerradoEn!)} · contado{' '}
+            <span className="cifra">{formatearPrecio(caja.ultimoCierre.contado ?? 0)}</span> ·{' '}
             <Diferencia valor={caja.ultimoCierre.diferencia ?? 0} />
           </p>
         )}
@@ -107,154 +119,207 @@ export function Caja() {
   const montoMov = parsearPesos(mov.monto);
   const c = parsearPesos(contado);
   return (
-    <div className="detalle">
-      <div className="fila fila--entre">
-        <h1 className="titulo">Caja</h1>
-        <span className="suave">
-          Abierta {hora(caja.turno.abiertoEn)} · fondo {formatearPrecio(caja.turno.fondo)}
-        </span>
-      </div>
-      {avisos}
-
-      <table className="tabla" aria-label="Ventas por método">
-        <thead>
-          <tr>
-            <th>Método</th>
-            <th>Ventas</th>
-            <th>Propinas</th>
-          </tr>
-        </thead>
-        <tbody>
-          {METODOS_PAGO.filter((m) => m === 'efectivo' || r.porMetodo[m].ventas || r.porMetodo[m].propinas).map((m) => (
-            <tr key={m}>
-              <th scope="row">{NOMBRE_METODO[m]}</th>
-              <td>{formatearPrecio(r.porMetodo[m].ventas)}</td>
-              <td>{formatearPrecio(r.porMetodo[m].propinas)}</td>
-            </tr>
-          ))}
-          <tr>
-            <th scope="row">Total</th>
-            <td>{formatearPrecio(r.ventas)}</td>
-            <td>{formatearPrecio(r.propinas)}</td>
-          </tr>
-        </tbody>
-      </table>
-      <p>
-        Ingresos {formatearPrecio(r.ingresos)} · Egresos {formatearPrecio(r.egresos)}
-      </p>
-      <p className="caja__esperado">
-        <strong>Efectivo esperado {formatearPrecio(r.efectivoEsperado)}</strong>
-      </p>
-
-      {!cerrando ? (
-        <button type="button" className="boton" onClick={() => setCerrando(true)}>
-          Cerrar caja
-        </button>
-      ) : (
-        <div className="bloque" role="group" aria-label="Cierre de caja">
-          <label className="campo">
-            Efectivo contado
-            <input inputMode="decimal" value={contado} onChange={(e) => setContado(e.target.value)} />
-          </label>
-          {c !== null && (
-            <p>
-              Esperado {formatearPrecio(r.efectivoEsperado)} · <Diferencia valor={c - r.efectivoEsperado} />
-            </p>
+    <div className="caja">
+      <div className="caja__arqueo">
+        <section className="modulo" aria-labelledby="arqueo">
+          <h2 id="arqueo" className="modulo__titulo">
+            Arqueo
+          </h2>
+          <table className="tabla tabla--plana" aria-label="Ventas por método">
+            <thead>
+              <tr>
+                <th scope="col">Método</th>
+                <th scope="col">Ventas</th>
+                <th scope="col">Propinas</th>
+              </tr>
+            </thead>
+            <tbody>
+              {METODOS_PAGO.filter((m) => m === 'efectivo' || r.porMetodo[m].ventas || r.porMetodo[m].propinas).map((m) => (
+                <tr key={m}>
+                  <th scope="row">{NOMBRE_METODO[m]}</th>
+                  <td>{formatearPrecio(r.porMetodo[m].ventas)}</td>
+                  <td>{formatearPrecio(r.porMetodo[m].propinas)}</td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr>
+                <th scope="row">Total</th>
+                <td>{formatearPrecio(r.ventas)}</td>
+                <td>{formatearPrecio(r.propinas)}</td>
+              </tr>
+            </tfoot>
+          </table>
+          <dl className="caja__cuentas">
+            <div>
+              <dt>Fondo inicial</dt>
+              <dd>{formatearPrecio(caja.turno.fondo)}</dd>
+            </div>
+            <div>
+              <dt>Ingresos</dt>
+              <dd>{conSigno('ingreso', r.ingresos)}</dd>
+            </div>
+            <div>
+              <dt>Egresos</dt>
+              <dd>{conSigno('egreso', r.egresos)}</dd>
+            </div>
+          </dl>
+          <p className="caja__esperado">
+            <span>Efectivo esperado</span> <strong>{formatearPrecio(r.efectivoEsperado)}</strong>
+          </p>
+          {avisos}
+          {!cerrando ? (
+            <button type="button" className="boton" onClick={() => setCerrando(true)}>
+              Cerrar caja
+            </button>
+          ) : (
+            <div className="caja__cierre" role="group" aria-label="Cierre de caja">
+              <label className="campo">
+                Efectivo contado
+                <input className="cifra caja__monto" inputMode="decimal" value={contado} onChange={(e) => setContado(e.target.value)} autoFocus />
+              </label>
+              <p className="caja__diferencia" aria-live="polite">
+                {c !== null ? (
+                  <>
+                    Esperado <span className="cifra">{formatearPrecio(r.efectivoEsperado)}</span> · <Diferencia valor={c - r.efectivoEsperado} />
+                  </>
+                ) : (
+                  'Contá el efectivo del cajón y cargalo.'
+                )}
+              </p>
+              <div className="fila">
+                <button
+                  type="button"
+                  className="boton boton--principal"
+                  disabled={c === null || enviando}
+                  onClick={() =>
+                    void intentar(() => llamar('caja:cerrar', { contado: c! }), 'Caja cerrada. Se imprimió el cierre.').then((x) => {
+                      if (x) {
+                        setCerrando(false);
+                        setContado('');
+                      }
+                    })
+                  }
+                >
+                  Confirmar cierre
+                </button>
+                <button type="button" className="boton" onClick={() => setCerrando(false)}>
+                  Cancelar
+                </button>
+              </div>
+            </div>
           )}
-          <div className="fila">
+        </section>
+      </div>
+
+      <div className="caja__libro">
+        <fieldset className="modulo caja__movimiento" aria-label="Nuevo movimiento">
+          <legend className="modulo__titulo">Ingreso o egreso de efectivo</legend>
+          <div className="caja__movimiento-campos">
+            <label className="campo">
+              Tipo
+              <select value={mov.tipo} onChange={(e) => setMov({ ...mov, tipo: e.target.value as TipoMovimiento })}>
+                <option value="egreso">Egreso</option>
+                <option value="ingreso">Ingreso</option>
+              </select>
+            </label>
+            <label className="campo">
+              Categoría
+              <select value={mov.categoria} onChange={(e) => setMov({ ...mov, categoria: e.target.value as CategoriaMovimiento })}>
+                {CATEGORIAS_MOVIMIENTO.map((x) => (
+                  <option key={x} value={x}>
+                    {NOMBRE_CATEGORIA[x]}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="campo">
+              Monto
+              <input className="cifra" inputMode="decimal" value={mov.monto} onChange={(e) => setMov({ ...mov, monto: e.target.value })} />
+            </label>
+            <label className="campo caja__motivo">
+              Motivo
+              <input value={mov.motivo} maxLength={140} onChange={(e) => setMov({ ...mov, motivo: e.target.value })} />
+            </label>
             <button
               type="button"
               className="boton boton--principal"
-              disabled={c === null || enviando}
+              disabled={!montoMov || !mov.motivo.trim() || enviando}
               onClick={() =>
-                void intentar(() => llamar('caja:cerrar', { contado: c! }), 'Caja cerrada. Se imprimió el cierre.').then((x) => {
-                  if (x) {
-                    setCerrando(false);
-                    setContado('');
-                  }
-                })
+                void intentar(
+                  () => llamar('caja:movimiento', { tipo: mov.tipo, categoria: mov.categoria, monto: montoMov!, motivo: mov.motivo.trim() }),
+                  'Movimiento registrado.',
+                ).then((x) => x && setMov({ ...mov, monto: '', motivo: '' }))
               }
             >
-              Confirmar cierre
-            </button>
-            <button type="button" className="boton" onClick={() => setCerrando(false)}>
-              Cancelar
+              Registrar
             </button>
           </div>
-        </div>
-      )}
+        </fieldset>
 
-      <fieldset className="bloque" aria-label="Nuevo movimiento">
-        <legend>Ingreso o egreso de efectivo</legend>
-        <div className="fila">
-          <label className="campo">
-            Tipo
-            <select value={mov.tipo} onChange={(e) => setMov({ ...mov, tipo: e.target.value as TipoMovimiento })}>
-              <option value="egreso">Egreso</option>
-              <option value="ingreso">Ingreso</option>
-            </select>
-          </label>
-          <label className="campo">
-            Categoría
-            <select value={mov.categoria} onChange={(e) => setMov({ ...mov, categoria: e.target.value as CategoriaMovimiento })}>
-              {CATEGORIAS_MOVIMIENTO.map((x) => (
-                <option key={x} value={x}>
-                  {NOMBRE_CATEGORIA[x]}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="campo">
-            Monto
-            <input inputMode="decimal" value={mov.monto} onChange={(e) => setMov({ ...mov, monto: e.target.value })} />
-          </label>
-          <label className="campo">
-            Motivo
-            <input value={mov.motivo} maxLength={140} onChange={(e) => setMov({ ...mov, motivo: e.target.value })} />
-          </label>
-        </div>
-        <button
-          type="button"
-          className="boton boton--principal"
-          disabled={!montoMov || !mov.motivo.trim() || enviando}
-          onClick={() =>
-            void intentar(
-              () => llamar('caja:movimiento', { tipo: mov.tipo, categoria: mov.categoria, monto: montoMov!, motivo: mov.motivo.trim() }),
-              'Movimiento registrado.',
-            ).then((x) => x && setMov({ ...mov, monto: '', motivo: '' }))
-          }
-        >
-          Registrar
-        </button>
-      </fieldset>
+        <section className="modulo" aria-labelledby="movimientos">
+          <h2 id="movimientos" className="modulo__titulo">
+            Movimientos <span className="columna__cuenta">{caja.movimientos.length}</span>
+          </h2>
+          {!caja.movimientos.length ? (
+            <p className="suave">Sin movimientos.</p>
+          ) : (
+            <table className="tabla tabla--plana" aria-label="Movimientos">
+              <thead>
+                <tr>
+                  <th scope="col" className="tabla__texto">Hora</th>
+                  <th scope="col" className="tabla__texto">Tipo</th>
+                  <th scope="col" className="tabla__texto">Motivo</th>
+                  <th scope="col">Monto</th>
+                </tr>
+              </thead>
+              <tbody>
+                {caja.movimientos.map((m) => (
+                  <tr key={m.id}>
+                    <td className="cifra">{hora(m.hechoEn)}</td>
+                    <td className="tabla__texto">
+                      <span className={m.tipo === 'egreso' ? 'mov mov--egreso' : 'mov mov--ingreso'}>{m.tipo === 'egreso' ? 'Egreso' : 'Ingreso'}</span>
+                      <span className="suave"> · {NOMBRE_CATEGORIA[m.categoria]}</span>
+                    </td>
+                    <td className="tabla__texto">{m.motivo}</td>
+                    <td>{conSigno(m.tipo, m.monto)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </section>
 
-      <h2>Movimientos</h2>
-      {!caja.movimientos.length && <p className="suave">Sin movimientos.</p>}
-      <ul className="lista">
-        {caja.movimientos.map((m) => (
-          <li key={m.id} className="lista__item">
-            <span>
-              {hora(m.hechoEn)} · {m.tipo === 'egreso' ? 'Egreso' : 'Ingreso'} · {NOMBRE_CATEGORIA[m.categoria]}
-            </span>
-            <span>{m.motivo}</span>
-            <span>{formatearPrecio(m.tipo === 'egreso' ? -m.monto : m.monto)}</span>
-          </li>
-        ))}
-      </ul>
-
-      <h2>Cobros</h2>
-      {!caja.cobros.length && <p className="suave">Todavía no se cobró nada.</p>}
-      <ul className="lista">
-        {caja.cobros.map((x) => (
-          <li key={x.id} className="lista__item">
-            <span>
-              {hora(x.cobradoEn)} · {x.destino}
-            </span>
-            <span className="suave">{x.pagos.map((p) => NOMBRE_METODO[p.metodo]).join(' + ')}</span>
-            <span>{formatearPrecio(x.total)}</span>
-          </li>
-        ))}
-      </ul>
+        <section className="modulo" aria-labelledby="cobros">
+          <h2 id="cobros" className="modulo__titulo">
+            Cobros <span className="columna__cuenta">{caja.cobros.length}</span>
+          </h2>
+          {!caja.cobros.length ? (
+            <p className="suave">Todavía no se cobró nada.</p>
+          ) : (
+            <table className="tabla tabla--plana" aria-label="Cobros">
+              <thead>
+                <tr>
+                  <th scope="col" className="tabla__texto">Hora</th>
+                  <th scope="col" className="tabla__texto">Qué</th>
+                  <th scope="col" className="tabla__texto">Cómo</th>
+                  <th scope="col">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {caja.cobros.map((x) => (
+                  <tr key={x.id}>
+                    <td className="cifra">{hora(x.cobradoEn)}</td>
+                    <td className="tabla__texto">{x.destino}</td>
+                    <td className="tabla__texto suave">{x.pagos.map((p) => NOMBRE_METODO[p.metodo]).join(' + ')}</td>
+                    <td>{formatearPrecio(x.total)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </section>
+      </div>
     </div>
   );
 }

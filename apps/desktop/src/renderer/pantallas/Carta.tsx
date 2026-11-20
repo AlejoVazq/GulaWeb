@@ -8,6 +8,14 @@ import { EditorProducto } from '../componentes/EditorProducto';
 type Props = { usuario: UsuarioPublico; conexion: EstadoSync['conexion'] };
 type Edicion = { tipo: 'nuevo' } | { tipo: 'producto'; id: string } | null;
 
+function Flecha({ hacia }: { hacia: 'arriba' | 'abajo' }) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+      <path d={hacia === 'arriba' ? 'M3 10l5-5 5 5' : 'M3 6l5 5 5-5'} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 function EditorCategoria({ c, total, indice, deshabilitado, onError, ids }: { c: CategoriaLocal; total: number; indice: number; deshabilitado: boolean; onError: (m: string) => void; ids: string[] }) {
   const [nombre, setNombre] = useState(c.nombre);
   const [desde, setDesde] = useState(c.horarioDesde ?? '');
@@ -25,34 +33,50 @@ function EditorCategoria({ c, total, indice, deshabilitado, onError, ids }: { c:
     void editar({ tipo: 'ordenarCategorias', ids: nuevos });
   };
   return (
-    <fieldset className="bloque" disabled={deshabilitado}>
-      <legend>Categoría</legend>
-      <div className="fila">
+    <fieldset className="ajustes-categoria" disabled={deshabilitado}>
+      <legend className="sr-solo">Categoría</legend>
+      <label className="campo ajustes-categoria__nombre">
+        Categoría
         <input aria-label="Nombre de la categoría" value={nombre} onChange={(e) => setNombre(e.target.value)} />
-        <input aria-label="Desde" type="time" value={desde} onChange={(e) => setDesde(e.target.value)} />
-        <input aria-label="Hasta" type="time" value={hasta} onChange={(e) => setHasta(e.target.value)} />
-        <button
-          type="button"
-          className="boton"
-          onClick={() =>
-            void editar({ tipo: 'editarCategoria', id: c.id, datos: { nombre: nombre.trim(), horario: desde && hasta ? { desde, hasta } : null } })
-          }
-        >
-          Guardar categoría
-        </button>
-        <label className="fila">
-          <input type="checkbox" checked={c.visible} onChange={(e) => void editar({ tipo: 'editarCategoria', id: c.id, datos: { visible: e.target.checked } })} /> Visible
-        </label>
-        <button type="button" className="boton" disabled={indice === 0} onClick={() => mover(-1)} aria-label="Subir categoría">
-          ↑
-        </button>
-        <button type="button" className="boton" disabled={indice === total - 1} onClick={() => mover(1)} aria-label="Bajar categoría">
-          ↓
-        </button>
-        <button type="button" className="boton boton--peligro" onClick={() => void editar({ tipo: 'borrarCategoria', id: c.id })}>
-          Borrar
-        </button>
+      </label>
+      <div className="campo">
+        <span>Horario</span>
+        <span className="ajustes-categoria__horario">
+          <input aria-label="Desde" type="time" value={desde} onChange={(e) => setDesde(e.target.value)} />
+          <span aria-hidden="true">a</span>
+          <input aria-label="Hasta" type="time" value={hasta} onChange={(e) => setHasta(e.target.value)} />
+        </span>
       </div>
+      <button
+        type="button"
+        className="boton"
+        onClick={() =>
+          void editar({ tipo: 'editarCategoria', id: c.id, datos: { nombre: nombre.trim(), horario: desde && hasta ? { desde, hasta } : null } })
+        }
+      >
+        Guardar categoría
+      </button>
+      <label className="interruptor">
+        <input
+          type="checkbox"
+          role="switch"
+          aria-label="Visible en la carta"
+          checked={c.visible}
+          onChange={(e) => void editar({ tipo: 'editarCategoria', id: c.id, datos: { visible: e.target.checked } })}
+        />
+        <span aria-hidden="true">{c.visible ? 'Visible' : 'Oculta'}</span>
+      </label>
+      <span className="ajustes-categoria__orden">
+        <button type="button" className="boton boton--chico" disabled={indice === 0} onClick={() => mover(-1)} aria-label="Subir categoría">
+          <Flecha hacia="arriba" />
+        </button>
+        <button type="button" className="boton boton--chico" disabled={indice === total - 1} onClick={() => mover(1)} aria-label="Bajar categoría">
+          <Flecha hacia="abajo" />
+        </button>
+      </span>
+      <button type="button" className="boton boton--chico boton--peligro" onClick={() => void editar({ tipo: 'borrarCategoria', id: c.id })}>
+        Borrar
+      </button>
     </fieldset>
   );
 }
@@ -78,28 +102,33 @@ export function Carta({ usuario, conexion }: Props) {
   const productoEditado = edicion?.tipo === 'producto' ? cat?.productos.find((p) => p.id === edicion.id) ?? null : null;
 
   return (
-    <div className="carta">
-      <aside className="carta__categorias">
-        <h2>Categorías</h2>
-        <ul className="lista">
+    <div className={editor && cat && edicion ? 'carta carta--editando' : 'carta'}>
+      <nav className="carta__categorias" aria-label="Categorías">
+        <h2 className="columna__titulo">
+          Categorías <span className="columna__cuenta">{carta.categorias.length}</span>
+        </h2>
+        <ul className="categorias">
           {carta.categorias.map((c) => (
             <li key={c.id}>
               <button
                 type="button"
-                className={c.id === cat?.id ? 'menu__item menu__item--activo' : 'menu__item'}
+                className="categorias__item"
+                aria-current={c.id === cat?.id ? 'true' : undefined}
                 onClick={() => {
                   setCategoriaId(c.id);
                   setEdicion(null);
                 }}
               >
-                {c.nombre} {!c.visible && <span className="suave">(oculta)</span>}
+                <span className="categorias__nombre">{c.nombre}</span>
+                {!c.visible && <span className="etiqueta categorias__oculta">Oculta</span>}
+                <span className="categorias__cuenta">{c.productos.length}</span>
               </button>
             </li>
           ))}
         </ul>
         {editor && (
           <form
-            className="fila"
+            className="categorias__nueva"
             onSubmit={(e) => {
               e.preventDefault();
               if (!nuevaCategoria.trim()) return;
@@ -114,10 +143,10 @@ export function Carta({ usuario, conexion }: Props) {
             </button>
           </form>
         )}
-      </aside>
+      </nav>
 
-      <section className="carta__productos">
-        {editor && sinConexion && <p className="aviso">Necesitás conexión para editar la carta.</p>}
+      <section className="carta__productos" aria-label={cat ? cat.nombre : 'Productos'}>
+        {editor && sinConexion && <p className="aviso-linea">Necesitás conexión para editar la carta.</p>}
         {error && (
           <p role="alert" className="error">
             {error}
@@ -125,10 +154,10 @@ export function Carta({ usuario, conexion }: Props) {
         )}
         {cat ? (
           <>
-            <div className="fila">
-              <h2>{cat.nombre}</h2>
+            <div className="herramientas">
+              <h2 className="carta__titulo">{cat.nombre}</h2>
               {editor && (
-                <button type="button" className="boton boton--principal" disabled={sinConexion} onClick={() => setEdicion({ tipo: 'nuevo' })}>
+                <button type="button" className="boton boton--linea" disabled={sinConexion} onClick={() => setEdicion({ tipo: 'nuevo' })}>
                   Nuevo producto
                 </button>
               )}
@@ -143,47 +172,66 @@ export function Carta({ usuario, conexion }: Props) {
                 onError={setError}
               />
             )}
-            <table className="tabla">
-              <thead>
-                <tr>
-                  <th>Producto</th>
-                  <th>Precio</th>
-                  <th>Disponible</th>
-                  {editor && <th />}
-                </tr>
-              </thead>
-              <tbody>
-                {cat.productos.map((p) => (
-                  <tr key={p.id}>
-                    <td>
-                      {p.nombre} {!p.visible && <span className="suave">(oculto)</span>}
-                    </td>
-                    <td>{formatearPrecio(p.precio)}</td>
-                    <td>
-                      <input
-                        type="checkbox"
-                        role="switch"
-                        aria-label={`${p.nombre} disponible`}
-                        checked={p.disponible}
-                        onChange={(e) =>
-                          void llamar('carta:disponibilidad', { productoId: p.id, disponible: e.target.checked }).catch((x: unknown) => setError(mensajeDe(x)))
-                        }
-                      />
-                    </td>
-                    {editor && (
-                      <td>
-                        <button type="button" className="enlace" aria-label={`Editar ${p.nombre}`} onClick={() => setEdicion({ tipo: 'producto', id: p.id })}>
-                          Editar
-                        </button>
-                      </td>
-                    )}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            {cat.productos.length ? (
+              <div className="modulo modulo--tabla">
+                <table className="tabla tabla--plana" aria-label={`Productos de ${cat.nombre}`}>
+                  <thead>
+                    <tr>
+                      <th scope="col" className="tabla__texto">
+                        Producto
+                      </th>
+                      <th scope="col">Precio</th>
+                      <th scope="col" className="tabla__texto">
+                        Stock
+                      </th>
+                      {editor && (
+                        <th scope="col">
+                          <span className="sr-solo">Editar</span>
+                        </th>
+                      )}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {cat.productos.map((p) => (
+                      <tr key={p.id} className={p.disponible ? undefined : 'producto--sin-stock'}>
+                        <td>
+                          <span className="producto__nombre">{p.nombre}</span>
+                          {!p.visible && <span className="etiqueta producto__oculto">Oculto</span>}
+                          {p.descripcion && <span className="producto__descripcion">{p.descripcion}</span>}
+                        </td>
+                        <td>{formatearPrecio(p.precio)}</td>
+                        <td className="tabla__texto">
+                          <label className="interruptor">
+                            <input
+                              type="checkbox"
+                              role="switch"
+                              aria-label={`${p.nombre} disponible`}
+                              checked={p.disponible}
+                              onChange={(e) =>
+                                void llamar('carta:disponibilidad', { productoId: p.id, disponible: e.target.checked }).catch((x: unknown) => setError(mensajeDe(x)))
+                              }
+                            />
+                            <span aria-hidden="true">{p.disponible ? 'Hay' : 'Sin stock'}</span>
+                          </label>
+                        </td>
+                        {editor && (
+                          <td>
+                            <button type="button" className="boton boton--chico" aria-label={`Editar ${p.nombre}`} onClick={() => setEdicion({ tipo: 'producto', id: p.id })}>
+                              Editar
+                            </button>
+                          </td>
+                        )}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p className="columna__vacia">Esta categoría todavía no tiene productos.</p>
+            )}
           </>
         ) : (
-          <p className="suave">Todavía no hay categorías.</p>
+          <p className="columna__vacia">Todavía no hay categorías.</p>
         )}
       </section>
 

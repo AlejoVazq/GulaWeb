@@ -59,14 +59,15 @@ export function NuevoDelivery({
 
   return (
     <form
-      className="formulario bloque"
+      className="modulo nuevo-delivery"
       aria-label="Nuevo delivery"
       onSubmit={(e) => {
         e.preventDefault();
         if (listo) setPaso('productos');
       }}
     >
-      <h2 className="titulo">Nuevo delivery</h2>
+      <h2 className="modulo__titulo">Nuevo delivery</h2>
+      <p className="suave nuevo-delivery__ayuda">Con el teléfono se completan los datos de un cliente que ya pidió.</p>
       <label className="campo">
         Teléfono
         <input inputMode="tel" value={telefono} maxLength={LIMITES_DELIVERY.telefono} onChange={(e) => setTelefono(e.target.value)} onBlur={completar} />
@@ -75,32 +76,30 @@ export function NuevoDelivery({
         Nombre
         <input value={nombre} maxLength={LIMITES_DELIVERY.nombre} onChange={(e) => setNombre(e.target.value)} />
       </label>
-      <label className="campo">
+      <label className="campo nuevo-delivery__ancho">
         Dirección
         <input value={direccion} maxLength={LIMITES_DELIVERY.direccion} onChange={(e) => setDireccion(e.target.value)} />
       </label>
-      <label className="campo">
+      <label className="campo nuevo-delivery__ancho">
         Referencias
         <input value={referencias} maxLength={LIMITES_DELIVERY.referencias} placeholder="Piso, timbre, entre calles…" onChange={(e) => setReferencias(e.target.value)} />
       </label>
-      <div className="fila">
-        <label className="campo">
-          Envío
-          <input inputMode="decimal" value={envio} onChange={(e) => setEnvio(e.target.value)} />
-        </label>
-        <label className="campo">
-          Paga con (opcional)
-          <input inputMode="decimal" value={pagaCon} onChange={(e) => setPagaCon(e.target.value)} />
-        </label>
-      </div>
-      {costoEnvio === null && <p className="error-texto">El envío no es un monto válido.</p>}
-      {pagaCon.trim() && paga === null && <p className="error-texto">"Paga con" no es un monto válido.</p>}
       <label className="campo">
+        Envío
+        <input className="cifra" inputMode="decimal" value={envio} onChange={(e) => setEnvio(e.target.value)} />
+      </label>
+      <label className="campo">
+        Paga con (opcional)
+        <input className="cifra" inputMode="decimal" value={pagaCon} onChange={(e) => setPagaCon(e.target.value)} />
+      </label>
+      {costoEnvio === null && <p className="error-texto nuevo-delivery__ancho">El envío no es un monto válido.</p>}
+      {pagaCon.trim() && paga === null && <p className="error-texto nuevo-delivery__ancho">"Paga con" no es un monto válido.</p>}
+      <label className="campo nuevo-delivery__ancho">
         Nota para la cocina
         <input value={nota} maxLength={NOTA_MAXIMA} onChange={(e) => setNota(e.target.value)} />
       </label>
-      <div className="fila">
-        <button type="submit" className="boton boton--principal" disabled={!listo}>
+      <div className="fila nuevo-delivery__ancho">
+        <button type="submit" className="boton boton--linea" disabled={!listo}>
           Elegir productos
         </button>
         <button type="button" className="boton" onClick={onCancelar}>

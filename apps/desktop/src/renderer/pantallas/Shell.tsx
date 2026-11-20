@@ -13,7 +13,9 @@ import { Pendientes } from '../componentes/Pendientes';
 import type { Pedido, Salon } from '../../compartido/salon';
 import { useCaja } from '../useCaja';
 import { Cobrar } from '../componentes/Cobrar';
-import { puede } from '@gula/shared';
+import { formatearPrecio, puede } from '@gula/shared';
+import { useDelivery } from '../useDelivery';
+import { hora } from '../formato';
 import { Impresion } from './Impresion';
 import { Caja } from './Caja';
 import { Delivery } from './Delivery';
@@ -21,7 +23,7 @@ import { Reportes } from './Reportes';
 import { AvisoImpresion } from '../componentes/AvisoImpresion';
 import { VistaPrevia } from '../componentes/VistaPrevia';
 import { Cartel } from '../componentes/Cartel';
-import { SECCIONES, resumenMesas, type Seccion } from '../secciones';
+import { SECCIONES, resumenDelivery, resumenMesas, type Seccion } from '../secciones';
 
 type Activa = Extract<EstadoSesion, { tipo: 'activa' }>;
 type Vista = { tipo: 'seccion' } | { tipo: 'mesa'; mesaId: string } | { tipo: 'mostrador' };
@@ -45,6 +47,7 @@ export function Shell({ sesion, sync, salon }: { sesion: Activa; sync: EstadoSyn
     'carta',
     ...(puede(sesion.usuario.rol, 'impresion.configurar') === 'si' ? (['impresion'] as const) : []),
   ];
+  const { tablero } = useDelivery(ids.includes('delivery'));
   const mesaVista = vista.tipo === 'mesa' ? salon.mesas.find((m) => m.id === vista.mesaId) : undefined;
   const cartel = (): { placa: string; titulo?: string; resumen?: string } => {
     if (seccion === 'mesas') {
@@ -52,11 +55,21 @@ export function Shell({ sesion, sync, salon }: { sesion: Activa; sync: EstadoSyn
       if (mesaVista) return { placa: mesaVista.nombre.replace(/^mesa\s*/i, ''), titulo: mesaVista.nombre };
       return resumenMesas(salon.mesas);
     }
-    if (seccion === 'caja') return { placa: caja?.turno ? 'ABIERTA' : 'CERRADA' };
+    if (seccion === 'caja') {
+      if (!caja?.turno || !caja.resumen) return { placa: 'CERRADA', resumen: 'Abrila con el fondo de cambio para cobrar' };
+      return {
+        placa: 'ABIERTA',
+        resumen: `Desde las ${hora(caja.turno.abiertoEn)} · efectivo esperado ${formatearPrecio(caja.resumen.efectivoEsperado)}`,
+      };
+    }
+    if (seccion === 'delivery') return resumenDelivery(tablero);
     return { placa: SECCIONES[seccion].nombre[0]! };
   };
   return (
-    <div className={seccion === 'mesas' || sinAtender > 0 ? 'shell' : 'shell shell--sin-bandeja'}>
+    <div
+      className={seccion === 'mesas' || sinAtender > 0 ? 'shell' : 'shell shell--sin-bandeja'}
+      style={{ '--linea': SECCIONES[seccion].color, '--linea-texto': SECCIONES[seccion].texto } as React.CSSProperties}
+    >
       <nav className="riel" aria-label="Secciones">
         <div className="riel__local">
           {sesion.local.logo && logoRoto !== sesion.local.logo && (

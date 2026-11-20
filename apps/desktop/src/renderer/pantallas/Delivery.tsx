@@ -9,6 +9,7 @@ import { Anular } from '../componentes/Anular';
 import { Cobrar } from '../componentes/Cobrar';
 import { Dialogo } from '../componentes/Dialogo';
 import { NuevoDelivery } from '../componentes/NuevoDelivery';
+import { PapelComanda, selloDeEstado, type LineaPapel } from '@gula/ui';
 
 type Accion =
   | { tipo: 'salir'; p: PedidoDelivery }
@@ -56,81 +57,112 @@ export function Delivery({ rol }: { rol: Rol }) {
     const cancelado = p.estado === 'anulado';
     const cobrado = p.estado === 'cobrado';
     const v = vuelto(p.aCobrar, r.pagaCon);
+    const lineas: LineaPapel[] = [
+      ...p.items.map((i) => ({
+        id: i.id,
+        cantidad: i.cantidad,
+        nombre: i.nombre,
+        importe: i.precioUnitario * i.cantidad,
+        detalle: [i.resumenOpciones, i.nota].filter(Boolean).join(' · ') || undefined,
+        quitada: i.anulado,
+      })),
+      { id: 'envio', cantidad: 1, nombre: 'Envío', importe: r.costoEnvio },
+    ];
+    // La acción que lleva el pedido a la etapa siguiente va primero y en el color de la línea.
+    const salio = r.estado === 'preparando' && (
+      <button
+        type="button"
+        className="boton boton--linea"
+        onClick={() => {
+          setRepartidor(r.repartidor ?? '');
+          setAccion({ tipo: 'salir', p });
+        }}
+      >
+        Salió
+      </button>
+    );
+    const entregado = (
+      <button
+        type="button"
+        className={salio ? 'boton boton--chico' : 'boton boton--linea'}
+        disabled={!cobrado && !puedeCobrar}
+        title={!cobrado && !puedeCobrar ? 'Un encargado tiene que cobrarlo antes' : undefined}
+        onClick={() => (cobrado ? entregar(p) : setAccion({ tipo: 'cobrar', p, entregar: true }))}
+      >
+        Entregado
+      </button>
+    );
     return (
-      <article key={p.id} className="tarjeta delivery__tarjeta" aria-label={`Pedido ${p.numero ?? ''} · ${r.cliente.nombre}`}>
-        <h3 className="fila fila--entre">
-          <span>Pedido {p.numero ?? '-'}</span>
-          <span className="suave">{hora(p.creadoEn)}</span>
-        </h3>
-        <p>
-          <strong>{r.cliente.nombre}</strong>
-          {r.cliente.telefono && <span className="suave"> · {r.cliente.telefono}</span>}
-        </p>
-        <p>
-          {r.cliente.direccion}
-          {r.cliente.referencias && <span className="suave"> ({r.cliente.referencias})</span>}
-        </p>
-        <p className="suave">{p.items.map((i) => `${i.cantidad}x ${i.nombre}`).join(', ')}</p>
-        <p>
-          <strong>{formatearPrecio(p.aCobrar)}</strong> <span className="suave">(envío {formatearPrecio(r.costoEnvio)})</span>{' '}
-          {cancelado ? null : cobrado ? <span className="ok-texto">Cobrado</span> : <span className="error-texto">A cobrar</span>}
-        </p>
-        {!cobrado && !cancelado && r.pagaCon != null && (
-          <p className="suave">
-            Paga con {formatearPrecio(r.pagaCon)}
-            {v != null && ` · Vuelto ${formatearPrecio(v)}`}
+      <PapelComanda
+        key={p.id}
+        compacto
+        className="delivery__papel"
+        aria-label={`Pedido ${p.numero ?? ''} · ${r.cliente.nombre}`}
+        titulo={`DELIVERY ${p.numero ?? '-'}`}
+        subtitulo={hora(p.creadoEn)}
+        lineas={lineas}
+        total={p.aCobrar}
+        sello={cancelado ? selloDeEstado('anulado') : undefined}
+      >
+        <div className="reparto">
+          <p className="reparto__cliente">
+            <strong>{r.cliente.nombre}</strong>
+            {r.cliente.telefono && <span className="cifra"> · {r.cliente.telefono}</span>}
           </p>
-        )}
-        {r.repartidor && <p className="suave">Repartidor: {r.repartidor}</p>}
-        {cancelado && <p className="error-texto">Cancelado: {p.motivoAnulacion ?? ''}</p>}
+          <p>{r.cliente.direccion}</p>
+          {r.cliente.referencias && <p className="suave">{r.cliente.referencias}</p>}
+          {!cancelado && (
+            <p className="reparto__pago">
+              <span className={cobrado ? 'etiqueta etiqueta--ok' : 'etiqueta etiqueta--cuenta'}>{cobrado ? 'Cobrado' : 'A cobrar'}</span>
+              {!cobrado && r.pagaCon != null && (
+                <span className="cifra">
+                  Paga con {formatearPrecio(r.pagaCon)}
+                  {v != null && ` · vuelto ${formatearPrecio(v)}`}
+                </span>
+              )}
+            </p>
+          )}
+          {r.repartidor && <p className="suave">Repartidor: {r.repartidor}</p>}
+          {cancelado && <p className="error-texto">Cancelado: {p.motivoAnulacion ?? ''}</p>}
+        </div>
         {!cancelado && r.estado !== 'entregado' && (
-          <div className="fila">
-            {r.estado === 'preparando' && (
-              <button type="button" className="boton" onClick={() => { setRepartidor(r.repartidor ?? ''); setAccion({ tipo: 'salir', p }); }}>
-                Salió
+          <div className="reparto__acciones">
+            {salio || entregado}
+            <div className="fila">
+              {salio && entregado}
+              {!cobrado && puedeCobrar && (
+                <button type="button" className="boton boton--chico" onClick={() => setAccion({ tipo: 'cobrar', p, entregar: false })}>
+                  Cobrar
+                </button>
+              )}
+              <button type="button" className="boton boton--chico" onClick={() => hacer(() => llamar('impresion:delivery', { pedidoId: p.id }))}>
+                Ticket
               </button>
-            )}
-            {!cobrado && puedeCobrar && (
-              <button type="button" className="boton" onClick={() => setAccion({ tipo: 'cobrar', p, entregar: false })}>
-                Cobrar
-              </button>
-            )}
-            <button
-              type="button"
-              className="boton boton--principal"
-              disabled={!cobrado && !puedeCobrar}
-              title={!cobrado && !puedeCobrar ? 'Un encargado tiene que cobrarlo antes' : undefined}
-              onClick={() => (cobrado ? entregar(p) : setAccion({ tipo: 'cobrar', p, entregar: true }))}
-            >
-              Entregado
-            </button>
-            <button type="button" className="boton" onClick={() => hacer(() => llamar('impresion:delivery', { pedidoId: p.id }))}>
-              Ticket
-            </button>
-            {!cobrado && puede(rol, 'pedido.anular') !== 'no' && (
-              <button type="button" className="boton boton--peligro" onClick={() => setAccion({ tipo: 'anular', p })}>
-                Anular
-              </button>
-            )}
+              {!cobrado && puede(rol, 'pedido.anular') !== 'no' && (
+                <button type="button" className="boton boton--chico boton--peligro" onClick={() => setAccion({ tipo: 'anular', p })}>
+                  Anular
+                </button>
+              )}
+            </div>
           </div>
         )}
-      </article>
+      </PapelComanda>
     );
   };
 
-  const columna = (titulo: string, lista: PedidoDelivery[]) => (
-    <section className="delivery__columna" aria-label={titulo}>
-      <h2 className="mesas__zona">
-        {titulo} <span className="suave">({lista.length})</span>
+  const columna = (id: string, titulo: string, lista: PedidoDelivery[], vacio: string) => (
+    <section className="delivery__columna" aria-labelledby={id}>
+      <h2 id={id} className="columna__titulo">
+        {titulo} <span className="columna__cuenta">{lista.length}</span>
       </h2>
-      {lista.length ? lista.map(tarjeta) : <p className="suave">Nada por acá.</p>}
+      {lista.length ? lista.map(tarjeta) : <p className="columna__vacia">{vacio}</p>}
     </section>
   );
 
   return (
     <div className="delivery">
-      <div className="fila fila--entre">
-        <button type="button" className="boton boton--principal" onClick={() => { setAviso(null); setNuevo(true); }}>
+      <div className="herramientas">
+        <button type="button" className="boton boton--linea" onClick={() => { setAviso(null); setNuevo(true); }}>
           Nuevo delivery
         </button>
         {puede(rol, 'admin.configurar') === 'si' && <EnvioPorDefecto envio={envio} onGuardado={recargar} />}
@@ -150,14 +182,14 @@ export function Delivery({ rol }: { rol: Rol }) {
       ) : (
         <>
           <div className="delivery__tablero">
-            {columna('Preparando', tablero.preparando)}
-            {columna('En camino', tablero.enCamino)}
-            {columna('Entregados hoy', tablero.entregados)}
+            {columna('col-preparando', 'Preparando', tablero.preparando, 'Nada en la cocina.')}
+            {columna('col-en-camino', 'En camino', tablero.enCamino, 'Nadie en la calle.')}
+            {columna('col-entregados', 'Entregados hoy', tablero.entregados, 'Todavía no se entregó nada.')}
           </div>
           {tablero.cancelados.length > 0 && (
-            <details className="bloque">
+            <details className="delivery__cancelados">
               <summary>Cancelados hoy ({tablero.cancelados.length})</summary>
-              {tablero.cancelados.map(tarjeta)}
+              <div className="delivery__tablero">{tablero.cancelados.map(tarjeta)}</div>
             </details>
           )}
         </>
@@ -236,10 +268,13 @@ function EnvioPorDefecto({ envio, onGuardado }: { envio: number; onGuardado: () 
   const texto = valor ?? centavosAPesos(envio);
   const monto = parsearPesos(texto);
   return (
-    <div className="fila">
-      <label className="campo">
+    <div className="envio-defecto">
+      <label className="envio-defecto__campo">
         Envío por defecto
-        <input inputMode="decimal" value={texto} onChange={(e) => setValor(e.target.value)} />
+        <span className="envio-defecto__monto">
+          <span aria-hidden="true">$</span>
+          <input inputMode="decimal" className="cifra" value={texto} onChange={(e) => setValor(e.target.value)} />
+        </span>
       </label>
       <button
         type="button"

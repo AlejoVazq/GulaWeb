@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { MesaSalon } from '../compartido/salon';
-import { COLOR_ESTADO, SECCIONES, resumenMesas } from './secciones';
+import type { TableroDelivery } from '../compartido/delivery';
+import { COLOR_ESTADO, SECCIONES, resumenDelivery, resumenMesas } from './secciones';
 
 const mesa = (over: Partial<MesaSalon> = {}): MesaSalon =>
   ({ id: Math.random().toString(), nombre: 'Mesa', capacidad: 4, sesion: null, pendientes: 0, avisos: [], ...over }) as MesaSalon;
@@ -40,4 +41,16 @@ describe('SECCIONES', () => {
 it('dos mesas con la cuenta pedida → "2 pidieron la cuenta"', () => {
   const c = () => abierta({ sesion: { estado: 'cuenta_pedida' } as MesaSalon['sesion'] });
   expect(resumenMesas([c(), c()]).resumen).toBe('2 abiertas · 2 pidieron la cuenta');
+});
+
+describe('resumenDelivery', () => {
+  const p = (estado: string, cobrado = false) => ({ estado: cobrado ? 'cobrado' : 'confirmado', delivery: { estado } }) as never;
+  it('la placa son los activos y el resumen cuenta preparando, en camino y a cobrar', () => {
+    const t = { preparando: [p('preparando'), p('preparando', true)], enCamino: [p('en_camino')], entregados: [p('entregado', true)], cancelados: [] } as TableroDelivery;
+    expect(resumenDelivery(t)).toEqual({ placa: '3', resumen: '2 preparando · 1 en camino · 2 a cobrar' });
+  });
+  it('sin nada activo', () => {
+    expect(resumenDelivery({ preparando: [], enCamino: [], entregados: [], cancelados: [] })).toEqual({ placa: '0', resumen: 'Nada en curso' });
+    expect(resumenDelivery(null)).toEqual({ placa: '0' });
+  });
 });
