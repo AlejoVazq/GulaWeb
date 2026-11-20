@@ -1,0 +1,137 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-20T08:00:00-03:00",
+  "title": "Design System: GulaWeb",
+  "extensions": {
+    "colorMeta": {
+      "tinta": { "role": "primary", "displayName": "Tinta de comanda" },
+      "riel": { "role": "primary", "displayName": "Riel negro" },
+      "linea-mesas": { "role": "secondary", "displayName": "Verde Mesas", "tonalRamp": ["#0a2a1d", "#0f3d2a", "#16583d", "#2a7353", "#4f9174", "#80b39b", "#b6d5c6", "#e3f0ea"] },
+      "linea-delivery": { "role": "secondary", "displayName": "Cobalto Delivery", "tonalRamp": ["#0c2347", "#13356b", "#1c4c97", "#3567b2", "#5d88c8", "#8fadda", "#c2d3ec", "#e8eff9"] },
+      "linea-caja": { "role": "secondary", "displayName": "Ocre Caja", "tonalRamp": ["#4a3305", "#7a540b", "#a87510", "#d79a17", "#e5b54d", "#efcd85", "#f6e2b8", "#fcf3e2"] },
+      "linea-reportes": { "role": "secondary", "displayName": "Bordó Reportes", "tonalRamp": ["#33091a", "#4f1229", "#6e1c38", "#a3375b", "#c0607f", "#d692a8", "#ebc4d1", "#f8e8ee"] },
+      "linea-carta": { "role": "secondary", "displayName": "Petróleo Carta", "tonalRamp": ["#062b31", "#0b434b", "#11606b", "#2a7d88", "#549ca5", "#86bdc3", "#bcdcdf", "#e6f3f4"] },
+      "linea-impresion": { "role": "secondary", "displayName": "Grafito Impresión" },
+      "placa-mesas": { "role": "secondary", "displayName": "Placa crema (solo sobre verde)" },
+      "dato-reportes": { "role": "secondary", "displayName": "Dato bordó" },
+      "urgente": { "role": "tertiary", "displayName": "Rojo de estado" },
+      "cuenta": { "role": "tertiary", "displayName": "Ámbar de cuenta" },
+      "ok": { "role": "tertiary", "displayName": "Verde de cobrado" },
+      "suelo": { "role": "neutral", "displayName": "Suelo gris verdoso" },
+      "carta-pagina": { "role": "neutral", "displayName": "Página de la carta" }
+    },
+    "typographyMeta": {
+      "carta-cabecera": { "displayName": "Cabecera de la carta", "purpose": "Nombre del local sobre la banda negra." },
+      "carta-banda": { "displayName": "Banda de categoría", "purpose": "Categorías de la carta, blanco sobre tinta." },
+      "carta-producto": { "displayName": "Nombre de producto", "purpose": "Itálica gruesa en filas y papel." },
+      "caja-cartel": { "displayName": "Cartel", "purpose": "Nombre de la sección en el cartel de la caja." },
+      "caja-placa": { "displayName": "Placa", "purpose": "Número de mesa y cifra del cartel." },
+      "caja-titulo": { "displayName": "Título de módulo", "purpose": "Módulos, columnas y diálogos de la caja." },
+      "caja-cuerpo": { "displayName": "Cuerpo", "purpose": "Formularios, tablas y detalle." },
+      "cifras": { "displayName": "Cifras", "purpose": "Plata, horas y cantidades; tabulares en columnas." }
+    },
+    "shadows": [
+      { "name": "papel", "value": "drop-shadow(0 1px 1px rgb(0 0 0 / 0.14)) drop-shadow(0 6px 12px rgb(0 0 0 / 0.12))", "purpose": "Todo papel de comanda y ticket (como filter en un envoltorio)." },
+      { "name": "dialogo", "value": "0 24px 60px -20px rgb(0 0 0 / 0.5)", "purpose": "Diálogos sobre el velo." },
+      { "name": "globo", "value": "0 6px 16px -6px rgb(0 0 0 / 0.4)", "purpose": "Detalle de una columna en Reportes." }
+    ],
+    "motion": [
+      { "name": "curva-salida", "value": "cubic-bezier(0.16, 1, 0.3, 1)", "purpose": "Toda transición de estado." },
+      { "name": "dur-rapida", "value": "140ms", "purpose": "Hover, presión, interruptores." },
+      { "name": "dur-media", "value": "240ms", "purpose": "Diálogos y recálculo de reportes." },
+      { "name": "dur-firma", "value": "460ms", "purpose": "El corte del papel al mandar el pedido (único gesto protagonista de la carta)." }
+    ],
+    "breakpoints": [
+      { "name": "caja-una-columna", "value": "1240px" },
+      { "name": "caja-minima", "value": "1366px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Botón principal",
+      "kind": "button",
+      "refersTo": "caja-boton-principal",
+      "description": "Acción principal neutra de la caja.",
+      "html": "<button class=\"ds-btn-principal\">Aceptar e imprimir</button>",
+      "css": ".ds-btn-principal { min-height: 40px; padding: 0 16px; border-radius: 6px; border: 1.5px solid #15171a; background: #15171a; color: #fff; font: 600 15px/1 'Barlow', 'Segoe UI', sans-serif; cursor: pointer; transition: background-color 140ms cubic-bezier(0.16,1,0.3,1), transform 140ms cubic-bezier(0.16,1,0.3,1); } .ds-btn-principal:hover { background: #2b2f34; } .ds-btn-principal:active { transform: translateY(1px); } .ds-btn-principal:focus-visible { outline: 3px solid #15171a; outline-offset: 2px; }"
+    },
+    {
+      "name": "Botón de línea (Mesas)",
+      "kind": "button",
+      "refersTo": "caja-boton-linea-mesas",
+      "description": "La acción que avanza el trabajo, en el color de la sección.",
+      "html": "<button class=\"ds-btn-linea\">Pedido de mostrador</button>",
+      "css": ".ds-btn-linea { min-height: 40px; padding: 0 16px; border-radius: 6px; border: 1.5px solid #16583d; background: #16583d; color: #fff; font: 600 15px/1 'Barlow', 'Segoe UI', sans-serif; cursor: pointer; transition: background-color 140ms cubic-bezier(0.16,1,0.3,1); } .ds-btn-linea:hover { background: color-mix(in srgb, #16583d 86%, #000); } .ds-btn-linea:focus-visible { outline: 3px solid #16583d; outline-offset: 2px; }"
+    },
+    {
+      "name": "Campo",
+      "kind": "input",
+      "description": "Campo de formulario de la caja.",
+      "html": "<label class=\"ds-campo\">Fondo de cambio<input class=\"ds-input\" inputmode=\"decimal\" placeholder=\"$ 0\"></label>",
+      "css": ".ds-campo { display: grid; gap: 4px; font: 600 15px/1.45 'Barlow', sans-serif; color: #15171a; } .ds-input { min-height: 40px; padding: 8px 12px; border: 1.5px solid #a9aea5; border-radius: 6px; background: #fff; font: 400 15px 'Azeret Mono', monospace; } .ds-input:focus { border-color: #15171a; outline: 2px solid #15171a; outline-offset: 1px; }"
+    },
+    {
+      "name": "Riel",
+      "kind": "nav",
+      "description": "Navegación lateral de la caja con muestra de color por sección.",
+      "html": "<nav class=\"ds-riel\"><a class=\"ds-riel-item\" aria-current=\"page\"><span class=\"ds-muestra\" style=\"background:#16583d\"></span>Mesas</a><a class=\"ds-riel-item\"><span class=\"ds-muestra\" style=\"background:#1c4c97\"></span>Delivery</a><a class=\"ds-riel-item\"><span class=\"ds-muestra\" style=\"background:#d79a17\"></span>Caja</a></nav>",
+      "css": ".ds-riel { display: grid; gap: 4px; width: 184px; padding: 8px; background: #15171a; } .ds-riel-item { display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 0 8px; border-radius: 6px; color: #d9dcdf; font: 700 1.05rem 'Barlow Condensed', sans-serif; letter-spacing: 0.05em; text-transform: uppercase; cursor: pointer; } .ds-riel-item:hover { background: rgb(255 255 255 / 0.06); } .ds-riel-item[aria-current='page'] { background: #fff; color: #15171a; } .ds-muestra { width: 28px; height: 22px; border-radius: 4px; flex: none; }"
+    },
+    {
+      "name": "Mesa abierta",
+      "kind": "card",
+      "refersTo": "caja-placa-mesa-abierta",
+      "description": "Módulo de mesa: placa, estado en mayúscula y detalle.",
+      "html": "<button class=\"ds-mesa\"><span class=\"ds-placa\">6</span><span class=\"ds-estado\">Abierta</span><span class=\"ds-detalle\">2 personas · 40 min</span></button>",
+      "css": ".ds-mesa { display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; align-items: center; min-width: 180px; min-height: 78px; padding: 8px 12px; background: #fff; border: 1px solid #d3d6cf; border-radius: 8px; text-align: left; cursor: pointer; } .ds-mesa:hover { border-color: #15171a; } .ds-placa { grid-row: 1 / 3; display: grid; place-items: center; min-width: 48px; min-height: 52px; border-radius: 4px; background: #16583d; color: #efe3bf; font: 800 2.3rem/1 'Barlow Condensed', sans-serif; } .ds-estado { align-self: end; font: 700 1rem/1.1 'Barlow Condensed', sans-serif; letter-spacing: 0.03em; text-transform: uppercase; } .ds-detalle { align-self: start; font: 400 0.82rem 'Barlow', sans-serif; color: #4b5057; }"
+    },
+    {
+      "name": "Papel de comanda",
+      "kind": "custom",
+      "description": "El objeto compartido: lo que arma el cliente y lo que entra a la caja.",
+      "html": "<article class=\"ds-papel\"><header class=\"ds-papel-cabeza\"><b>MESA 7</b><span>21:42</span></header><ol class=\"ds-papel-lineas\"><li><span>2×</span><em>Papas con cheddar</em><span>$ 16.000</span></li><li><span>1×</span><em>Muzzarella</em><span>$ 10.000</span></li></ol><p class=\"ds-papel-total\"><span>Total</span><span>$ 26.000</span></p></article>",
+      "css": ".ds-papel { width: 280px; padding: 22px 16px; background: #fff; color: #0b0b0b; font: 14px 'Barlow', sans-serif; filter: drop-shadow(0 1px 1px rgb(0 0 0 / 0.14)) drop-shadow(0 6px 12px rgb(0 0 0 / 0.12)); } .ds-papel-cabeza { display: flex; justify-content: space-between; font: 600 13px 'Azeret Mono', monospace; letter-spacing: 0.14em; } .ds-papel-lineas { list-style: none; margin: 8px 0 0; padding: 0; } .ds-papel-lineas li { display: grid; grid-template-columns: 2.2em 1fr auto; gap: 8px; padding: 6px 0; border-top: 1px dashed rgb(11 11 11 / 0.45); } .ds-papel-lineas em { font-weight: 800; } .ds-papel-lineas li span, .ds-papel-total { font-family: 'Azeret Mono', monospace; font-variant-numeric: tabular-nums; } .ds-papel-total { display: flex; justify-content: space-between; margin: 8px 0 0; padding-top: 8px; border-top: 2px solid #0b0b0b; font-weight: 600; text-transform: uppercase; }"
+    },
+    {
+      "name": "Botón agregar (carta)",
+      "kind": "button",
+      "refersTo": "carta-boton-agregar",
+      "description": "Agrega un producto; elegido se invierte a negro con la cantidad.",
+      "html": "<button class=\"ds-agregar\" aria-label=\"Agregar Papas con cheddar\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" aria-hidden=\"true\"><path d=\"M8 2v12M2 8h12\" stroke=\"currentColor\" stroke-width=\"2.25\" stroke-linecap=\"square\" fill=\"none\"/></svg></button>",
+      "css": ".ds-agregar { display: grid; place-items: center; width: 44px; height: 44px; border: 2px solid #0b0b0b; border-radius: 0; background: #fbfaf7; color: #0b0b0b; cursor: pointer; transition: transform 140ms cubic-bezier(0.16,1,0.3,1); } .ds-agregar:active { transform: scale(0.94); } .ds-agregar.ds-lleno { background: #0b0b0b; color: #fbfaf7; font: 600 1rem 'Azeret Mono', monospace; } .ds-agregar:focus-visible { outline: 3px solid #0b0b0b; outline-offset: 2px; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "El mismo papel",
+    "overview": "GulaWeb son dos mundos unidos por un objeto. La carta del cliente es La Comanda: el talonario de Gula en blanco y negro puro, bandas negras con mayúsculas anchas, nombres en itálica gruesa y precios en tipografía de ticket. La caja es Línea de colectivo: cada sección es una línea con su color a toda saturación, un riel negro a la izquierda y un cartel con una placa grande que dice dónde se está sin leer. Lo que los une es el papel de comanda: lo que arma el cliente, lo que entra a la caja, el detalle de mesa y la vista previa de impresión son el mismo papel perforado, con las mismas líneas que el ticket térmico.",
+    "keyCharacteristics": [
+      "Un objeto compartido (el papel perforado) en lugar de un \"estilo de marca\" compartido.",
+      "Carta: blanco y negro, selección invertida, gris solo en descripciones.",
+      "Caja: un color de sección por pantalla (cartel y riel); el área de trabajo es neutra.",
+      "Rojo y ámbar reservados para estados; nunca son color de sección.",
+      "Toda la plata en cifras tabulares monoespaciadas."
+    ],
+    "rules": [
+      { "name": "La regla de una sola línea", "body": "Cada pantalla de la caja muestra un único color de sección: en el cartel, en la muestra activa del riel y, como mucho, en un botón que avanza el trabajo. Todo lo demás es neutro.", "section": "colors" },
+      { "name": "La regla de los colores de estado", "body": "Rojo y ámbar significan algo (urgente, cuenta). No se usan como decoración ni como color de sección, y nunca van solos: siempre llevan texto.", "section": "colors" },
+      { "name": "La regla de la tinta", "body": "En la carta no hay grises de relleno: seleccionado es invertido a negro, sin stock es tachado y apagado, nunca escondido.", "section": "colors" },
+      { "name": "La regla de los 11 píxeles", "body": "Ningún texto funcional baja de 11px; las notas de renglón del papel compacto van a 12px.", "section": "typography" },
+      { "name": "La regla de la plata tabular", "body": "Todo importe se escribe con formatearPrecio y en cifras tabulares; nunca se trunca.", "section": "typography" },
+      { "name": "La regla del borde o la sombra", "body": "Un módulo lleva borde; el papel lleva sombra; nada lleva las dos.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do usar el papel de @gula/ui para todo pedido, en la carta y en la caja.",
+      "Do escribir cada estado en texto, además de su color.",
+      "Do pintar con el color de la línea solo el cartel, la muestra activa del riel y la acción que avanza el trabajo.",
+      "Do dejar la plata en cifras tabulares, alineada a la derecha y sin truncar.",
+      "Do probar todo con nombres de 80 caracteres, notas de 140, 30 renglones y $ 9.999.999."
+    ],
+    "donts": [
+      "Don't usar rojo o ámbar como color de sección o decoración.",
+      "Don't poner caracteres de texto como íconos (\"+\", \"−\", flechas); usar los SVG de @gula/ui.",
+      "Don't agregar grises de relleno, crema o terracota a la carta.",
+      "Don't poner a la vez borde y sombra blanda a un mismo contenedor.",
+      "Don't usar rótulos chiquitos encima de un título; el título se sostiene solo."
+    ]
+  }
+}
