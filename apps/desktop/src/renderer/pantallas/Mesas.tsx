@@ -21,7 +21,7 @@ type Estado = { texto: string; tono: 'libre' | 'abierta' | 'pendiente' | 'aviso'
 function estadoDe(m: MesaSalon): Estado[] {
   if (!m.sesion) return [{ texto: 'Libre', tono: 'libre' }];
   const estados: Estado[] = [];
-  if (m.pendientes > 0) estados.push({ texto: 'Pedido pendiente', tono: 'pendiente' });
+  if (m.pendientes > 0) estados.push({ texto: 'Pedido nuevo', tono: 'pendiente' });
   if (m.avisos.some((a) => a.tipo === 'llamar')) estados.push({ texto: 'Llamó a la moza', tono: 'aviso' });
   if (m.sesion.estado === 'cuenta_pedida' || m.avisos.some((a) => a.tipo === 'cuenta'))
     estados.push({ texto: 'Pidió la cuenta', tono: 'cuenta' });

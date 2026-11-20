@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { formatearPrecio } from '@gula/shared';
 import { PapelComanda, type LineaPapel } from '@gula/ui';
 import { useDialogo } from './useDialogo';
-import { IconoCerrar, IconoMas, IconoMenos } from './Iconos';
+import { IconoCerrar, IconoMas, IconoMenos } from '@gula/ui';
 import { totalCarrito, unidadesCarrito, type AccionCarrito, type ItemCarrito } from '../carrito';
 
 /** Envío desde la mesa (sin token, la carta es de solo lectura). */

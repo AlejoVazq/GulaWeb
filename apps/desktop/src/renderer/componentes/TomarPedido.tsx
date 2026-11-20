@@ -1,4 +1,4 @@
-import { PapelComanda } from '@gula/ui';
+import { IconoMas, IconoMenos, PapelComanda } from '@gula/ui';
 import { useEffect, useMemo, useState } from 'react';
 import {
   CANTIDAD_MAXIMA,
@@ -23,11 +23,7 @@ type Props = {
 type Linea = ItemPedido & { clave: number; producto: ProductoLocal };
 
 /** Ignora mayúsculas y acentos ("cafe" encuentra "Café"). */
-const normalizar = (t: string) =>
-  t
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .toLowerCase();
+const normalizar = (t: string) => t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
 function ElegirOpciones({
   producto,
@@ -45,7 +41,11 @@ function ElegirOpciones({
   const elegir = (grupoId: string, opcionId: string, unica: boolean, marcado: boolean) => {
     setSel((s) => {
       const actual = s[grupoId] ?? [];
-      const nuevo = unica ? [opcionId] : marcado ? [...actual, opcionId] : actual.filter((x) => x !== opcionId);
+      const nuevo = unica
+        ? [opcionId]
+        : marcado
+          ? [...actual, opcionId]
+          : actual.filter((x) => x !== opcionId);
       return { ...s, [grupoId]: nuevo };
     });
   };
@@ -72,7 +72,11 @@ function ElegirOpciones({
                 {g.nombre}
                 <span className="suave">
                   {' '}
-                  {g.min > 0 ? (g.min === g.max ? `(elegí ${g.min})` : `(mínimo ${g.min})`) : `(hasta ${g.max})`}
+                  {g.min > 0
+                    ? g.min === g.max
+                      ? `(elegí ${g.min})`
+                      : `(mínimo ${g.min})`
+                    : `(hasta ${g.max})`}
                 </span>
               </legend>
               {g.opciones.map((o) => (
@@ -80,7 +84,10 @@ function ElegirOpciones({
                   <input
                     type={unica ? 'radio' : 'checkbox'}
                     name={g.id}
-                    disabled={!o.disponible || (!unica && !elegidas.includes(o.id) && elegidas.length >= g.max)}
+                    disabled={
+                      !o.disponible ||
+                      (!unica && !elegidas.includes(o.id) && elegidas.length >= g.max)
+                    }
                     checked={elegidas.includes(o.id)}
                     onChange={(e) => elegir(g.id, o.id, unica, e.target.checked)}
                   />
@@ -104,7 +111,7 @@ function ElegirOpciones({
             disabled={cantidad <= 1}
             onClick={() => setCantidad((c) => c - 1)}
           >
-            −
+            <IconoMenos />
           </button>
           <output aria-label="Cantidad">{cantidad}</output>
           <button
@@ -114,7 +121,7 @@ function ElegirOpciones({
             disabled={cantidad >= CANTIDAD_MAXIMA}
             onClick={() => setCantidad((c) => c + 1)}
           >
-            +
+            <IconoMas />
           </button>
         </div>
         <div className="fila">
@@ -154,13 +161,23 @@ export function TomarPedido({ titulo, onEnviar, onCancelar }: Props) {
       .filter((p) => !q || normalizar(p.nombre).includes(q));
   }, [carta, busqueda, categoria]);
 
-  const total = lineas.reduce((t, l) => t + precioUnitario(l.producto, l.seleccion) * l.cantidad, 0);
+  const total = lineas.reduce(
+    (t, l) => t + precioUnitario(l.producto, l.seleccion) * l.cantidad,
+    0,
+  );
 
   const enviar = async () => {
     setEnviando(true);
     setError(null);
     try {
-      await onEnviar(lineas.map(({ productoId, seleccion, nota, cantidad }) => ({ productoId, seleccion, nota, cantidad })));
+      await onEnviar(
+        lineas.map(({ productoId, seleccion, nota, cantidad }) => ({
+          productoId,
+          seleccion,
+          nota,
+          cantidad,
+        })),
+      );
     } catch (e) {
       setError(mensajeDe(e));
       setEnviando(false);
@@ -213,7 +230,9 @@ export function TomarPedido({ titulo, onEnviar, onCancelar }: Props) {
               onClick={() => setEligiendo(p)}
             >
               <span>{p.nombre}</span>
-              <span className="suave cifra">{p.disponible ? formatearPrecio(p.precio) : 'Sin stock'}</span>
+              <span className="suave cifra">
+                {p.disponible ? formatearPrecio(p.precio) : 'Sin stock'}
+              </span>
             </button>
           ))}
           {carta && !productos.length && <p className="suave">No hay productos con ese nombre.</p>}
@@ -230,7 +249,9 @@ export function TomarPedido({ titulo, onEnviar, onCancelar }: Props) {
             cantidad: l.cantidad,
             nombre: l.producto.nombre,
             importe: precioUnitario(l.producto, l.seleccion) * l.cantidad,
-            detalle: [resumirOpciones(l.producto, l.seleccion), l.nota].filter(Boolean).join(' · ') || undefined,
+            detalle:
+              [resumirOpciones(l.producto, l.seleccion), l.nota].filter(Boolean).join(' · ') ||
+              undefined,
           }))}
           total={lineas.length ? total : undefined}
           accionesLinea={(linea) => (

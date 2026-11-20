@@ -22,6 +22,7 @@ import {
   type RespuestaReporte,
 } from '../../compartido/reportes';
 import { llamar, mensajeDe } from '../gula';
+import { IconoFlecha } from '@gula/ui';
 
 /** Lo que va en fichas; Ventas va aparte como cifra principal. */
 const FICHAS = new Set(['Cobros', 'Ticket promedio', 'Propinas', 'Egresos', 'Resultado']);
@@ -37,20 +38,6 @@ function Variacion({ nombre, x, y }: { nombre: string; x: number; y: number }) {
   return <span className={`variacion variacion--${tono}`}>{textoVariacion(x, y)}</span>;
 }
 
-function Flecha({ hacia }: { hacia: 'izq' | 'der' }) {
-  return (
-    <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
-      <path
-        d={hacia === 'izq' ? 'M10 3 5 8l5 5' : 'm6 3 5 5-5 5'}
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
 
 /**
  * Tabla con barra: cada fila lleva su barra proporcional al primer valor numérico.
@@ -268,7 +255,7 @@ export function Reportes({ hoy = diaOperativo(new Date()) }: { hoy?: string }) {
               className="boton boton--icono"
               onClick={() => setRango(periodoAnterior(tipo, rango))}
             >
-              <Flecha hacia="izq" />
+              <IconoFlecha hacia="izq" />
               Anterior
             </button>
             {tipo !== 'personalizado' && (
@@ -282,7 +269,7 @@ export function Reportes({ hoy = diaOperativo(new Date()) }: { hoy?: string }) {
               onClick={() => setRango(periodoSiguiente(tipo, rango))}
             >
               Siguiente
-              <Flecha hacia="der" />
+              <IconoFlecha hacia="der" />
             </button>
           </div>
         </div>

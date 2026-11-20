@@ -18,7 +18,7 @@ it('con la PC bloqueada, un pedido pendiente sigue avisando', async () => {
     'salon:leer': () => salonConPendiente,
   });
   render(<App />);
-  expect(await screen.findByText('Hay pedidos o avisos sin atender')).toBeInTheDocument();
+  expect(await screen.findByText('1 sin atender')).toBeInTheDocument();
   expect(screen.getByText('1 pendiente: elegí tu usuario para atenderlo.')).toBeInTheDocument();
 });
 
@@ -80,4 +80,21 @@ it('con logo el riel lo muestra junto al nombre, y si no carga lo esconde', asyn
   expect(within(riel).getByText('Gula')).toBeInTheDocument();
   fireEvent.error(img);
   expect(container.querySelector('.riel__logo')).toBeNull();
+});
+
+it('el riel muestra la versión y el cartel dice dónde sale lo impreso y el rol del usuario', async () => {
+  puenteFalso({
+    'sesion:estado': () => ({ tipo: 'activa', local: { id: 'l1', nombre: 'Gula', slug: 'gula' }, usuario: { id: 'u1', nombre: 'Sofía', rol: 'encargado' } }),
+    'sync:estado': () => ({ conexion: 'en-linea', pendientes: 0, rechazadas: 0, ultimaSync: null }),
+    'salon:leer': () => ({ mesas: [], avisos: [], pendientes: [] }),
+    'impresion:trabajos': () => ({ conError: [], recientes: [] }),
+    'impresion:config': () => ({ modo: 'impresora', impresora: 'XP-80C', columnas: 48, impresoras: [] }),
+    'app:actualizacion': () => ({ tipo: 'al-dia', version: '0.2.0' }),
+  });
+  render(<App />);
+  const riel = await screen.findByRole('navigation', { name: 'Secciones' });
+  expect(await within(riel).findByText('GulaWeb · v0.2.0')).toBeInTheDocument();
+  const cartel = screen.getByRole('banner');
+  expect(await within(cartel).findByText('Impresora lista')).toBeInTheDocument();
+  expect(within(cartel).getByText('· Encargado')).toBeInTheDocument();
 });

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import type { LocalInfo, UsuarioPublico } from '../../compartido/ipc';
 import { llamar, mensajeDe } from '../gula';
 
-const ROL: Record<UsuarioPublico['rol'], string> = {
+export const NOMBRE_ROL: Record<UsuarioPublico['rol'], string> = {
   dueno: 'Dueño',
   encargado: 'Encargado',
   mesero: 'Mesero/a',
@@ -78,7 +78,7 @@ export function ElegirUsuario({ local }: { local: LocalInfo }) {
                   }}
                 >
                   <strong>{u.nombre}</strong>
-                  <span className="suave">{ROL[u.rol]}</span>
+                  <span className="suave">{NOMBRE_ROL[u.rol]}</span>
                 </button>
               ))}
             </div>

@@ -1,5 +1,5 @@
 import { formatearPrecio, type ProductoPublico } from '@gula/shared';
-import { IconoMas } from './Iconos';
+import { IconoMas } from '@gula/ui';
 
 type Props = {
   producto: ProductoPublico;

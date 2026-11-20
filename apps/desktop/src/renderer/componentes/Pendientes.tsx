@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { PedidoPendiente, Salon } from '../../compartido/salon';
 import { llamar, mensajeDe } from '../gula';
 import { hora } from '../formato';
-import { PapelComanda, type LineaPapel } from '@gula/ui';
+import { IconoMas, IconoMenos, PapelComanda, type LineaPapel } from '@gula/ui';
 
 const SUGERENCIAS = ['Sin stock', 'Cocina cerrada'];
 /** Un pedido largo entra plegado: el botón de aceptar no queda a mil píxeles. */
@@ -62,7 +62,7 @@ function TarjetaPendiente({ p }: { p: PedidoPendiente }) {
             disabled={l.cantidad === 0}
             onClick={() => ajustar(l.id, -1)}
           >
-            −
+            <IconoMenos />
           </button>
           <button
             type="button"
@@ -70,13 +70,17 @@ function TarjetaPendiente({ p }: { p: PedidoPendiente }) {
             aria-label={`Sumar uno de ${l.nombre}`}
             onClick={() => ajustar(l.id, 1)}
           >
-            +
+            <IconoMas />
           </button>
         </>
       )}
     >
       {plegable && (
-        <button type="button" className="enlace papel__desplegar" onClick={() => setDesplegado((d) => !d)}>
+        <button
+          type="button"
+          className="enlace papel__desplegar"
+          onClick={() => setDesplegado((d) => !d)}
+        >
           {desplegado ? 'Ver menos' : `Ver los ${lineas.length} renglones`}
         </button>
       )}

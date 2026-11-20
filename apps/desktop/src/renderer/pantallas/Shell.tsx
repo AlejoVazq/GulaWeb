@@ -1,4 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { EstadoImpresora } from '../componentes/EstadoImpresora';
+import { NOMBRE_ROL } from './ElegirUsuario';
 import type { EstadoSesion, EstadoSync } from '../../compartido/ipc';
 import { llamar } from '../gula';
 import { Conexion } from '../componentes/Conexion';
@@ -34,6 +36,12 @@ export function Shell({ sesion, sync, salon }: { sesion: Activa; sync: EstadoSyn
   const [aviso, setAviso] = useState<string | null>(null);
   /** URL del logo que no cargó (si cambia el logo, se vuelve a intentar). */
   const [logoRoto, setLogoRoto] = useState<string | null>(null);
+  const [version, setVersion] = useState<string | null>(null);
+  useEffect(() => {
+    void llamar('app:actualizacion')
+      .then((e) => e?.tipo === 'al-dia' && setVersion(e.version))
+      .catch(() => undefined);
+  }, []);
   const volver = () => setVista({ tipo: 'seccion' });
   const sinAtender = salon.pendientes.length + salon.avisos.length;
   const puedeCobrar = puede(sesion.usuario.rol, 'cobro.registrar') === 'si';
@@ -93,15 +101,18 @@ export function Shell({ sesion, sync, salon }: { sesion: Activa; sync: EstadoSyn
             {SECCIONES[id].nombre}
           </button>
         ))}
-        <p className="riel__pie">GulaWeb</p>
+        <p className="riel__pie">GulaWeb{version && ` · v${version}`}</p>
       </nav>
       <Cartel seccion={seccion} {...cartel()}>
         <Alerta activa={sinAtender > 0} cantidad={sinAtender} />
         <Conexion estado={sync} />
         <AvisoSync sync={sync} />
+        <EstadoImpresora />
         <AvisoActualizacion />
         <span className="cartel__usuario">
-          {sesion.usuario.nombre}
+          <span>
+            {sesion.usuario.nombre} <span className="cartel__rol">· {NOMBRE_ROL[sesion.usuario.rol]}</span>
+          </span>
           <button type="button" className="boton boton--cartel" onClick={() => void llamar('sesion:bloquear')}>
             Cambiar usuario
           </button>

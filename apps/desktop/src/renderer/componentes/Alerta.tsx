@@ -45,7 +45,7 @@ export function Alerta({ activa, cantidad = 0, reproducir = sonarAviso }: Props)
   if (!activa) return null;
   return (
     <div className={silenciada ? 'alerta' : 'alerta alerta--sonando'} role="status">
-      <strong>Hay pedidos o avisos sin atender</strong>
+      <strong>{cantidad > 0 ? `${cantidad} sin atender` : 'Hay pedidos o avisos sin atender'}</strong>
       {silenciada ? (
         <span>(sonido silenciado un minuto)</span>
       ) : (

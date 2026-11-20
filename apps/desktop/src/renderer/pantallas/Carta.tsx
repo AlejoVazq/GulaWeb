@@ -4,17 +4,11 @@ import type { EstadoSync, UsuarioPublico } from '../../compartido/ipc';
 import type { CartaLocal, CategoriaLocal } from '../../compartido/tipos';
 import { escuchar, llamar, mensajeDe } from '../gula';
 import { EditorProducto } from '../componentes/EditorProducto';
+import { IconoFlecha } from '@gula/ui';
 
 type Props = { usuario: UsuarioPublico; conexion: EstadoSync['conexion'] };
 type Edicion = { tipo: 'nuevo' } | { tipo: 'producto'; id: string } | null;
 
-function Flecha({ hacia }: { hacia: 'arriba' | 'abajo' }) {
-  return (
-    <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
-      <path d={hacia === 'arriba' ? 'M3 10l5-5 5 5' : 'M3 6l5 5 5-5'} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
 
 function EditorCategoria({ c, total, indice, deshabilitado, onError, ids }: { c: CategoriaLocal; total: number; indice: number; deshabilitado: boolean; onError: (m: string) => void; ids: string[] }) {
   const [nombre, setNombre] = useState(c.nombre);
@@ -68,10 +62,10 @@ function EditorCategoria({ c, total, indice, deshabilitado, onError, ids }: { c:
       </label>
       <span className="ajustes-categoria__orden">
         <button type="button" className="boton boton--chico" disabled={indice === 0} onClick={() => mover(-1)} aria-label="Subir categoría">
-          <Flecha hacia="arriba" />
+          <IconoFlecha hacia="arriba" />
         </button>
         <button type="button" className="boton boton--chico" disabled={indice === total - 1} onClick={() => mover(1)} aria-label="Bajar categoría">
-          <Flecha hacia="abajo" />
+          <IconoFlecha hacia="abajo" />
         </button>
       </span>
       <button type="button" className="boton boton--chico boton--peligro" onClick={() => void editar({ tipo: 'borrarCategoria', id: c.id })}>

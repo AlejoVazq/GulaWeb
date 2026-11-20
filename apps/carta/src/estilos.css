@@ -128,7 +128,7 @@ p {
 }
 .cabecera__lema {
   margin-top: 5px;
-  font-size: 0.68rem;
+  font-size: 0.72rem;
   letter-spacing: 0.22em;
   text-transform: uppercase;
   opacity: 0.85;
@@ -292,7 +292,7 @@ p {
 }
 .etiqueta {
   font-family: var(--cifras);
-  font-size: 0.66rem;
+  font-size: 0.7rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   border: 1px solid currentColor;

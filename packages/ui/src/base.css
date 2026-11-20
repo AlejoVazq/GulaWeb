@@ -26,3 +26,10 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* Títulos que envuelven: líneas parejas, sin una palabra sola al final. */
+h1,
+h2,
+h3 {
+  text-wrap: balance;
+}

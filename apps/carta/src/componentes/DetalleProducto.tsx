@@ -9,7 +9,7 @@ import {
 } from '@gula/shared';
 import type { ItemCarrito } from '../carrito';
 import { useDialogo } from './useDialogo';
-import { IconoCerrar, IconoMas, IconoMenos, IconoTilde } from './Iconos';
+import { IconoCerrar, IconoMas, IconoMenos, IconoTilde } from '@gula/ui';
 
 type Props = {
   producto: ProductoPublico;

@@ -52,7 +52,7 @@ it('cada mesa dice su estado con texto, agrupadas por zona', () => {
   expect(within(tarjeta('Mesa 1')).getByText('Libre')).toBeInTheDocument();
   expect(within(tarjeta('Mesa 2')).getByText('Abierta')).toBeInTheDocument();
   expect(within(tarjeta('Mesa 2')).getByText('3 personas · 30 min')).toBeInTheDocument();
-  expect(within(tarjeta('Mesa 3')).getByText('Pedido pendiente')).toBeInTheDocument();
+  expect(within(tarjeta('Mesa 3')).getByText('Pedido nuevo')).toBeInTheDocument();
   expect(within(tarjeta('Mesa 4')).getByText('Llamó a la moza')).toBeInTheDocument();
   expect(within(tarjeta('Mesa 5')).getByText('Pidió la cuenta')).toBeInTheDocument();
   expect(screen.getByRole('heading', { name: 'Salón' })).toBeInTheDocument();

@@ -421,8 +421,7 @@ input[role='switch'] {
   padding: var(--e2);
   font-size: 0.75rem;
   letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: #8a9098;
+  color: #9aa0a8;
 }
 .cartel {
   grid-area: cartel;
@@ -506,7 +505,27 @@ input[role='switch'] {
   gap: 6px;
   font-weight: 600;
 }
+.estado-impresora {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.estado-impresora--ok .conexion__punto {
+  background: var(--ok-claro);
+  opacity: 1;
+}
+.estado-impresora--aviso .conexion__punto {
+  background: var(--cuenta);
+  opacity: 1;
+}
+.cartel__rol {
+  font-weight: 400;
+  opacity: 0.85;
+}
 .conexion__punto {
+  flex: none;
   width: 9px;
   height: 9px;
   border-radius: 50%;
@@ -892,7 +911,7 @@ input[role='switch'] {
   font-weight: 800;
   font-size: 2.3rem;
   line-height: 1;
-  color: #8b9096;
+  color: #767b82;
   font-variant-numeric: tabular-nums;
   text-align: center;
 }
